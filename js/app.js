@@ -1,7 +1,7 @@
 const CATS=["Alimentação","Moradia","Transporte","Lazer","Saúde","Contas","Educação","Outros"];
 const ICATS=["Salário","Freelance","Investimentos"];
 const KEY="financas_v2";
-const TITLES={inicio:"Início",subs:"Assinaturas",lanc:"Lançamentos",contas:"Contas",cal:"Calendário",rev:"Categorias",ins:"Insights",dicas:"Dicas"};
+const TITLES={inicio:"Início",subs:"Assinaturas",lanc:"Lançamentos",contas:"Contas",cal:"Calendário",rev:"Categorias",ins:"Insights",dicas:"Dicas",metas:"Metas"};
 const BRL=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,"0");
@@ -483,11 +483,11 @@ function renderChart(){
   cum.forEach((v,i)=>{line+=(i?"L":"M")+xs(i).toFixed(1)+" "+ys(v).toFixed(1)});
   const area=line+` L${xs(n-1).toFixed(1)} ${H-P} L${xs(0).toFixed(1)} ${H-P} Z`;
   const idx=chartDay!==null?chartDay:(sel===mKey(today())?Math.min(parseInt(today().slice(8,10),10)-1,n-1):n-1);
-  const dot=`<line x1="${xs(idx).toFixed(1)}" y1="${P}" x2="${xs(idx).toFixed(1)}" y2="${H-P}" stroke="#ffffff40" stroke-dasharray="3 3"/><circle cx="${xs(idx).toFixed(1)}" cy="${ys(cum[idx]).toFixed(1)}" r="6" fill="#1ee3dd" stroke="#1b2338" stroke-width="3"/>`;
+  const dot=`<line x1="${xs(idx).toFixed(1)}" y1="${P}" x2="${xs(idx).toFixed(1)}" y2="${H-P}" stroke="#ffffff40" stroke-dasharray="3 3"/><circle cx="${xs(idx).toFixed(1)}" cy="${ys(cum[idx]).toFixed(1)}" r="6" fill="#8b5cf6" stroke="#13151c" stroke-width="3"/>`;
   $("spendChart").innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gastos acumulados no mês">
-    <defs><linearGradient id="gArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1ee3dd" stop-opacity=".42"/><stop offset="1" stop-color="#1ee3dd" stop-opacity="0"/></linearGradient></defs>
+    <defs><linearGradient id="gArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8b5cf6" stop-opacity=".42"/><stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/></linearGradient></defs>
     <path d="${area}" fill="url(#gArea)"/>
-    <path d="${line}" fill="none" stroke="#1ee3dd" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="${line}" fill="none" stroke="#8b5cf6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
     ${dot}</svg>`;
   $("chartTotal").textContent=money(cum[idx]||0);
   $("chartLabel").textContent=`Gastos acumulados até o dia ${idx+1}`;
@@ -732,11 +732,13 @@ $("cardForm").onsubmit=e=>{
 let currentView="inicio";
 function go(v){
   currentView=v;
-  document.querySelectorAll(".view").forEach(x=>x.classList.toggle("on",x.id==="v-"+v));
+  const view=v==="metas"?"ins":v;   // Metas fica dentro de Insights (card "Metas e caixinhas")
+  document.querySelectorAll(".view").forEach(x=>x.classList.toggle("on",x.id==="v-"+view));
   document.querySelectorAll("[data-nav]").forEach(x=>x.classList.toggle("on",x.dataset.nav===v&&!x.classList.contains("sideNew")));
   $("pageTitle").textContent=TITLES[v]||"Início";
   $("menu").hidden=true;
   window.scrollTo({top:0,behavior:"auto"});
+  if(v==="metas")requestAnimationFrame(()=>$("goalCard").scrollIntoView({block:"start",behavior:"smooth"}));
 }
 document.querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>go(b.dataset.nav));
 document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>go(b.dataset.go));
@@ -869,7 +871,7 @@ $("txParc").onchange=updateTxParc;
 $("txParcels").addEventListener("input",updateTxParc);
 $("txAmt").addEventListener("input",updateTxParc);
 /* ---------- v13: privacidade, atalhos, filtros, exportação/importação, metas, renda variável, assinaturas, gráficos ---------- */
-const PAL=["#1ee3dd","#7c9cff","#ffb86b","#ff6b81","#b58cff","#7bd389","#f7d154","#8c97b5"];
+const PAL=["#8b5cf6","#a78bfa","#ffb86b","#f87171","#b58cff","#7bd389","#fbbf24","#8a8fa3"];
 const fCards=new Set();
 function cardName(id){const c=(db.cards||[]).find(x=>x.id===id);return c?c.name:""}
 function brDate(s){const[y,m,d]=parts(s);return `${pad(d)}/${pad(m)}/${y}`}
@@ -1150,7 +1152,7 @@ function renderCmp(){
   const data=[5,4,3,2,1,0].map(k=>{const ym=shiftMonth(sel,-k);const t=totals(ym);return {ym,inc:t.inc,exp:t.exp}});
   const max=Math.max(1,...data.map(d=>Math.max(d.inc,d.exp)));
   $("cmp").innerHTML=data.map(d=>`<div class="col" title="${esc(monthLabel(d.ym))}: receitas ${esc(money(d.inc))}, despesas ${esc(money(d.exp))}">
-    <div class="pair"><i style="height:${(d.inc/max*100).toFixed(1)}%;background:#1ee3dd"></i><i style="height:${(d.exp/max*100).toFixed(1)}%;background:#ff6b81"></i></div>
+    <div class="pair"><i style="height:${(d.inc/max*100).toFixed(1)}%;background:#8b5cf6"></i><i style="height:${(d.exp/max*100).toFixed(1)}%;background:#f87171"></i></div>
     <span class="lb">${esc(monthLabel(d.ym).slice(0,3))}</span></div>`).join("");
 }
 

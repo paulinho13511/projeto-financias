@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#121828">
+<meta name="theme-color" content="#0a0b10">
 <meta name="color-scheme" content="dark">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https://htkrdndcbfnngzlghcjj.supabase.co wss://htkrdndcbfnngzlghcjj.supabase.co; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
@@ -14,12 +14,12 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <style>
 :root{
-  --warn:#f7d154;
+  --warn:#fbbf24;
   color-scheme:dark;
-  --bg:#121828; --card:#1b2338; --card2:#243050; --border:#2b3758;
-  --accent:#1ee3dd; --ink:#06141c;
-  --text:#f1f5ff; --muted:#8c97b5;
-  --expense:#ff6b81; --income:#1ee3dd; --warn:#ffc857;
+  --bg:#0a0b10; --card:#13151c; --card2:#1c1f2a; --border:#252936;
+  --accent:#8b5cf6; --ink:#ffffff;
+  --text:#f4f5f8; --muted:#8a8fa3;
+  --expense:#f87171; --income:#8b5cf6; --warn:#fbbf24;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{min-height:100%}
@@ -65,12 +65,12 @@ h2{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:14px;text-tra
 #spendChart svg{width:100%;height:auto;display:block}
 .axis{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-top:6px}
 
-.nextcard{background:linear-gradient(135deg,#2a3c72,#1b2552);border:1px solid #3a4f8c;border-radius:24px;padding:18px;display:grid;gap:6px}
-.nextcard .muted{color:#b8c4e6}
+.nextcard{background:linear-gradient(135deg,#241c4a,#1b2552);border:1px solid #332a5e;border-radius:24px;padding:18px;display:grid;gap:6px}
+.nextcard .muted{color:#b4b8c8}
 .nx-title{font-size:20px;font-weight:700}
 .nx-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:4px}
 .nx-amt{font-size:22px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
-.nx-empty{font-size:15px;color:#d6dcf2}
+.nx-empty{font-size:15px;color:#d4d6e0}
 
 .muted{color:var(--muted);font-size:13px}
 .list{display:grid;gap:10px}
@@ -87,8 +87,8 @@ h2{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:14px;text-tra
 .expense{color:var(--expense)}
 .warn{color:var(--warn)}
 .tag{display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;background:var(--card2);color:var(--muted);margin-left:8px;white-space:nowrap;vertical-align:middle}
-.tag.ok{background:rgba(30,227,221,.16);color:var(--accent)}
-.tag.late{background:rgba(255,107,129,.16);color:var(--expense)}
+.tag.ok{background:rgba(139,92,246,.16);color:var(--accent)}
+.tag.late{background:rgba(248,113,113,.16);color:var(--expense)}
 .tag.soon{background:rgba(255,200,87,.16);color:var(--warn)}
 .empty{color:var(--muted);font-size:14px;text-align:center;padding:22px}
 .day{font-size:12px;color:var(--muted);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.6px}
@@ -117,7 +117,7 @@ form.f{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .cal .d.blank{background:none;border:none}
 .cal .n{color:var(--muted);font-size:11px;font-weight:600}
 .cal .b{margin-top:4px;font-size:10px;padding:3px 5px;border-radius:7px;background:var(--card);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cal .b.paid{background:rgba(30,227,221,.18);color:var(--accent)}
+.cal .b.paid{background:rgba(139,92,246,.18);color:var(--accent)}
 
 /* categorias / barras / histórico */
 .cat{margin-bottom:16px}
@@ -133,9 +133,9 @@ form.f{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .hcol span{font-size:11px;color:var(--muted);text-transform:capitalize}
 .tip{border-left:3px solid var(--accent);padding:14px 16px;background:var(--card2);border-radius:18px;margin-bottom:10px}
 .tip b{font-size:14px}
-.tip p{font-size:14px;line-height:1.55;color:#c9d2ea;margin-top:4px}
+.tip p{font-size:14px;line-height:1.55;color:#c4c8d6;margin-top:4px}
 
-.notif{border:1px dashed #3a4f8c;border-radius:18px;padding:14px;background:#161e34}
+.notif{border:1px dashed #332a5e;border-radius:18px;padding:14px;background:#13151c}
 .notif .app-n{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
 .notif .msg{margin-top:6px;font-size:14px;line-height:1.4}
 
@@ -145,11 +145,11 @@ form.f{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @keyframes enter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 
 /* barra inferior */
-.bottom{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 12px);width:min(440px,calc(100% - 24px));height:74px;background:#1a2339;border:1px solid var(--border);border-radius:30px;display:flex;align-items:center;justify-content:space-around;padding:0 8px;z-index:50;box-shadow:0 16px 40px rgba(0,0,0,.5)}
+.bottom{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 12px);width:min(440px,calc(100% - 24px));height:74px;background:#13151c;border:1px solid var(--border);border-radius:30px;display:flex;align-items:center;justify-content:space-around;padding:0 8px;z-index:50;box-shadow:0 16px 40px rgba(0,0,0,.5)}
 @media(min-width:721px){.bottom{width:min(560px,calc(100% - 24px))}}
 .bottom button{background:none;border:0;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:600;min-width:56px;min-height:48px;padding:4px}
 .bottom button.on{color:var(--accent)}
-.bottom .fab{width:62px;height:62px;border-radius:50%;background:var(--accent);color:var(--ink);margin-top:-34px;box-shadow:0 10px 28px rgba(30,227,221,.38);justify-content:center;min-width:62px;min-height:62px}
+.bottom .fab{width:62px;height:62px;border-radius:50%;background:var(--accent);color:var(--ink);margin-top:-34px;box-shadow:0 10px 28px rgba(139,92,246,.38);justify-content:center;min-width:62px;min-height:62px}
 .bottom .fab span{display:none}
 .bottom .fab.on{color:var(--ink)}
 
@@ -337,15 +337,15 @@ body.blur-values .nx-amt {
 }
 /* v17: tela de entrada */
 .lock[hidden]{display:none!important}
-.lock{background:radial-gradient(circle at 20% 10%,rgba(30,227,221,.08),transparent 45%),var(--bg)}
+.lock{background:radial-gradient(circle at 20% 10%,rgba(139,92,246,.08),transparent 45%),var(--bg)}
 .authWrap{width:min(940px,100%);display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:center}
 .authBrand{position:relative;display:grid;place-items:center;align-content:center;gap:12px;min-height:420px;border-radius:28px;background:var(--card);border:1px solid var(--border);overflow:hidden;padding:24px}
-.brandGlow{position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(30,227,221,.38),transparent 65%);animation:glowPulse 3.2s ease-in-out infinite;pointer-events:none}
+.brandGlow{position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(139,92,246,.38),transparent 65%);animation:glowPulse 3.2s ease-in-out infinite;pointer-events:none}
 .brandLogoWrap{position:relative;z-index:1;border-radius:44px;overflow:hidden;animation:logoIn .9s cubic-bezier(.22,1,.36,1) both,logoFloat 4.5s ease-in-out .9s infinite;box-shadow:0 18px 50px rgba(0,0,0,.45)}
 .brandLogoWrap::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.35) 50%,transparent 65%);transform:translateX(-120%);animation:shine 3.8s ease-in-out 1.2s infinite}
 .brandLogo{display:block;width:200px;height:200px;border-radius:44px}
 .brandName{position:relative;z-index:1;font-size:22px;font-weight:800;letter-spacing:.2px;margin-top:6px;text-shadow:0 2px 12px rgba(0,0,0,.8)}
-.brandTag{position:relative;z-index:1;color:#dfe7f5;font-size:14px;text-shadow:0 1px 8px rgba(0,0,0,.8)}
+.brandTag{position:relative;z-index:1;color:#e4e6ee;font-size:14px;text-shadow:0 1px 8px rgba(0,0,0,.8)}
 .authCard{background:var(--card);border:1px solid var(--border);border-radius:28px;padding:28px}
 .authCard .lockbox{width:100%;gap:14px}
 .authCard h1{text-align:left;font-size:28px;margin:0}
@@ -353,9 +353,9 @@ body.blur-values .nx-amt {
 .authCard .lockbox .muted{text-align:center;font-size:13px}
 .authCard .lockbox .fld{display:grid;gap:6px}
 .authCard .lockbox .fld span{font-size:13px;color:var(--muted)}
-.authCard #lockBtn{background:linear-gradient(135deg,var(--accent),#7c9cff);color:var(--ink);font-weight:700;border:0;box-shadow:0 10px 30px rgba(30,227,221,.25);min-height:52px;border-radius:16px}
+.authCard #lockBtn{background:linear-gradient(135deg,var(--accent),#a78bfa);color:var(--ink);font-weight:700;border:0;box-shadow:0 10px 30px rgba(139,92,246,.25);min-height:52px;border-radius:16px}
 .authCard #lockBtn:hover{filter:brightness(1.05)}
-.authCard input:focus{box-shadow:0 0 0 3px rgba(30,227,221,.18)}
+.authCard input:focus{box-shadow:0 0 0 3px rgba(139,92,246,.18)}
 @keyframes logoIn{from{opacity:0;transform:scale(.7) rotate(-6deg)}to{opacity:1;transform:none}}
 @keyframes logoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 @keyframes glowPulse{0%,100%{transform:scale(.9);opacity:.55}50%{transform:scale(1.12);opacity:1}}
@@ -414,6 +414,39 @@ body.locked .side{display:none!important}
   #v-inicio.on>:nth-child(4){grid-column:span 7}
   #v-inicio.on>:nth-child(5){grid-column:span 12}
 }
+
+/* v24: visual inspirado nas referências (fundo quase preto, violeta, cards escuros com destaque) */
+:root{--bg:#0a0b10;--card:#13151c;--card2:#1b1e28;--border:#232734;--accent:#8b5cf6;--ink:#ffffff;--text:#f4f5f8;--muted:#8a8fa3;--expense:#f87171;--income:#34d399;--warn:#fbbf24}
+body{background:var(--bg)}
+.card{border:1px solid var(--border)}
+.hero{background:linear-gradient(135deg,#2c1d5e 0%,#171426 55%,#13151c 100%);color:var(--text);border:1px solid #33285e}
+.hero::after{background:radial-gradient(circle,rgba(139,92,246,.42),transparent 70%)}
+.hero .lbl{color:var(--muted)}
+.hero .income,.hero .expense{color:inherit}
+.hero .big.expense{color:var(--expense)}
+.pill{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.05)}
+.pill .lb{color:var(--muted)}
+.pill .pic{background:rgba(139,92,246,.2);color:#c4b5fd}
+.pill .pic.out{background:rgba(248,113,113,.14);color:var(--expense)}
+.nextcard{background:linear-gradient(135deg,#241c4a,#13151c);border-color:#332a5e}
+.nextcard .muted,.nx-empty{color:var(--muted)}
+.card-glow::before{background:linear-gradient(135deg,var(--accent),transparent 60%,rgba(248,113,113,.35))}
+.ic{border-radius:14px;background:rgba(139,92,246,.18);color:#c4b5fd;font-size:15px}
+.ic.out{background:rgba(248,113,113,.12);color:var(--expense);border:0}
+.row{border:1px solid transparent}
+.card .row{background:var(--card2)}
+.row .amt.income,.income{color:var(--income)}
+.bottom{background:rgba(19,21,28,.88)!important;border-color:rgba(255,255,255,.07)!important;box-shadow:0 18px 44px rgba(0,0,0,.55)}
+.bottom button.on{color:#c4b5fd}
+.bottom .fab{box-shadow:0 10px 28px rgba(139,92,246,.45)}
+.side{background:#0c0d13}
+.side button.on{background:rgba(139,92,246,.16);color:#c4b5fd}
+.side .brand i{border-radius:12px;background:linear-gradient(135deg,#8b5cf6,#6d4ae0)}
+.side .sideNew{background:linear-gradient(135deg,#8b5cf6,#7c4dff);color:#fff}
+.tag.ok{background:rgba(52,211,153,.14);color:var(--income)}
+.bar{background:rgba(255,255,255,.07)}
+.sheetbox button:hover{border-color:var(--accent)}
+.authCard{background:rgba(19,21,28,.8)}
 </style>
 </head>
 <body>
@@ -421,6 +454,7 @@ body.locked .side{display:none!important}
   <div class="brand"><i></i>Minhas Finanças</div>
   <button data-nav="inicio" class="on">Início</button>
   <button data-nav="lanc">Lançamentos</button>
+  <button data-nav="metas">Metas</button>
   <button data-nav="contas">Contas</button>
   <button data-nav="cal">Calendário</button>
   <button data-nav="rev">Categorias</button>
@@ -656,7 +690,7 @@ body.locked .side{display:none!important}
     <div class="card cmpCard">
       <h2>Receitas × despesas (6 meses)</h2>
       <div class="cmp" id="cmp"></div>
-      <div class="legend legendRow"><div><i style="background:#1ee3dd"></i>Receitas</div><div><i style="background:#ff6b81"></i>Despesas</div></div>
+      <div class="legend legendRow"><div><i style="background:#8b5cf6"></i>Receitas</div><div><i style="background:#f87171"></i>Despesas</div></div>
     </div>
     <div class="grid2" id="insBody"></div>
     <div class="card">
@@ -664,7 +698,7 @@ body.locked .side{display:none!important}
       <label class="chk"><input type="checkbox" id="varIncome"> Minha renda é variável (autônomo ou freelancer)</label>
       <div class="muted" id="varInfo" style="font-size:14px;line-height:1.5"></div>
     </div>
-    <div class="card">
+    <div class="card" id="goalCard">
       <h2>Metas e caixinhas</h2>
       <form class="f" id="goalForm">
         <input class="full" id="gName" placeholder="Nome (ex.: Reserva de emergência, Viagem)" required>
@@ -700,9 +734,9 @@ body.locked .side{display:none!important}
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>
     <span>Início</span>
   </button>
-  <button data-nav="contas">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M16 12h2"/></svg>
-    <span>Contas</span>
+  <button data-nav="metas">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>
+    <span>Metas</span>
   </button>
   <button class="fab" data-nav="lanc" aria-label="Novo lançamento">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -721,6 +755,8 @@ body.locked .side{display:none!important}
 <div class="sheet" id="menu" hidden>
   <div class="sheetbox">
     <button data-go="lanc">Lançamentos e histórico</button>
+    <button data-go="metas">Metas e caixinhas</button>
+    <button data-go="contas">Contas e cartões</button>
     <button data-go="rev">Categorias e limites</button>
     <button data-go="ins">Insights</button>
     <button data-go="dicas">Dicas de investimento</button>
