@@ -733,7 +733,7 @@ let currentView="inicio";
 function go(v){
   currentView=v;
   document.querySelectorAll(".view").forEach(x=>x.classList.toggle("on",x.id==="v-"+v));
-  document.querySelectorAll("#bottom [data-nav]").forEach(x=>x.classList.toggle("on",x.dataset.nav===v));
+  document.querySelectorAll("[data-nav]").forEach(x=>x.classList.toggle("on",x.dataset.nav===v&&!x.classList.contains("sideNew")));
   $("pageTitle").textContent=TITLES[v]||"Início";
   $("menu").hidden=true;
   window.scrollTo({top:0,behavior:"auto"});

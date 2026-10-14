@@ -392,9 +392,44 @@ body.blur-values .nx-amt {
   .brandGlow{width:280px;height:280px}
 }
 @media(prefers-reduced-motion:reduce){.authBg{animation:none}}
+
+/* v23: layout com navegação lateral no computador e grade de cards na tela inicial */
+.side{display:none}
+body.locked .side{display:none!important}
+@media(min-width:1000px){
+  .side{display:flex;flex-direction:column;gap:6px;position:fixed;left:0;top:0;bottom:0;width:232px;padding:26px 16px;background:#0f1628;border-right:1px solid var(--border);z-index:40}
+  .side .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;margin:0 8px 22px}
+  .side .brand i{width:34px;height:34px;border-radius:12px;background:var(--accent);display:block}
+  .side button{display:flex;align-items:center;gap:12px;background:none;border:0;color:var(--muted);padding:11px 12px;border-radius:14px;font-weight:600;font-size:14px;text-align:left;min-height:44px}
+  .side button:hover{background:var(--card2);color:var(--text)}
+  .side button.on{background:var(--card2);color:var(--accent)}
+  .side .sideNew{margin-top:auto;justify-content:center;background:var(--accent);color:var(--ink);font-weight:700}
+  .side .sideNew:hover{background:var(--accent);filter:brightness(1.07);color:var(--ink)}
+  .bottom{display:none!important}
+  .app{max-width:1180px;margin:0 auto;padding-left:264px;padding-right:32px;padding-bottom:40px}
+  #v-inicio.on{grid-template-columns:repeat(12,minmax(0,1fr));gap:20px}
+  #v-inicio.on>:nth-child(1){grid-column:span 5}
+  #v-inicio.on>:nth-child(2){grid-column:span 7}
+  #v-inicio.on>:nth-child(3){grid-column:span 5}
+  #v-inicio.on>:nth-child(4){grid-column:span 7}
+  #v-inicio.on>:nth-child(5){grid-column:span 12}
+}
 </style>
 </head>
 <body>
+<aside class="side" aria-label="Navegação principal">
+  <div class="brand"><i></i>Minhas Finanças</div>
+  <button data-nav="inicio" class="on">Início</button>
+  <button data-nav="lanc">Lançamentos</button>
+  <button data-nav="contas">Contas</button>
+  <button data-nav="cal">Calendário</button>
+  <button data-nav="rev">Categorias</button>
+  <button data-nav="subs">Assinaturas</button>
+  <button data-nav="ins">Insights</button>
+  <button data-nav="dicas">Dicas</button>
+  <button data-nav="lanc" class="sideNew">+ Novo lançamento</button>
+</aside>
+
 
 <div class="app">
 
@@ -444,7 +479,7 @@ body.blur-values .nx-amt {
         <h2>Prévia de notificações</h2>
         <div class="list" id="notifs"></div>
         <div style="margin-top:14px"><button class="ghost" id="notifBtn">Ativar notificações</button></div>
-        <p class="muted" style="margin-top:8px">Esta é a prévia dos avisos deste app. Com o app fechado, os avisos de contas e cartões só chegam se o envio automático estiver ativo no servidor (veja supabase/README.md).</p>
+        <p class="muted" style="margin-top:8px">Esta é a prévia dos avisos. Com o app fechado, os avisos de contas e cartões chegam pelo envio automático, quando ele está ativo.</p>
       </div>
       <div class="card">
         <h2>Últimos lançamentos</h2>
