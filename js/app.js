@@ -397,12 +397,15 @@ function showToast(msg){
 }
 
 /* ---------- ações ---------- */
+let justPaid=null;   // conta marcada agora: a linha pisca uma vez ao renderizar
 function togglePaid(id,ym){
   const b=db.bills.find(x=>x.id===id);if(!b)return;
   b.paid=b.paid||[];
   const marcou=!b.paid.includes(ym);
   b.paid=b.paid.includes(ym)?b.paid.filter(x=>x!==ym):[...b.paid,ym];
+  justPaid=marcou?id:null;
   save();renderAll();
+  justPaid=null;
   if(marcou)showToast("Conta marcada como paga");
 }
 async function delBill(id){
@@ -435,6 +438,7 @@ function renderInicio(){
   $("balance").className="big "+(t.bal<0?"expense":"");
   showHidden($("inc"),t.inc);
   countUp($("exp"),t.exp);
+  renderPulse();
 
   const cur=mKey(today());
   const rem=occ(cur).map(o=>({...o,st:billStatus(o.b,cur)}))
@@ -442,7 +446,7 @@ function renderInicio(){
     .sort((a,b)=>a.st.d-b.st.d);
   const cards=cardAlerts();
   const billRows=rem.map(({b,st,amount,label})=>`
-    <div class="row">
+    <div class="row${justPaid===b.id?" flash":""}">
       <div class="rmain"><div class="t">${esc(b.name)}<span class="tag">${label}</span><span class="tag ${st.cls}">${st.label}</span></div>
       <div class="s">Vence em ${fmtDate(st.due,true)} · ${money(amount)}</div></div>
       <button class="ghost" data-act="togglePaid" data-id="${b.id}" data-ym="${cur}">Marcar paga</button>
@@ -462,7 +466,9 @@ function renderInicio(){
   t.items.filter(x=>x.type==="expense").forEach(x=>bySel[x.category]=(bySel[x.category]||0)+x.amount);
   t.bills.forEach(o=>bySel[o.b.category]=(bySel[o.b.category]||0)+o.amount);
   Object.entries(db.budgets).forEach(([c,lim])=>{
-    if((bySel[c]||0)>=lim)msgs.push({title:"Limite atingido",body:`${c}: ${money(bySel[c]||0)} de ${money(lim)}`});
+    const v=bySel[c]||0;
+    if(v>=lim)msgs.push({title:"Limite atingido",body:`${c}: ${money(v)} de ${money(lim)}`});
+    else if(v>=lim*0.8)msgs.push({title:"Quase no limite",body:`${c}: ${money(v)} de ${money(lim)} (${Math.round(v/lim*100)}%)`});
   });
   $("notifs").innerHTML=msgs.length?msgs.map(m=>`
     <div class="notif"><div class="app-n">Minhas Finanças · agora</div>
@@ -641,6 +647,8 @@ function renderIns(){
   const top=Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];
   const contas=cur.bills.reduce((s,o)=>s+o.amount,0);
 
+  renderRegra();
+  renderRevisao();
   $("insBody").innerHTML=`
     <div class="card"><h2>Resumo de ${esc(monthLabel(sel))}</h2>
       <div class="list">
@@ -693,7 +701,7 @@ function renderCards(){
       </div><div class="actions">
       ${pendingOpen?`<button class="ghost" data-act="markFaturaPaid" data-id="${c.id}" data-ym="${pendingYm}">Marcar paga</button>`:""}
       <button class="ico" title="Excluir cartão" data-act="delCard" data-id="${c.id}">×</button></div></div>`;
-  }).join(""):`<div class="empty">Cadastre seus cartões para acompanhar as faturas</div>`;
+  }).join("")+cardCommitment():`<div class="empty">Cadastre seus cartões para acompanhar as faturas</div>`;
 }
 function populateCardSelects(){
   const opts=`<option value="">Sem cartão</option>`+(db.cards||[]).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
@@ -935,7 +943,8 @@ function histRow(r){
     sub=`Conta · ${esc(r.category)} · vence ${fmtDate(r.date)}`;
     action=`<button class="ghost" data-act="togglePaid" data-id="${r.o.b.id}" data-ym="${sel}">${paid?"Desfazer":"Marcar paga"}</button>`;
   }
-  return `<div class="row"><div class="ic ${inc?"":"out"}">${esc(r.category.charAt(0))}</div><div class="rmain"><div class="t">${esc(r.desc)} ${tags}</div><div class="s">${sub}</div></div><div class="actions"><span class="amt ${inc?"income":"expense"}">${inc?"+":"−"} ${money(r.amount)}</span>${action}</div></div>`;
+  const flash=r.kind==="bill"&&justPaid===r.o.b.id?" flash":"";
+  return `<div class="row${flash}"><div class="ic ${inc?"":"out"}">${esc(r.category.charAt(0))}</div><div class="rmain"><div class="t">${esc(r.desc)} ${tags}</div><div class="s">${sub}</div></div><div class="actions"><span class="amt ${inc?"income":"expense"}">${inc?"+":"−"} ${money(r.amount)}</span>${action}</div></div>`;
 }
 function renderFeed(){
   const q=$("search").value.trim().toLowerCase();
@@ -1159,13 +1168,109 @@ function renderDonut(){
       <text x="90" y="86" text-anchor="middle" fill="var(--muted)" font-size="11">Total</text>
       <text x="90" y="104" text-anchor="middle" fill="var(--text)" font-size="13" font-weight="700">${esc(money(total))}</text>
     </svg>
-    <div class="legend">${entries.map(([c,v],i)=>`<div><i style="background:${PAL[i%PAL.length]}"></i><span>${esc(c)}</span><b class="pct">${Math.round(v/total*100)}%</b></div>`).join("")}</div>
+    <div class="legend">${entries.map(([c,v],i)=>`<div class="tap" data-cat="${esc(c)}"><i style="background:${PAL[i%PAL.length]}"></i><span>${esc(c)}</span><b class="pct">${Math.round(v/total*100)}%</b></div>`).join("")}</div>
   </div>`;
+}
+
+
+/* ---------- destaques, regra 50/30/20, revisão, reserva e cartões ---------- */
+$("donut").addEventListener("click",e=>{
+  const d=e.target.closest("[data-cat]");if(!d)return;
+  $("search").value=d.dataset.cat;$("filterType").value="expense";
+  go("lanc");renderFeed();
+  showToast(`Mostrando ${d.dataset.cat} no histórico`);
+});
+// total de despesas por categoria (lançamentos + contas) de um mês
+function catTotals(ym){
+  const t=totals(ym),m={};
+  t.items.filter(x=>x.type==="expense").forEach(x=>m[x.category]=(m[x.category]||0)+x.amount);
+  t.bills.forEach(o=>m[o.b.category]=(m[o.b.category]||0)+o.amount);
+  return m;
+}
+// Início: variação das despesas e saldo previsto no fim do mês (saldo − contas ainda não pagas)
+// (o saldo do mês já desconta todas as contas; a previsão só projeta os gastos variáveis restantes)
+function renderPulse(){
+  const t=totals(sel), prevK=shiftMonth(sel,-1), prev=totals(prevK);
+  const diff=prev.exp?((t.exp-prev.exp)/prev.exp)*100:null;
+  const cur=mKey(today());
+  let prevista=t.bal, rotulo="Saldo final do mês";
+  if(sel===cur){
+    const dia=Math.max(1,parseInt(today().slice(8,10),10)), restam=Math.max(0,dim(sel)-dia);
+    const variaveis=t.items.filter(x=>x.type==="expense").reduce((s,x)=>s+x.amount,0);
+    prevista=t.bal-(variaveis/dia)*restam;
+    rotulo="Saldo previsto no fim do mês (pelo ritmo atual)";
+  }
+  const seta=diff===null?"—":`<span class="${diff>0?"expense":"income"}">${diff>0?"▲":"▼"} ${Math.abs(diff).toFixed(0)}%</span>`;
+  $("pulse").innerHTML=`<div class="pulseRow">
+    <div><span class="muted">Despesas vs. ${esc(monthLabel(prevK))}</span><b>${seta}</b></div>
+    <div><span class="muted">${rotulo}</span><b class="${prevista<0?"expense":""}">${privacy?"R$ ••••":money(prevista)}</b></div>
+  </div>`;
+}
+// Regra 50/30/20: necessidades até 50%, desejos até 30%, poupança de pelo menos 20% da receita
+const GRUPO_503={Moradia:"nec",Alimentação:"nec",Transporte:"nec",Saúde:"nec",Contas:"nec",Educação:"nec",Lazer:"des",Outros:"des"};
+function renderRegra(){
+  const t=totals(sel),m=catTotals(sel),g={nec:0,des:0};
+  Object.entries(m).forEach(([c,v])=>{g[GRUPO_503[c]||"des"]+=v});
+  if(!t.inc){$("rule503").innerHTML=`<h2>Regra 50/30/20</h2><div class="empty">Registre as receitas deste mês para comparar com a regra.</div>`;return}
+  const pNec=g.nec/t.inc*100, pDes=g.des/t.inc*100, pPou=Math.max(0,(t.inc-t.exp)/t.inc*100);
+  const linha=(nome,real,meta,cls)=>`<div class="r503"><div class="hd"><span>${nome}</span><span>${real.toFixed(0)}% · meta ${meta}</span></div><div class="bar"><i class="${cls}" style="width:${Math.min(real,100).toFixed(1)}%"></i></div></div>`;
+  $("rule503").innerHTML=`<h2>Regra 50/30/20</h2>
+    <p class="muted" style="font-size:13px;margin:0 0 10px">Percentual da receita do mês.</p>
+    ${linha("Necessidades",pNec,"50%",pNec>50?"over":"")}
+    ${linha("Desejos",pDes,"30%",pDes>30?"over":"")}
+    ${linha("Poupança",pPou,"mín. 20%",pPou<20?"near":"")}`;
+}
+// Revisão guiada: o que mais mudou em relação ao mês anterior
+function renderRevisao(){
+  const prevK=shiftMonth(sel,-1), a=catTotals(sel), b=catTotals(prevK);
+  const delta=[...new Set([...Object.keys(a),...Object.keys(b)])]
+    .map(c=>({c,d:(a[c]||0)-(b[c]||0),v:a[c]||0}))
+    .filter(x=>x.d!==0).sort((x,y)=>Math.abs(y.d)-Math.abs(x.d)).slice(0,4);
+  const head=`<h2>Revisão do mês</h2>`;
+  if(!delta.length){$("review").innerHTML=head+`<div class="empty">Nenhuma mudança relevante em relação a ${esc(monthLabel(prevK))}.</div>`;return}
+  const subida=delta.find(x=>x.d>0);
+  $("review").innerHTML=head+`<p class="muted" style="font-size:13px;margin:0 0 10px">O que mudou em relação a ${esc(monthLabel(prevK))}:</p>`
+    +delta.map(x=>`<div class="row"><span class="t">${esc(x.c)}</span><span class="amt ${x.d>0?"expense":"income"}">${x.d>0?"+":"−"} ${money(Math.abs(x.d))}</span></div>`).join("")
+    +(subida?`<p class="muted" style="font-size:13px;margin:12px 0 0">Maior aumento: ${esc(subida.c)}. Vale definir um limite para ela no mês que vem (aba Categorias).</p>`:"");
+}
+// Metas: sugestão de reserva de emergência pela média das despesas dos últimos 3 meses
+function renderEmergencia(){
+  const cur=mKey(today());
+  const meses=[1,2,3].map(k=>totals(shiftMonth(cur,-k)).exp).filter(v=>v>0);
+  if(!meses.length){$("emerg").innerHTML=`<h2>Reserva de emergência</h2><div class="empty">Registre despesas de pelo menos um mês anterior para sugerir o valor.</div>`;return}
+  const media=meses.reduce((s,v)=>s+v,0)/meses.length;
+  $("emerg").innerHTML=`<h2>Reserva de emergência</h2>
+    <p class="muted" style="font-size:14px;line-height:1.5;margin:0 0 12px">Suas despesas médias recentes são <b>${money(media)}</b> por mês. Três meses dão <b>${money(media*3)}</b>; seis meses dão <b>${money(media*6)}</b>.</p>
+    <button class="ghost" type="button" id="emergBtn">Usar seis meses como meta</button>`;
+  $("emergBtn").onclick=()=>{
+    $("gName").value="Reserva de emergência";
+    $("gTarget").value=Math.round(media*6);
+    $("gDeadline").value=shiftMonth(cur,12);
+    $("gName").focus();
+    showToast("Revise os dados e clique em Criar meta");
+  };
+}
+// Cartões: quanto já está comprometido nas próximas faturas (4 vencimentos)
+function cardCommitment(){
+  const porMes={};
+  (db.cards||[]).forEach(c=>{
+    const cy=currentCloseYm(c);
+    for(let k=-1;k<3;k++){
+      const ym=shiftMonth(cy,k), f=faturaOf(c,ym);
+      if((c.paid||[]).includes(ym)||!f.total)continue;
+      const venc=mKey(f.due);
+      porMes[venc]=(porMes[venc]||0)+f.total;
+    }
+  });
+  const meses=Object.keys(porMes).sort().slice(0,4);
+  if(!meses.length)return "";
+  return `<div class="row"><div class="rmain"><div class="t">Compromisso com cartões</div><div class="s">${meses.map(m=>`${esc(monthLabel(m).split(" ")[0].slice(0,3))}: ${money(porMes[m])}`).join(" · ")}</div></div></div>`;
 }
 
 /* comparação mês a mês */
 function renderV13(){
   if(!db)return;
+  renderEmergencia();
   renderQuick();
   renderDonut();
   renderVar();

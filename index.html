@@ -243,6 +243,18 @@ body.locked .app,body.locked .bottom{display:none}
   .donutWrap .legend{width:100%}
   .sboxes{grid-template-columns:1fr}
 }
+/* destaques, regra 50/30/20, revisão e reserva */
+.pulseRow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pulseRow>div{min-width:0}
+.pulseRow span{display:block;font-size:12px}
+.pulseRow b{display:block;font-size:18px;margin-top:4px;overflow-wrap:anywhere}
+.r503{margin-bottom:14px}
+.r503 .hd{display:flex;justify-content:space-between;gap:8px;font-size:14px;margin-bottom:6px}
+.tap{cursor:pointer;border-radius:8px}
+.tap:hover{background:var(--card2)}
+.row.flash{animation:rowFlash .8s ease}
+@keyframes rowFlash{0%{background:rgba(139,92,246,.28);transform:scale(.985)}100%{background:transparent;transform:none}}
+@media(max-width:360px){.pulseRow{grid-template-columns:1fr}}
 /* histórico do mês e metas */
 .hsum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0 4px}
 .hsum div{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:10px 12px;min-width:0}
@@ -546,6 +558,8 @@ body{background:var(--bg)}
       </div>
     </div>
 
+    <div class="card pulse" id="pulse"></div>
+
     <div class="card">
       <div class="chartHead">
         <div><small class="muted" id="chartLabel">Gastos acumulados no mês</small><b id="chartTotal"></b></div>
@@ -733,6 +747,8 @@ body{background:var(--bg)}
   <!-- INSIGHTS -->
   <section class="view" id="v-ins">
     <div class="grid2" id="insBody"></div>
+    <div class="card" id="rule503"></div>
+    <div class="card" id="review"></div>
     <div class="card">
       <h2>Renda variável</h2>
       <label class="chk"><input type="checkbox" id="varIncome"> Minha renda é variável (autônomo ou freelancer)</label>
@@ -742,6 +758,7 @@ body{background:var(--bg)}
 
   <!-- METAS -->
   <section class="view" id="v-metas">
+    <div class="card" id="emerg"></div>
     <div class="card" id="goalCard">
       <h2>Nova meta</h2>
       <form class="f" id="goalForm">
