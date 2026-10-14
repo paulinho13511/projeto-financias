@@ -447,6 +447,64 @@ body{background:var(--bg)}
 .bar{background:rgba(255,255,255,.07)}
 .sheetbox button:hover{border-color:var(--accent)}
 .authCard{background:rgba(19,21,28,.8)}
+
+/* v25: responsividade fina (telas estreitas) */
+@media(max-width:400px){
+  .app{padding-left:12px;padding-right:12px;gap:14px}
+  .top{flex-wrap:wrap;row-gap:10px}
+  .top .ttl{flex:1 1 calc(100% - 108px);min-width:0}
+  .top h1{font-size:22px}
+  #month{max-width:none;min-width:0;flex:1 1 100%;order:3;font-size:14px}
+  .top .iconbtn{width:44px;height:44px}
+  .card{padding:16px}
+  .pills{gap:8px}
+  .pill{padding:10px}
+  .pill .v{font-size:14px}
+  .big{font-size:clamp(28px,10vw,34px)}
+  .bottom{width:calc(100% - 16px);height:70px}
+  .bottom button{min-width:48px}
+  .bottom button span{font-size:10px}
+}
+@media(max-width:400px){
+  #endBox,#parcBox,#txParcBox{grid-template-columns:1fr!important}
+}
+@media(max-width:359px){
+  form.f{grid-template-columns:1fr}
+  form.f>*{grid-column:1/-1}
+  .seg label{font-size:13px;padding:10px}
+  .cal .d{min-height:50px}
+}
+@media(hover:hover) and (pointer:fine){
+  .card{transition:transform .25s ease,border-color .25s ease}
+  .card:hover{transform:translateY(-2px)}
+}
+
+/* v25: animações (desligadas automaticamente com prefers-reduced-motion) */
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes sheetUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes growY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes growX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes drawLine{from{stroke-dashoffset:1200}to{stroke-dashoffset:0}}
+@keyframes dotIn{from{transform:scale(0)}to{transform:scale(1)}}
+.view.on>*{animation:rise .5s cubic-bezier(.22,1,.36,1) both}
+.view.on>:nth-child(2){animation-delay:.06s}
+.view.on>:nth-child(3){animation-delay:.12s}
+.view.on>:nth-child(4){animation-delay:.18s}
+.view.on>:nth-child(5){animation-delay:.24s}
+.view.on>:nth-child(n+6){animation-delay:.3s}
+.sheet:not([hidden]),.modal:not([hidden]){animation:fadeIn .2s ease both}
+.sheet:not([hidden]) .sheetbox,.modal:not([hidden]) .box{animation:sheetUp .32s cubic-bezier(.22,1,.36,1) both}
+.bar i,.goal .bar i{transform-origin:left center;animation:growX .8s cubic-bezier(.22,1,.36,1) both}
+.hbar,.cmp .pair i{transform-origin:bottom center;animation:growY .7s cubic-bezier(.22,1,.36,1) both}
+#spendChart svg path[fill="none"]{stroke-dasharray:1200;animation:drawLine 1.4s cubic-bezier(.22,1,.36,1) both}
+.bottom button{position:relative}
+.bottom button.on:not(.fab)::after{content:"";position:absolute;bottom:4px;left:50%;width:18px;height:3px;margin-left:-9px;border-radius:3px;background:var(--accent);animation:dotIn .35s cubic-bezier(.22,1,.36,1) both}
+.bottom .fab.on::after{display:none}
+.chip{transition:background .2s ease,color .2s ease,transform .15s ease}
+.chip:active{transform:scale(.96)}
+.row{transition:background .2s ease,transform .2s ease}
+@media(hover:hover){.row:hover{background:var(--card2)}}
 </style>
 </head>
 <body>
