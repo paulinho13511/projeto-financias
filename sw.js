@@ -7,8 +7,8 @@ self.addEventListener("push", (e) => {
   try { data = e.data.json(); } catch (_) {}
   e.waitUntil(self.registration.showNotification(data.title, {
     body: data.body,
-    tag: "financas-" + data.title,
-    renotify: true,
+    // tag única por aviso: avisos diferentes com o mesmo título não se substituem
+    tag: data.tag || ("financas-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7)),
   }));
 });
 
