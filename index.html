@@ -415,12 +415,15 @@ body.locked .side{display:none!important}
   .side .sideNew:hover{background:var(--accent);filter:brightness(1.07);color:var(--ink)}
   .bottom{display:none!important}
   .app{max-width:1180px;margin:0 auto;padding-left:264px;padding-right:32px;padding-bottom:40px}
-  #v-inicio.on{grid-template-columns:repeat(12,minmax(0,1fr));gap:20px}
-  #v-inicio.on>:nth-child(1){grid-column:span 5}
-  #v-inicio.on>:nth-child(2){grid-column:span 7}
-  #v-inicio.on>:nth-child(3){grid-column:span 5}
-  #v-inicio.on>:nth-child(4){grid-column:span 7}
-  #v-inicio.on>:nth-child(5){grid-column:span 12}
+  /* posicionamento por identificador (não por ordem), para novos blocos não quebrarem o layout */
+  #v-inicio.on{grid-template-columns:repeat(12,minmax(0,1fr));gap:20px;align-items:start}
+  #v-inicio.on>.hero{grid-column:span 5}
+  #v-inicio.on>#pulse{grid-column:span 7}
+  #v-inicio.on>#chartCard{grid-column:1/-1}
+  #v-inicio.on>#nextBill{grid-column:span 5}
+  #v-inicio.on>#remindersCard{grid-column:span 7}
+  #v-inicio.on>.grid2{grid-column:1/-1}
+  #v-inicio.on .pills{grid-template-columns:1fr}  /* valores inteiros no cartão de saldo */
 }
 
 /* v24: visual inspirado nas referências (fundo quase preto, violeta, cards escuros com destaque) */
@@ -560,7 +563,7 @@ body{background:var(--bg)}
 
     <div class="card pulse" id="pulse"></div>
 
-    <div class="card">
+    <div class="card" id="chartCard">
       <div class="chartHead">
         <div><small class="muted" id="chartLabel">Gastos acumulados no mês</small><b id="chartTotal"></b></div>
       </div>
@@ -571,7 +574,7 @@ body{background:var(--bg)}
 
     <div class="nextcard card-glow" id="nextBill"></div>
 
-    <div class="card">
+    <div class="card" id="remindersCard">
       <h2>Lembretes de contas · 7 dias</h2>
       <div class="list" id="reminders"></div>
     </div>
