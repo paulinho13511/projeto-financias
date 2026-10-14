@@ -820,7 +820,7 @@ $("billForm").onsubmit=e=>{
 };
 
 // Chave pública VAPID (não é segredo). Gerada com: npx web-push generate-vapid-keys
-const VAPID_PUBLIC="BCV9f-uLup_5KlVI2F4vabytpGOqebXUquyVnsxrzbLeD67MZLPZM0AdSXU3ijLp4C1Az-uhpy-3qy8R9afCb0o";
+const VAPID_PUBLIC="BHf5RmIEowZkC5Nb8ONCW1N57VtopLk-PjE6FePRKvIlfpgCKN1WatRQY9OmDDVhAylk_wRhp-Srfsh6cJyeQMo";
 function b64ToBytes(s){
   const pad="=".repeat((4-s.length%4)%4);
   const raw=atob((s+pad).replace(/-/g,"+").replace(/_/g,"/"));
