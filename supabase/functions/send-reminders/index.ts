@@ -42,6 +42,7 @@ async function handle(req: Request): Promise<Response> {
   const fresh = reminders.filter(r => !sentKeys.has(r.key));
 
   let sent = 0, failed = 0;
+  const errors: { status?: number; msg: string }[] = [];
   for (const r of fresh) {
     let ok = false;
     for (const s of targets) {
@@ -55,7 +56,7 @@ async function handle(req: Request): Promise<Response> {
       } catch (err) {
         const code = (err as { statusCode?: number }).statusCode;
         if (code === 404 || code === 410) await sb.from("push_subscriptions").delete().eq("endpoint", s.endpoint);
-        else failed++;
+        else { failed++; errors.push({ status: code, msg: String((err as Error).message ?? err).slice(0, 160) }); }
       }
     }
     if (ok) {
@@ -68,7 +69,7 @@ async function handle(req: Request): Promise<Response> {
   const cutoff = new Date(Date.now() - 120 * 864e5).toISOString();
   await sb.from("reminder_log").delete().lt("sent_at", cutoff);
 
-  return Response.json({ today, candidates: reminders.length, sent, failed });
+  return Response.json({ today, candidates: reminders.length, sent, failed, errors: errors.slice(0, 3) });
 }
 
 Deno.serve(async (req) => {
