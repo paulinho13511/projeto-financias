@@ -10,7 +10,9 @@ const today=()=>ymd(new Date());
 const mKey=s=>s.slice(0,7);
 const parts=s=>s.split("-").map(Number);
 let privacy=false;
-const money=v=>privacy?"R$ ****":BRL.format(v);
+const money=v=>BRL.format(v);
+// modo privado: oculta só saldo e receitas do mês (demais valores continuam visíveis)
+const showHidden=(el,v)=>{if(privacy){el.dataset.value=v;el._cu=(el._cu||0)+1;el.textContent="R$ ••••"}else countUp(el,v)};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const dim=ym=>{const[y,m]=parts(ym);return new Date(y,m,0).getDate()};
@@ -51,7 +53,7 @@ const fmtDate=(s,long)=>{const[y,m,d]=parts(s);return new Date(y,m-1,d).toLocale
 /* ---------- nuvem: Supabase (login por e-mail + acesso controlado no banco) ---------- */
 const SB_URL="https://htkrdndcbfnngzlghcjj.supabase.co";
 const SB_KEY="sb_publishable_RCdmuHeF4RFa3eoYO-NdNQ_Tr-yhnRo";
-const sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+const sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:false,autoRefreshToken:true,detectSessionInUrl:false}});
 let db=null;           // dados do app, carregados da nuvem depois do login
 let sessionUser=null;  // usuário logado (null = bloqueado)
 let isAdmin=false;
@@ -128,6 +130,7 @@ function enterApp(){
   renderAll();
   go("inicio");
   bumpIdle();
+  refreshNotifStatus();
 }
 async function lockApp(reason){
   db=null;sessionUser=null;isAdmin=false;dbUpdatedAt=null;dbConflict=false;clearTimeout(idleTimer);
@@ -247,7 +250,7 @@ function bumpIdle(){
 let hiddenAt=0;
 document.addEventListener("visibilitychange",()=>{
   if(document.hidden){hiddenAt=Date.now()}
-  else if(sessionUser&&hiddenAt&&Date.now()-hiddenAt>60*1000){lockApp("Bloqueado ao sair da página")}
+  else if(sessionUser&&hiddenAt&&Date.now()-hiddenAt>30*60*1000){lockApp("Sessão encerrada após 30 minutos fora do app")}
 });
 
 let sel=mKey(today());
@@ -353,9 +356,11 @@ const easeOut=p=>1-Math.pow(1-p,3);
 function countUp(el,to,duration){
   const from=parseFloat(el.dataset.value)||0;
   el.dataset.value=to;
+  const id=el._cu=(el._cu||0)+1;   // cancela animação anterior deste elemento
   if(reduceMotion||from===to){el.textContent=money(to);return}
   const start=performance.now();
   const step=now=>{
+    if(el._cu!==id)return;
     const p=Math.min((now-start)/(duration||600),1);
     el.textContent=money(from+(to-from)*easeOut(p));
     if(p<1)requestAnimationFrame(step);
@@ -426,9 +431,9 @@ function populateMonths(){
 
 function renderInicio(){
   const t=totals(sel);
-  countUp($("balance"),t.bal);
+  showHidden($("balance"),t.bal);
   $("balance").className="big "+(t.bal<0?"expense":"");
-  countUp($("inc"),t.inc);
+  showHidden($("inc"),t.inc);
   countUp($("exp"),t.exp);
 
   const cur=mKey(today());
@@ -621,13 +626,6 @@ function renderRev(){
   animateBars();
 }
 
-function renderHist(){
-  const keys=[];for(let i=5;i>=0;i--)keys.push(shiftMonth(sel,-i));
-  const vals=keys.map(k=>totals(k).exp);
-  const max=Math.max(...vals,1);
-  $("hist").innerHTML=keys.map((k,i)=>`<div class="hcol ${k===sel?"cur":""}"><div class="hbar" style="height:${(vals[i]/max)*100}%" title="${money(vals[i])}"></div><span>${monthLabel(k).split(" ")[0].slice(0,3)}</span></div>`).join("");
-}
-
 function renderIns(){
   const cur=totals(sel);
   const prevK=shiftMonth(sel,-1);
@@ -641,29 +639,20 @@ function renderIns(){
   cur.items.filter(x=>x.type==="expense").forEach(x=>byCat[x.category]=(byCat[x.category]||0)+x.amount);
   cur.bills.forEach(o=>byCat[o.b.category]=(byCat[o.b.category]||0)+o.amount);
   const top=Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];
-
-  const tips=[];
-  if(rate===null)tips.push("Cadastre as receitas deste mês para ver sua taxa de economia.");
-  else if(rate<0)tips.push("Você gastou mais do que recebeu neste mês. Vale revisar as maiores categorias.");
-  else if(rate<10)tips.push("Sua taxa de economia está abaixo de 10%. Tente reduzir os gastos variáveis.");
-  else tips.push(`Você guardou cerca de ${rate.toFixed(0)}% da receita neste mês. Ótimo ritmo.`);
-  if(diff!==null)tips.push(diff>0
-    ?`Suas despesas subiram ${diff.toFixed(0)}% em relação a ${monthLabel(prevK)}.`
-    :`Suas despesas caíram ${Math.abs(diff).toFixed(0)}% em relação a ${monthLabel(prevK)}.`);
-  if(top)tips.push(`Maior categoria de gasto: ${top[0]}, com ${money(top[1])}.`);
-  tips.push(`Média diária de gasto: ${money(avg)}.`);
+  const contas=cur.bills.reduce((s,o)=>s+o.amount,0);
 
   $("insBody").innerHTML=`
-    <div class="card"><h2>Resumo do mês</h2>
+    <div class="card"><h2>Resumo de ${esc(monthLabel(sel))}</h2>
       <div class="list">
+        <div class="row"><span class="t">Receitas</span><span class="amt income">${money(cur.inc)}</span></div>
+        <div class="row"><span class="t">Despesas</span><span class="amt expense">${money(cur.exp)}</span></div>
+        <div class="row"><span class="t">Saldo</span><span class="amt ${cur.bal<0?"expense":"income"}">${money(cur.bal)}</span></div>
         <div class="row"><span class="t">Taxa de economia</span><span class="amt">${rate===null?"—":rate.toFixed(0)+"%"}</span></div>
-        <div class="row"><span class="t">Variação de despesas</span><span class="amt ${diff>0?"expense":"income"}">${diff===null?"—":(diff>0?"+":"")+diff.toFixed(0)+"%"}</span></div>
-        <div class="row"><span class="t">Média diária</span><span class="amt">${money(avg)}</span></div>
-        <div class="row"><span class="t">Contas do mês</span><span class="amt">${money(occ(sel).reduce((s,o)=>s+o.amount,0))}</span></div>
+        <div class="row"><span class="t">Variação de despesas vs. ${esc(monthLabel(prevK))}</span><span class="amt ${diff>0?"expense":"income"}">${diff===null?"—":(diff>0?"+":"")+diff.toFixed(0)+"%"}</span></div>
+        <div class="row"><span class="t">Média diária de gasto</span><span class="amt">${money(avg)}</span></div>
+        <div class="row"><span class="t">Contas fixas e parceladas</span><span class="amt">${money(contas)}</span></div>
+        <div class="row"><span class="t">Maior categoria de gasto</span><span class="amt">${top?esc(top[0])+" · "+money(top[1]):"—"}</span></div>
       </div>
-    </div>
-    <div class="card"><h2>Insights</h2>
-      ${tips.map(x=>`<div class="tip"><p>${esc(x)}</p></div>`).join("")}
     </div>`;
 }
 
@@ -677,7 +666,6 @@ function renderAll(){
   renderContas();
   renderCal();
   renderRev();
-  renderHist();
   renderIns();
   renderCards();
   populateCardSelects();
@@ -732,13 +720,11 @@ $("cardForm").onsubmit=e=>{
 let currentView="inicio";
 function go(v){
   currentView=v;
-  const view=v==="metas"?"ins":v;   // Metas fica dentro de Insights (card "Metas e caixinhas")
-  document.querySelectorAll(".view").forEach(x=>x.classList.toggle("on",x.id==="v-"+view));
+  document.querySelectorAll(".view").forEach(x=>x.classList.toggle("on",x.id==="v-"+v));
   document.querySelectorAll("[data-nav]").forEach(x=>x.classList.toggle("on",x.dataset.nav===v&&!x.classList.contains("sideNew")));
   $("pageTitle").textContent=TITLES[v]||"Início";
   $("menu").hidden=true;
   window.scrollTo({top:0,behavior:"auto"});
-  if(v==="metas")requestAnimationFrame(()=>$("goalCard").scrollIntoView({block:"start",behavior:"smooth"}));
 }
 document.querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>go(b.dataset.nav));
 document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>go(b.dataset.go));
@@ -843,8 +829,13 @@ $("notifBtn").onclick=async()=>{
     if(perm!=="granted"){showToast("Permissão de notificação não concedida");return}
     const reg=await navigator.serviceWorker.register("/sw.js");
     await navigator.serviceWorker.ready;
-    let sub=await reg.pushManager.getSubscription();
-    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToBytes(VAPID_PUBLIC)});
+    // assinatura antiga deste aparelho (outra chave VAPID ou expirada) é descartada e recriada com a chave atual
+    const old=await reg.pushManager.getSubscription();
+    if(old){
+      await old.unsubscribe();
+      await sb.from("push_subscriptions").delete().eq("endpoint",old.endpoint);
+    }
+    const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToBytes(VAPID_PUBLIC)});
     const j=sub.toJSON();
     const {error}=await sb.from("push_subscriptions").upsert({
       endpoint:j.endpoint,
@@ -857,7 +848,18 @@ $("notifBtn").onclick=async()=>{
   }catch(err){
     showToast("Não foi possível ativar as notificações");
   }
+  refreshNotifStatus();
 };
+// mostra no botão se este aparelho já está inscrito para receber avisos
+async function refreshNotifStatus(){
+  const btn=$("notifBtn");
+  try{
+    if(!("serviceWorker" in navigator)||!("PushManager" in window)){btn.textContent="Notificações não suportadas aqui";btn.disabled=true;return}
+    const reg=await navigator.serviceWorker.getRegistration("/");
+    const sub=reg?await reg.pushManager.getSubscription():null;
+    btn.textContent=sub?"Notificações ativas neste aparelho · atualizar":"Ativar notificações";
+  }catch(e){btn.textContent="Ativar notificações"}
+}
 
 /* ---------- inicialização ---------- */
 $("txCat").innerHTML=[...new Set([...CATS,...ICATS])].map(c=>`<option>${c}</option>`).join("");
@@ -918,52 +920,57 @@ function renderCardChips(){
     renderCardChips();
   });
 }
+function histRow(r){
+  const inc=r.type==="income";
+  let tags,sub,action;
+  if(r.kind==="tx"){
+    tags=inc?`<span class="tag ok">Recebido</span>`:`<span class="tag">Pago</span>`;
+    sub=`${esc(r.category)} · ${fmtDate(r.date)}`;
+    action=`<button class="ico" title="Remover" data-act="delTx" data-id="${r.t.id}">×</button>`;
+  }else{
+    const st=r.st,paid=st.key==="paid",late=st.key==="late"||st.key==="today";
+    const label=paid?"Pago":late?"Atrasado":"A pagar";
+    const cls=paid?"ok":late?"late":"soon";
+    tags=`<span class="tag ${cls}">${label}</span><span class="tag">${esc(r.o.label)}</span>`;
+    sub=`Conta · ${esc(r.category)} · vence ${fmtDate(r.date)}`;
+    action=`<button class="ghost" data-act="togglePaid" data-id="${r.o.b.id}" data-ym="${sel}">${paid?"Desfazer":"Marcar paga"}</button>`;
+  }
+  return `<div class="row"><div class="ic ${inc?"":"out"}">${esc(r.category.charAt(0))}</div><div class="rmain"><div class="t">${esc(r.desc)} ${tags}</div><div class="s">${sub}</div></div><div class="actions"><span class="amt ${inc?"income":"expense"}">${inc?"+":"−"} ${money(r.amount)}</span>${action}</div></div>`;
+}
 function renderFeed(){
   const q=$("search").value.trim().toLowerCase();
-  const ft=$("filterType").value;
-  const from=$("fFrom").value, to=$("fTo").value, sort=$("fSort").value;
-  let items=sortedTx().filter(t=>(ft==="all"||t.type===ft)&&(!q||t.desc.toLowerCase().includes(q)||t.category.toLowerCase().includes(q)));
-  if(from)items=items.filter(t=>t.date>=from);
-  if(to)items=items.filter(t=>t.date<=to);
-  if(fCards.size)items=items.filter(t=>(t.card&&fCards.has(t.card))||(!t.card&&fCards.has("none")));
+  const ft=$("filterType").value, sort=$("fSort").value;
+  const from=$("fFrom").value, to=$("fTo").value;
+  // linhas do mês inteiro: lançamentos (receita/despesa) + contas do mês
+  const rows=[
+    ...txOf(sel).map(t=>({kind:"tx",date:t.date,created:t.created||0,t,type:t.type,amount:t.amount,desc:t.desc,category:t.category,card:t.card})),
+    ...occ(sel).map(o=>{const st=billStatus(o.b,sel);return {kind:"bill",date:st.due,created:0,o,st,type:"expense",amount:o.amount,desc:o.b.name,category:o.b.category,card:o.b.card}})
+  ];
+  // resumo do mês inteiro (sem filtros)
+  const soma=arr=>arr.reduce((s,r)=>s+r.amount,0);
+  const recebido=soma(rows.filter(r=>r.kind==="tx"&&r.type==="income"));
+  const pago=soma(rows.filter(r=>(r.kind==="tx"&&r.type==="expense")||(r.kind==="bill"&&r.st.key==="paid")));
+  const aPagar=soma(rows.filter(r=>r.kind==="bill"&&r.st.key!=="paid"));
+  let items=rows.filter(r=>(ft==="all"||r.type===ft)&&(!q||r.desc.toLowerCase().includes(q)||r.category.toLowerCase().includes(q)));
+  if(from)items=items.filter(r=>r.date>=from);
+  if(to)items=items.filter(r=>r.date<=to);
+  if(fCards.size)items=items.filter(r=>(r.card&&fCards.has(r.card))||(!r.card&&fCards.has("none")));
+  const porData=!(sort==="high"||sort==="low");
   if(sort==="high")items.sort((a,b)=>b.amount-a.amount);
-  if(sort==="low")items.sort((a,b)=>a.amount-b.amount);
-  if(!items.length){$("feed").innerHTML=`<div class="empty">Nada encontrado</div>`;return}
+  else if(sort==="low")items.sort((a,b)=>a.amount-b.amount);
+  else items.sort((a,b)=>a.date.localeCompare(b.date)||(a.created-b.created));
+  const resumo=`<div class="hsum">
+    <div><span>Recebido</span><b class="income">${money(recebido)}</b></div>
+    <div><span>Pago</span><b>${money(pago)}</b></div>
+    <div><span>A pagar</span><b class="expense">${money(aPagar)}</b></div></div>`;
   let html="",last="";
-  items.forEach(t=>{
-    if(sort==="recent"&&t.date!==last){last=t.date;html+=`<div class="day">${fmtDate(t.date,true)}</div>`}
-    html+=txRow(t);
+  items.forEach(r=>{
+    if(porData&&r.date!==last){last=r.date;html+=`<div class="day">${fmtDate(r.date,true)}</div>`}
+    html+=histRow(r);
   });
-  $("feed").innerHTML=`<div class="list">${html}</div>`;
+  $("feed").innerHTML=resumo+(items.length?`<div class="list">${html}</div>`:`<div class="empty">Nada encontrado neste mês</div>`);
 }
 ["fFrom","fTo","fSort"].forEach(id=>$(id).addEventListener("change",renderFeed));
-
-/* exportação: CSV e PDF do mês */
-function monthRows(ym){
-  return [
-    ...txOf(ym).map(t=>({date:t.date,desc:t.desc,cat:t.category,type:t.type,amount:t.amount,card:cardName(t.card)})),
-    ...occ(ym).map(o=>({date:dueOf(o.b,ym),desc:`${o.b.name} (${o.label})`,cat:o.b.category,type:"expense",amount:o.amount,card:cardName(o.b.card)}))
-  ].sort((a,b)=>a.date.localeCompare(b.date));
-}
-$("csvBtn").onclick=()=>{
-  const q=v=>{let s=String(v);if(/^[=+\-@\t\r]/.test(s))s="'"+s;return `"${s.replace(/"/g,'""')}"`};
-  const lines=["Data;Descrição;Categoria;Tipo;Valor;Cartão",
-    ...monthRows(sel).map(r=>[brDate(r.date),q(r.desc),q(r.cat),r.type==="income"?"Receita":"Despesa",r.amount.toFixed(2).replace(".",","),q(r.card)].join(";"))];
-  const blob=new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);a.download=`financas-${sel}.csv`;
-  document.body.appendChild(a);a.click();
-  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);
-};
-$("pdfBtn").onclick=()=>{
-  const t=totals(sel);
-  const body=monthRows(sel).map(r=>`<tr><td>${brDate(r.date)}</td><td>${esc(r.desc)}</td><td>${esc(r.cat)}</td><td>${r.type==="income"?"Receita":"Despesa"}</td><td class="n">${BRL.format(r.amount)}</td></tr>`).join("");
-  $("printArea").innerHTML=`<h2>Extrato de ${esc(monthLabel(sel))}</h2>
-    <table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th class="n">Valor</th></tr></thead>
-    <tbody>${body||'<tr><td colspan="5">Sem lançamentos</td></tr>'}</tbody></table>
-    <p style="margin-top:14px"><b>Receitas:</b> ${BRL.format(t.inc)} · <b>Despesas:</b> ${BRL.format(t.exp)} · <b>Saldo:</b> ${BRL.format(t.bal)}</p>`;
-  window.print();
-};
 
 /* importação de extrato: OFX ou CSV, com revisão antes de salvar */
 function parseOFX(text){
@@ -1056,21 +1063,29 @@ $("varIncome").onchange=e=>{
   save();renderV13();
 };
 
-/* metas e caixinhas */
+/* metas: progresso e depósitos ao longo do tempo */
 function renderGoals(){
   const cur=mKey(today());
   const list=db.goals||[];
+  const months=[];for(let i=5;i>=0;i--)months.push(shiftMonth(cur,-i));
   $("goalList").innerHTML=list.length?list.map(g=>{
     const pct=Math.min(100,g.target?g.saved/g.target*100:0);
     const left=monthDiff(cur,g.deadline);
     const done=g.saved>=g.target;
     const perMonth=Math.max(0,(g.target-g.saved)/Math.max(1,left));
     const info=done?"Meta alcançada":left<0?"Prazo vencido":`Faltam ${money(g.target-g.saved)} · guardar ${money(perMonth)} por mês até ${monthLabel(g.deadline)}`;
+    const log=g.log||[];
+    const dep=months.map(m=>log.filter(x=>mKey(x.d)===m).reduce((s,x)=>s+x.v,0));
+    const dmax=Math.max(...dep,1);
+    const totalDep=dep.reduce((s,v)=>s+v,0);
+    const recent=[...log].sort((a,b)=>b.d.localeCompare(a.d)).slice(0,4);
     return `<div class="goal">
       <div class="gh"><div style="min-width:0"><div class="t">${esc(g.name)}</div><div class="s">${money(g.saved)} de ${money(g.target)}</div></div><button class="ico" title="Excluir meta" data-gdel="${esc(g.id)}">×</button></div>
       <div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>
       <div class="s">${info}</div>
       ${done?"":`<div class="gr"><input type="number" step="0.01" min="0.01" placeholder="Guardar agora (R$)" data-gin="${esc(g.id)}"><button class="ghost" type="button" data-gadd="${esc(g.id)}">Guardar</button></div>`}
+      <div class="hist ghist">${months.map((m,i)=>`<div class="hcol ${m===cur?"cur":""}"><div class="hbar" style="height:${(dep[i]/dmax*100).toFixed(1)}%" title="${esc(monthLabel(m))}: ${esc(money(dep[i]))}"></div><span>${monthLabel(m).split(" ")[0].slice(0,3)}</span></div>`).join("")}</div>
+      <div class="s">Depositado nos últimos 6 meses: ${money(totalDep)}${recent.length?` · Últimos: ${recent.map(x=>`${fmtDate(x.d)} ${money(x.v)}`).join(", ")}`:""}</div>
     </div>`;
   }).join(""):`<div class="empty">Crie uma meta: reserva de emergência, viagem, troca de celular...</div>`;
 }
@@ -1091,6 +1106,7 @@ $("goalList").onclick=async e=>{
     const v=parseFloat(input.value);
     if(!(v>0)){showToast("Digite um valor");return}
     g.saved=Math.round((g.saved+v)*100)/100;
+    g.log=[...(g.log||[]),{d:today(),v}];
     save();renderV13();
     showToast(g.saved>=g.target?"Meta alcançada!":"Valor guardado");
   }else if(del){
@@ -1148,19 +1164,10 @@ function renderDonut(){
 }
 
 /* comparação mês a mês */
-function renderCmp(){
-  const data=[5,4,3,2,1,0].map(k=>{const ym=shiftMonth(sel,-k);const t=totals(ym);return {ym,inc:t.inc,exp:t.exp}});
-  const max=Math.max(1,...data.map(d=>Math.max(d.inc,d.exp)));
-  $("cmp").innerHTML=data.map(d=>`<div class="col" title="${esc(monthLabel(d.ym))}: receitas ${esc(money(d.inc))}, despesas ${esc(money(d.exp))}">
-    <div class="pair"><i style="height:${(d.inc/max*100).toFixed(1)}%;background:#8b5cf6"></i><i style="height:${(d.exp/max*100).toFixed(1)}%;background:#f87171"></i></div>
-    <span class="lb">${esc(monthLabel(d.ym).slice(0,3))}</span></div>`).join("");
-}
-
 function renderV13(){
   if(!db)return;
   renderQuick();
   renderDonut();
-  renderCmp();
   renderVar();
   renderGoals();
   renderSubs();
