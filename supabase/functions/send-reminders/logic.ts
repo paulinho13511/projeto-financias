@@ -12,10 +12,17 @@ export interface Reminder { key: string; title: string; body: string }
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const parts = (s: string) => s.split("-").map(Number);
-const dim = (ym: string) => { const [y, m] = parts(ym); return new Date(y, m, 0).getDate(); };
-const ymd = (d: Date) => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+const dim = (ym: string) => { const [y, m] = parts(ym); return new Date(Date.UTC(y, m, 0)).getUTCDate(); };
+const ymd = (y: number, m: number, d: number) => {
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())}`;
+};
 const mKey = (s: string) => s.slice(0, 7);
-export const shiftMonth = (ym: string, delta: number) => { const [y, m] = parts(ym); return ymd(new Date(y, m - 1 + delta, 1)).slice(0, 7); };
+export const shiftMonth = (ym: string, delta: number) => {
+  const [y, m] = parts(ym);
+  const dt = new Date(Date.UTC(y, m - 1 + delta, 1));
+  return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}`;
+};
 const monthDiff = (a: string, b: string) => { const [ay, am] = parts(a), [by, bm] = parts(b); return (by - ay) * 12 + (bm - am); };
 export const daysBetween = (a: string, b: string) => {
   const [ay, am, ad] = parts(a), [by, bm, bd] = parts(b);
@@ -26,13 +33,13 @@ export const money = (v: number) => "R$ " + v.toFixed(2).replace(".", ",");
 // Dia de hoje no fuso de São Paulo (YYYY-MM-DD)
 export function todaySP(now = new Date()): string {
   const f = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" });
-  return f.format(now); // en-CA já formata como YYYY-MM-DD
+  return f.format(now);
 }
 
 export function dueOf(b: Bill, ym: string): string {
   if (b.kind === "unica") return b.date!;
   const [y, m] = parts(ym);
-  return ymd(new Date(y, m - 1, Math.min(b.day!, dim(ym))));
+  return ymd(y, m, Math.min(b.day!, dim(ym)));
 }
 
 // Ocorrências de contas num mês (mesma regra de occ() do app)
@@ -53,12 +60,12 @@ export function occ(bills: Bill[], ym: string): { b: Bill; amount: number }[] {
 
 export function closeDateOf(card: Card, ym: string): string {
   const [y, m] = parts(ym);
-  return ymd(new Date(y, m - 1, Math.min(card.closeDay, dim(ym))));
+  return ymd(y, m, Math.min(card.closeDay, dim(ym)));
 }
 export function dueDateOfFatura(card: Card, closeYm: string): string {
   const dueYm = card.dueDay > card.closeDay ? closeYm : shiftMonth(closeYm, 1);
   const [y, m] = parts(dueYm);
-  return ymd(new Date(y, m - 1, Math.min(card.dueDay, dim(dueYm))));
+  return ymd(y, m, Math.min(card.dueDay, dim(dueYm)));
 }
 
 // Fatura que fecha em closeYm (mesma regra de faturaOf())

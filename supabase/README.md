@@ -1,14 +1,14 @@
 # Supabase: avisos automáticos e configuração
 
 ## 1. Segredos da função (Supabase → Edge Functions → Secrets)
-- `CRON_SECRET`: texto aleatório longo. Use o mesmo valor no `reminders.sql`.
+- Nenhum segredo manual: o token de chamada é gerado pelo `reminders.sql` e guardado na tabela `reminder_config`.
 - `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`: par VAPID. A chave pública precisa ser a mesma usada em `js/app.js` (`VAPID_PUBLIC`).
   Se a chave privada antiga não estiver disponível, gere um novo par e troque também a constante no app; quem já tinha ativado notificações precisa ativar de novo.
 - `VAPID_SUBJECT`: `mailto:seu-email@dominio`.
 - `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` já são fornecidos pelo Supabase às funções.
 
 ## 2. Tabela e agendamento
-1. Rode `reminders.sql` no SQL Editor (troque `SEU_CRON_SECRET` antes).
+1. Rode `reminders.sql` no SQL Editor (é idempotente).
 2. Publique a função: `supabase functions deploy send-reminders --no-verify-jwt`
    (o acesso é protegido pelo `x-cron-secret`, não por JWT).
 

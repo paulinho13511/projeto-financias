@@ -1,5 +1,6 @@
 // Edge Function: envia por push os avisos de contas e cartões, uma vez por aviso.
-// Disparada todo dia pelo pg_cron (ver supabase/README.md). Requer o segredo CRON_SECRET.
+// Disparada todo dia pelo pg_cron (ver supabase/reminders.sql). O token de chamada fica na
+// tabela reminder_config (só a service role lê); o pg_cron lê o mesmo token do banco.
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import webpush from "npm:web-push@3.6.7";
 import { buildReminders, todaySP, type Data } from "./logic.ts";
@@ -10,11 +11,13 @@ const env = (k: string) => {
   return v;
 };
 
-Deno.serve(async (req) => {
+async function handle(req: Request): Promise<Response> {
   if (req.method !== "POST") return new Response("método não permitido", { status: 405 });
-  if (req.headers.get("x-cron-secret") !== env("CRON_SECRET")) return new Response("não autorizado", { status: 401 });
-
   const sb = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), { auth: { persistSession: false } });
+
+  const { data: cfg, error: eCfg } = await sb.from("reminder_config").select("value").eq("key", "cron_token").maybeSingle();
+  const token = req.headers.get("x-cron-secret");
+  if (eCfg || !cfg || !token || token !== cfg.value) return new Response("não autorizado", { status: 401 });
   webpush.setVapidDetails(env("VAPID_SUBJECT"), env("VAPID_PUBLIC_KEY"), env("VAPID_PRIVATE_KEY"));
 
   const { data: row, error: e1 } = await sb.from("app_data").select("data").eq("id", 1).single();
@@ -66,4 +69,13 @@ Deno.serve(async (req) => {
   await sb.from("reminder_log").delete().lt("sent_at", cutoff);
 
   return Response.json({ today, candidates: reminders.length, sent, failed });
+}
+
+Deno.serve(async (req) => {
+  try {
+    return await handle(req);
+  } catch (e) {
+    console.error("send-reminders:", e);
+    return new Response("erro interno: " + (e instanceof Error ? e.message : String(e)), { status: 500 });
+  }
 });
