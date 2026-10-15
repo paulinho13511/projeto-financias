@@ -1,7 +1,7 @@
 const CATS=["Alimentação","Moradia","Transporte","Lazer","Saúde","Contas","Educação","Outros"];
 const ICATS=["Salário","Freelance","Investimentos"];
 const KEY="financas_v2";
-const TITLES={inicio:"Início",subs:"Assinaturas",lanc:"Lançamentos",contas:"Contas",cal:"Calendário",rev:"Categorias",ins:"Insights",dicas:"Dicas",metas:"Metas"};
+const TITLES={inicio:"Início",subs:"Assinaturas",lanc:"Lançamentos",contas:"Contas",cal:"Calendário",rev:"Categorias",ins:"Insights",metas:"Metas"};
 const BRL=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,"0");
@@ -631,36 +631,47 @@ function renderRev(){
   animateBars();
 }
 
+const capitalize=t=>t.charAt(0).toUpperCase()+t.slice(1);
 function renderIns(){
-  const cur=totals(sel);
-  const prevK=shiftMonth(sel,-1);
-  const prev=totals(prevK);
+  const cur=totals(sel), prevK=shiftMonth(sel,-1), prev=totals(prevK);
   const diff=prev.exp?((cur.exp-prev.exp)/prev.exp)*100:null;
   const now=mKey(today());
   const days=sel===now?Math.max(1,parseInt(today().slice(8,10),10)):dim(sel);
   const avg=cur.exp/days;
   const rate=cur.inc?((cur.inc-cur.exp)/cur.inc)*100:null;
+  const comprometido=cur.inc?Math.min(100,(cur.exp/cur.inc)*100):0;
   const byCat={};
   cur.items.filter(x=>x.type==="expense").forEach(x=>byCat[x.category]=(byCat[x.category]||0)+x.amount);
   cur.bills.forEach(o=>byCat[o.b.category]=(byCat[o.b.category]||0)+o.amount);
   const top=Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];
   const contas=cur.bills.reduce((s,o)=>s+o.amount,0);
+  const fmtPct=v=>v===null?"—":(v>0?"+":"")+v.toFixed(0)+"%";
 
+  $("insHero").innerHTML=`
+    <div class="insTop">
+      <div><small class="muted">Resumo do mês</small><h2 class="insTitle">${esc(capitalize(monthLabel(sel)))}</h2></div>
+      <span class="badge ${rate!==null&&rate<0?"bad":""}">${rate===null?"Sem receitas":"Economia de "+rate.toFixed(0)+"%"}</span>
+    </div>
+    <div class="insTiles">
+      <div class="tile in"><span>Receitas</span><b data-priv>${money(cur.inc)}</b></div>
+      <div class="tile out"><span>Despesas</span><b>${money(cur.exp)}</b></div>
+      <div class="tile bal"><span>Saldo</span><b data-priv class="${cur.bal<0?"expense":""}">${money(cur.bal)}</b></div>
+    </div>
+    <div class="meterWrap">
+      <div class="meterLabel"><span>Parte da receita já gasta</span><b>${cur.inc?comprometido.toFixed(0)+"%":"—"}</b></div>
+      <div class="meter ${comprometido>=100?"over":""}"><i style="width:${comprometido.toFixed(1)}%"></i></div>
+    </div>`;
+
+  $("insDetails").innerHTML=`
+    <h2>Detalhes</h2>
+    <div class="kv">
+      <div><span>Variação de despesas</span><b class="${diff!==null&&diff>0?"expense":"income"}">${fmtPct(diff)}</b></div>
+      <div><span>Média diária de gasto</span><b>${money(avg)}</b></div>
+      <div><span>Contas fixas e parceladas</span><b>${money(contas)}</b></div>
+      <div><span>Maior categoria</span><b>${top?esc(top[0])+" · "+money(top[1]):"—"}</b></div>
+    </div>`;
   renderRegra();
   renderRevisao();
-  $("insBody").innerHTML=`
-    <div class="card"><h2>Resumo de ${esc(monthLabel(sel))}</h2>
-      <div class="list">
-        <div class="row"><span class="t">Receitas</span><span class="amt income" data-priv>${money(cur.inc)}</span></div>
-        <div class="row"><span class="t">Despesas</span><span class="amt expense">${money(cur.exp)}</span></div>
-        <div class="row"><span class="t">Saldo</span><span class="amt ${cur.bal<0?"expense":"income"}" data-priv>${money(cur.bal)}</span></div>
-        <div class="row"><span class="t">Taxa de economia</span><span class="amt">${rate===null?"—":rate.toFixed(0)+"%"}</span></div>
-        <div class="row"><span class="t">Variação de despesas vs. ${esc(monthLabel(prevK))}</span><span class="amt ${diff>0?"expense":"income"}">${diff===null?"—":(diff>0?"+":"")+diff.toFixed(0)+"%"}</span></div>
-        <div class="row"><span class="t">Média diária de gasto</span><span class="amt">${money(avg)}</span></div>
-        <div class="row"><span class="t">Contas fixas e parceladas</span><span class="amt">${money(contas)}</span></div>
-        <div class="row"><span class="t">Maior categoria de gasto</span><span class="amt">${top?esc(top[0])+" · "+money(top[1]):"—"}</span></div>
-      </div>
-    </div>`;
 }
 
 function renderAll(){
@@ -683,7 +694,7 @@ function renderAll(){
   stagger($("billsList"));
   stagger($("catList"));
   stagger($("top"));
-  stagger($("insBody"),80);
+  stagger($("insDetails"),80);
   stagger($("calGrid"),10);
 }
 
@@ -883,7 +894,6 @@ $("txAmt").addEventListener("input",updateTxParc);
 const PAL=["#8b5cf6","#a78bfa","#ffb86b","#f87171","#b58cff","#7bd389","#fbbf24","#8a8fa3"];
 const fCards=new Set();
 function cardName(id){const c=(db.cards||[]).find(x=>x.id===id);return c?c.name:""}
-function brDate(s){const[y,m,d]=parts(s);return `${pad(d)}/${pad(m)}/${y}`}
 
 /* privacidade: ocultar valores */
 try{privacy=localStorage.getItem("fin_priv")==="1"}catch(e){}
@@ -982,81 +992,6 @@ function renderFeed(){
   $("feed").innerHTML=resumo+(items.length?`<div class="list">${html}</div>`:`<div class="empty">Nada encontrado neste mês</div>`);
 }
 ["fFrom","fTo","fSort"].forEach(id=>$(id).addEventListener("change",renderFeed));
-
-/* importação de extrato: OFX ou CSV, com revisão antes de salvar */
-function parseOFX(text){
-  const out=[];
-  const blocks=text.match(/<STMTTRN>[\s\S]*?(?=<STMTTRN>|<\/BANKTRANLIST>|$)/gi)||[];
-  blocks.forEach(b=>{
-    const g=tag=>{const m=b.match(new RegExp("<"+tag+">([^<\\r\\n]*)","i"));return m?m[1].trim():""};
-    const d=g("DTPOSTED"), amt=parseFloat(g("TRNAMT").replace(",","."));
-    const desc=(g("MEMO")||g("NAME")||"Transação").replace(/\s+/g," ");
-    if(!/^\d{8}/.test(d)||isNaN(amt))return;
-    out.push({date:`${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}`,desc,amount:Math.abs(amt),type:amt<0?"expense":"income"});
-  });
-  return out;
-}
-function parseDateBR(s){
-  let m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/); if(m)return `${m[3]}-${m[2]}-${m[1]}`;
-  m=s.match(/^(\d{4})-(\d{2})-(\d{2})/); if(m)return `${m[1]}-${m[2]}-${m[3]}`;
-  return null;
-}
-function parseMoneyBR(s){
-  let v=s.replace(/[R$\s]/g,"");
-  if(v.includes(","))v=v.replace(/\./g,"").replace(",",".");
-  return parseFloat(v);
-}
-function parseCSV(text){
-  const lines=text.split(/\r?\n/).filter(l=>l.trim());
-  if(!lines.length)return [];
-  const delim=(lines[0].match(/;/g)||[]).length>=(lines[0].match(/,/g)||[]).length?";":",";
-  const cells=l=>l.split(delim).map(c=>c.trim().replace(/^"|"$/g,""));
-  const head=cells(lines[0]).map(h=>h.toLowerCase());
-  const iD=head.findIndex(h=>/data|date/.test(h));
-  const iDesc=head.findIndex(h=>/descri|hist|memo|nome|name/.test(h));
-  const iV=head.findIndex(h=>/valor|amount|value/.test(h));
-  if(iD<0||iV<0)return null;
-  return lines.slice(1).map(l=>{
-    const c=cells(l);
-    const date=parseDateBR(c[iD]||""), amt=parseMoneyBR(c[iV]||"");
-    return date&&!isNaN(amt)?{date,desc:(c[iDesc]||"Transação"),amount:Math.abs(amt),type:amt<0?"expense":"income"}:null;
-  }).filter(Boolean);
-}
-let impRows=[];
-$("impFile").onchange=async e=>{
-  const f=e.target.files[0];
-  if(!f)return;
-  const text=await f.text();
-  const rows=/<STMTTRN>/i.test(text)?parseOFX(text):parseCSV(text);
-  if(!rows||!rows.length){
-    showToast("Não encontrei lançamentos neste arquivo");
-    $("impBox").hidden=true;impRows=[];return;
-  }
-  impRows=rows.map(r=>({...r,on:true}));
-  renderImport();
-};
-function renderImport(){
-  const box=$("impBox");
-  box.hidden=false;
-  box.innerHTML=`<p class="muted" style="font-size:13px;margin:12px 0 8px">${impRows.length} lançamentos encontrados. Desmarque o que não quer importar.</p>
-    <div class="list">${impRows.map((r,i)=>`<label class="row imp"><input type="checkbox" data-i="${i}" ${r.on?"checked":""}><div class="rmain"><div class="t">${esc(r.desc)}</div><div class="s">${brDate(r.date)} · ${r.type==="income"?"Receita":"Despesa"}</div></div><div class="amt ${r.type==="income"?"income":"expense"}">${money(r.amount)}</div></label>`).join("")}</div>
-    <div class="btnrow" style="margin-top:12px"><button class="ghost" id="impCancel" type="button">Cancelar</button><button class="primary" id="impOk" type="button">Importar selecionados</button></div>`;
-  box.querySelectorAll("[data-i]").forEach(c=>c.onchange=()=>{impRows[+c.dataset.i].on=c.checked});
-  $("impCancel").onclick=()=>{box.hidden=true;impRows=[];$("impFile").value=""};
-  $("impOk").onclick=()=>{
-    let added=0,skipped=0;
-    impRows.filter(r=>r.on).forEach(r=>{
-      const dup=db.tx.some(t=>t.date===r.date&&Math.abs(t.amount-r.amount)<0.005&&t.desc===r.desc);
-      if(dup){skipped++;return}
-      db.tx.push({id:uid(),type:r.type,desc:r.desc,amount:r.amount,date:r.date,category:"Outros",card:null,created:Date.now()});
-      added++;
-    });
-    save();
-    box.hidden=true;impRows=[];$("impFile").value="";
-    renderAll();
-    showToast(`${added} importados${skipped?`, ${skipped} já existiam`:""}`);
-  };
-}
 
 /* renda variável */
 function renderVar(){
@@ -1389,3 +1324,63 @@ document.addEventListener("change",e=>{
   const el=e.target.closest("input[data-act='setBudget']");
   if(el)setBudget(el.dataset.cat,el.value);
 });
+
+/* ---------- tela inicial: blocos em ordem personalizável (guardada neste aparelho) ---------- */
+const HOME_BLOCKS=[
+  ["heroCard","Saldo do mês"],
+  ["pulse","Destaques do mês"],
+  ["chartCard","Gastos no mês"],
+  ["nextBill","Próxima conta"],
+  ["remindersCard","Lembretes de contas"],
+  ["homeLower","Notificações e últimos lançamentos"]
+];
+const HOME_KEY="fin_home_order";
+function homeOrder(){
+  const ids=HOME_BLOCKS.map(b=>b[0]);
+  try{
+    const saved=JSON.parse(localStorage.getItem(HOME_KEY)||"null");
+    if(Array.isArray(saved)&&saved.length===ids.length&&ids.every(i=>saved.includes(i)))return saved;
+  }catch(e){}
+  return ids;
+}
+// order começa em 1 para que a barra de controles (order 0) fique sempre no topo
+function applyHomeOrder(order){order.forEach((id,i)=>{const el=$(id);if(el)el.style.order=i+1})}
+let homeEdit=false;
+function renderHomePanel(order){
+  const panel=$("homeOrderPanel");
+  panel.hidden=!homeEdit;
+  if(!homeEdit){panel.innerHTML="";return}
+  panel.innerHTML=order.map((id,i)=>{
+    const label=HOME_BLOCKS.find(b=>b[0]===id)[1];
+    return `<div class="ordRow">
+      <span class="ordN">${i+1}</span>
+      <span class="ordL">${esc(label)}</span>
+      <button class="ico" type="button" data-mv="-1" data-id="${id}" ${i===0?"disabled":""} aria-label="Subir ${esc(label)}">↑</button>
+      <button class="ico" type="button" data-mv="1" data-id="${id}" ${i===order.length-1?"disabled":""} aria-label="Descer ${esc(label)}">↓</button>
+    </div>`;
+  }).join("")+`<button class="ghost" id="homeReset" type="button">Restaurar ordem padrão</button>`;
+}
+function moveHome(id,dir){
+  const order=homeOrder().slice(), i=order.indexOf(id), j=i+dir;
+  if(i<0||j<0||j>=order.length)return;
+  [order[i],order[j]]=[order[j],order[i]];
+  try{localStorage.setItem(HOME_KEY,JSON.stringify(order))}catch(e){}
+  applyHomeOrder(order);
+  renderHomePanel(order);
+}
+$("orgBtn").onclick=()=>{
+  homeEdit=!homeEdit;
+  $("orgBtn").textContent=homeEdit?"Concluir":"Organizar blocos";
+  $("orgBtn").setAttribute("aria-pressed",String(homeEdit));
+  renderHomePanel(homeOrder());
+};
+$("homeOrderPanel").onclick=e=>{
+  const b=e.target.closest("[data-mv]");
+  if(b){moveHome(b.dataset.id,+b.dataset.mv);return}
+  if(e.target.closest("#homeReset")){
+    try{localStorage.removeItem(HOME_KEY)}catch(x){}
+    applyHomeOrder(homeOrder());
+    renderHomePanel(homeOrder());
+  }
+};
+applyHomeOrder(homeOrder());
