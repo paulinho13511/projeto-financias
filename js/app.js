@@ -424,12 +424,23 @@ function populateMonths(){
   $("month").innerHTML=list.map(k=>`<option value="${k}" ${k===sel?"selected":""}>${monthLabel(k)}</option>`).join("");
 }
 
+function cssVar(name){
+  const v=getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v||"#4f8cff";
+}
 function renderInicio(){
   const t=totals(sel);
   countUp($("balance"),t.bal);
   $("balance").className="big "+(t.bal<0?"expense":"");
   countUp($("inc"),t.inc);
   countUp($("exp"),t.exp);
+  const ringBar=$("ringBar");
+  if(ringBar){
+    const C=2*Math.PI*42, pct=t.inc>0?Math.min(1,Math.max(0,t.exp/t.inc)):0;
+    ringBar.style.strokeDasharray=C;
+    ringBar.style.strokeDashoffset=C*(1-pct);
+    $("ringPct").textContent=Math.round(pct*100)+"%";
+  }
 
   const cur=mKey(today());
   const rem=occ(cur).map(o=>({...o,st:billStatus(o.b,cur)}))
@@ -483,11 +494,11 @@ function renderChart(){
   cum.forEach((v,i)=>{line+=(i?"L":"M")+xs(i).toFixed(1)+" "+ys(v).toFixed(1)});
   const area=line+` L${xs(n-1).toFixed(1)} ${H-P} L${xs(0).toFixed(1)} ${H-P} Z`;
   const idx=chartDay!==null?chartDay:(sel===mKey(today())?Math.min(parseInt(today().slice(8,10),10)-1,n-1):n-1);
-  const dot=`<line x1="${xs(idx).toFixed(1)}" y1="${P}" x2="${xs(idx).toFixed(1)}" y2="${H-P}" stroke="#ffffff40" stroke-dasharray="3 3"/><circle cx="${xs(idx).toFixed(1)}" cy="${ys(cum[idx]).toFixed(1)}" r="6" fill="#8b5cf6" stroke="#13151c" stroke-width="3"/>`;
+  const dot=`<line x1="${xs(idx).toFixed(1)}" y1="${P}" x2="${xs(idx).toFixed(1)}" y2="${H-P}" stroke="#ffffff40" stroke-dasharray="3 3"/><circle cx="${xs(idx).toFixed(1)}" cy="${ys(cum[idx]).toFixed(1)}" r="6" fill="${cssVar("--accent")}" stroke="${cssVar("--card")}" stroke-width="3"/>`;
   $("spendChart").innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gastos acumulados no mês">
-    <defs><linearGradient id="gArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8b5cf6" stop-opacity=".42"/><stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/></linearGradient></defs>
+    <defs><linearGradient id="gArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${cssVar("--accent")}" stop-opacity=".42"/><stop offset="1" stop-color="${cssVar("--accent")}" stop-opacity="0"/></linearGradient></defs>
     <path d="${area}" fill="url(#gArea)"/>
-    <path d="${line}" fill="none" stroke="#8b5cf6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="${line}" fill="none" stroke="${cssVar("--accent")}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
     ${dot}</svg>`;
   $("chartTotal").textContent=money(cum[idx]||0);
   $("chartLabel").textContent=`Gastos acumulados até o dia ${idx+1}`;
@@ -887,7 +898,7 @@ $("txParc").onchange=updateTxParc;
 $("txParcels").addEventListener("input",updateTxParc);
 $("txAmt").addEventListener("input",updateTxParc);
 /* ---------- v13: privacidade, atalhos, filtros, exportação/importação, metas, renda variável, assinaturas, gráficos ---------- */
-const PAL=["#8b5cf6","#a78bfa","#ffb86b","#f87171","#b58cff","#7bd389","#fbbf24","#8a8fa3"];
+const PAL=[cssVar("--accent"),cssVar("--accent-2"),"#ffb86b","#f87171","#b58cff","#7bd389","#fbbf24","#8a8fa3"];
 const fCards=new Set();
 function cardName(id){const c=(db.cards||[]).find(x=>x.id===id);return c?c.name:""}
 function brDate(s){const[y,m,d]=parts(s);return `${pad(d)}/${pad(m)}/${y}`}
@@ -1168,7 +1179,7 @@ function renderCmp(){
   const data=[5,4,3,2,1,0].map(k=>{const ym=shiftMonth(sel,-k);const t=totals(ym);return {ym,inc:t.inc,exp:t.exp}});
   const max=Math.max(1,...data.map(d=>Math.max(d.inc,d.exp)));
   $("cmp").innerHTML=data.map(d=>`<div class="col" title="${esc(monthLabel(d.ym))}: receitas ${esc(money(d.inc))}, despesas ${esc(money(d.exp))}">
-    <div class="pair"><i style="height:${(d.inc/max*100).toFixed(1)}%;background:#8b5cf6"></i><i style="height:${(d.exp/max*100).toFixed(1)}%;background:#f87171"></i></div>
+    <div class="pair"><i style="height:${(d.inc/max*100).toFixed(1)}%;background:${cssVar("--accent")}"></i><i style="height:${(d.exp/max*100).toFixed(1)}%;background:#f87171"></i></div>
     <span class="lb">${esc(monthLabel(d.ym).slice(0,3))}</span></div>`).join("");
 }
 
@@ -1272,3 +1283,15 @@ document.addEventListener("change",e=>{
   const el=e.target.closest("input[data-act='setBudget']");
   if(el)setBudget(el.dataset.cat,el.value);
 });
+
+/* inclinação 3D do cartão de saldo (ignorada com "reduzir movimento") */
+(function(){
+  const h=document.getElementById("hero");
+  if(!h||matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  h.addEventListener("pointermove",e=>{
+    const r=h.getBoundingClientRect();
+    const x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5;
+    h.style.transform=`perspective(900px) rotateX(${(-y*7).toFixed(2)}deg) rotateY(${(x*9).toFixed(2)}deg)`;
+  });
+  h.addEventListener("pointerleave",()=>{h.style.transform=""});
+})();

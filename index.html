@@ -48,9 +48,19 @@
 
   <!-- INÍCIO -->
   <section class="view on" id="v-inicio">
-    <div class="hero">
-      <div class="lbl">Saldo do mês</div>
-      <div class="big" id="balance"></div>
+    <div class="hero" id="hero">
+      <div class="hero-row">
+        <div>
+          <div class="lbl">Saldo do mês</div>
+          <div class="big" id="balance"></div>
+        </div>
+        <svg class="ring" viewBox="0 0 100 100" role="img" aria-label="Parte da receita do mês já gasta">
+          <circle class="track" cx="50" cy="50" r="42"/>
+          <circle class="bar" id="ringBar" cx="50" cy="50" r="42"/>
+          <text x="50" y="50" dy="2" id="ringPct">0%</text>
+          <text class="small" x="50" y="50" dy="17">gasto</text>
+        </svg>
+      </div>
       <div class="pills">
         <div class="pill"><span class="pic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span><div style="min-width:0"><div class="lb">Receitas</div><div class="v" id="inc"></div></div></div>
         <div class="pill"><span class="pic out"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg></span><div style="min-width:0"><div class="lb">Despesas</div><div class="v" id="exp"></div></div></div>
@@ -255,7 +265,7 @@
     <div class="card cmpCard">
       <h2>Receitas × despesas (6 meses)</h2>
       <div class="cmp" id="cmp"></div>
-      <div class="legend legendRow"><div><i style="background:#8b5cf6"></i>Receitas</div><div><i style="background:#f87171"></i>Despesas</div></div>
+      <div class="legend legendRow"><div><i style="background:var(--accent)"></i>Receitas</div><div><i style="background:#f87171"></i>Despesas</div></div>
     </div>
     <div class="grid2" id="insBody"></div>
     <div class="card">
