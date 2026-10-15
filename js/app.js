@@ -11,8 +11,7 @@ const mKey=s=>s.slice(0,7);
 const parts=s=>s.split("-").map(Number);
 let privacy=false;
 const money=v=>BRL.format(v);
-// modo privado: oculta só saldo e receitas do mês (demais valores continuam visíveis)
-const showHidden=(el,v)=>{if(privacy){el.dataset.value=v;el._cu=(el._cu||0)+1;el.textContent="R$ ••••"}else countUp(el,v)};
+
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const dim=ym=>{const[y,m]=parts(ym);return new Date(y,m,0).getDate()};
@@ -434,9 +433,9 @@ function populateMonths(){
 
 function renderInicio(){
   const t=totals(sel);
-  showHidden($("balance"),t.bal);
+  countUp($("balance"),t.bal);
   $("balance").className="big "+(t.bal<0?"expense":"");
-  showHidden($("inc"),t.inc);
+  countUp($("inc"),t.inc);
   countUp($("exp"),t.exp);
   renderPulse();
 
@@ -652,9 +651,9 @@ function renderIns(){
   $("insBody").innerHTML=`
     <div class="card"><h2>Resumo de ${esc(monthLabel(sel))}</h2>
       <div class="list">
-        <div class="row"><span class="t">Receitas</span><span class="amt income">${money(cur.inc)}</span></div>
+        <div class="row"><span class="t">Receitas</span><span class="amt income" data-priv>${money(cur.inc)}</span></div>
         <div class="row"><span class="t">Despesas</span><span class="amt expense">${money(cur.exp)}</span></div>
-        <div class="row"><span class="t">Saldo</span><span class="amt ${cur.bal<0?"expense":"income"}">${money(cur.bal)}</span></div>
+        <div class="row"><span class="t">Saldo</span><span class="amt ${cur.bal<0?"expense":"income"}" data-priv>${money(cur.bal)}</span></div>
         <div class="row"><span class="t">Taxa de economia</span><span class="amt">${rate===null?"—":rate.toFixed(0)+"%"}</span></div>
         <div class="row"><span class="t">Variação de despesas vs. ${esc(monthLabel(prevK))}</span><span class="amt ${diff>0?"expense":"income"}">${diff===null?"—":(diff>0?"+":"")+diff.toFixed(0)+"%"}</span></div>
         <div class="row"><span class="t">Média diária de gasto</span><span class="amt">${money(avg)}</span></div>
@@ -888,11 +887,14 @@ function brDate(s){const[y,m,d]=parts(s);return `${pad(d)}/${pad(m)}/${y}`}
 
 /* privacidade: ocultar valores */
 try{privacy=localStorage.getItem("fin_priv")==="1"}catch(e){}
+document.body.classList.toggle("priv",privacy);
+// modo privado: só desfoca receitas e saldo do mês (CSS: body.priv [data-priv]); não redesenha a tela
 function setPrivacy(v){
   privacy=v;
   try{localStorage.setItem("fin_priv",v?"1":"0")}catch(e){}
+  document.body.classList.toggle("priv",v);
   $("privBtn").setAttribute("aria-pressed",String(v));
-  if(db)renderAll();
+  $("privBtn").setAttribute("aria-label",v?"Mostrar valores":"Ocultar valores");
 }
 $("privBtn").onclick=()=>setPrivacy(!privacy);
 $("privBtn").setAttribute("aria-pressed",String(privacy));
@@ -969,7 +971,7 @@ function renderFeed(){
   else if(sort==="low")items.sort((a,b)=>a.amount-b.amount);
   else items.sort((a,b)=>a.date.localeCompare(b.date)||(a.created-b.created));
   const resumo=`<div class="hsum">
-    <div><span>Recebido</span><b class="income">${money(recebido)}</b></div>
+    <div><span>Recebido</span><b class="income" data-priv>${money(recebido)}</b></div>
     <div><span>Pago</span><b>${money(pago)}</b></div>
     <div><span>A pagar</span><b class="expense">${money(aPagar)}</b></div></div>`;
   let html="",last="";
@@ -1149,12 +1151,16 @@ function renderSubs(){
 /* gráfico de rosca por categoria */
 function renderDonut(){
   const t=totals(sel);
-  const byCat={};
-  t.items.filter(x=>x.type==="expense").forEach(x=>byCat[x.category]=(byCat[x.category]||0)+x.amount);
-  t.bills.forEach(o=>byCat[o.b.category]=(byCat[o.b.category]||0)+o.amount);
+  const byCat={}, counts={};
+  t.items.filter(x=>x.type==="expense").forEach(x=>{byCat[x.category]=(byCat[x.category]||0)+x.amount;counts[x.category]=(counts[x.category]||0)+1});
+  t.bills.forEach(o=>{byCat[o.b.category]=(byCat[o.b.category]||0)+o.amount;counts[o.b.category]=(counts[o.b.category]||0)+1});
   const entries=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
   const total=entries.reduce((s,[,v])=>s+v,0);
   if(!total){$("donut").innerHTML=`<div class="empty">Sem despesas neste mês</div>`;return}
+  const n=Object.values(counts).reduce((s,v)=>s+v,0);
+  const top=entries[0];
+  const now=mKey(today());
+  const days=sel===now?Math.max(1,parseInt(today().slice(8,10),10)):dim(sel);
   const R=62,C=2*Math.PI*R;
   let off=0;
   const segs=entries.map(([c,v],i)=>{
@@ -1162,14 +1168,29 @@ function renderDonut(){
     const s=`<circle r="${R}" cx="90" cy="90" fill="none" stroke="${PAL[i%PAL.length]}" stroke-width="26" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 90 90)"><title>${esc(c)}: ${money(v)}</title></circle>`;
     off+=len;return s;
   }).join("");
+  const rows=entries.map(([c,v],i)=>{
+    const pct=v/total*100, k=counts[c]||0;
+    return `<button type="button" class="catRow tap" data-cat="${esc(c)}" style="--c:${PAL[i%PAL.length]}" title="Ver ${esc(c)} no histórico">
+      <span class="cdot"></span>
+      <span class="cname">${esc(c)}<small>${k} ${k===1?"lançamento":"lançamentos"}</small></span>
+      <span class="cval">${money(v)}</span>
+      <span class="cpct">${pct.toFixed(0)}%</span>
+      <span class="cbar"><i style="width:${pct.toFixed(1)}%"></i></span>
+    </button>`;
+  }).join("");
   $("donut").innerHTML=`<div class="donutWrap">
     <svg viewBox="0 0 180 180" role="img" aria-label="Distribuição das despesas por categoria">
       <circle r="${R}" cx="90" cy="90" fill="none" stroke="var(--card2)" stroke-width="26"/>${segs}
       <text x="90" y="86" text-anchor="middle" fill="var(--muted)" font-size="11">Total</text>
       <text x="90" y="104" text-anchor="middle" fill="var(--text)" font-size="13" font-weight="700">${esc(money(total))}</text>
     </svg>
-    <div class="legend">${entries.map(([c,v],i)=>`<div class="tap" data-cat="${esc(c)}"><i style="background:${PAL[i%PAL.length]}"></i><span>${esc(c)}</span><b class="pct">${Math.round(v/total*100)}%</b></div>`).join("")}</div>
-  </div>`;
+    <div class="donutStats">
+      <div class="stat"><span>Maior categoria</span><b>${esc(top[0])}</b></div>
+      <div class="stat"><span>Lançamentos</span><b>${n}</b></div>
+      <div class="stat"><span>Média por dia</span><b>${money(total/days)}</b></div>
+    </div>
+  </div>
+  <div class="catList">${rows}</div>`;
 }
 
 
@@ -1203,7 +1224,7 @@ function renderPulse(){
   const seta=diff===null?"—":`<span class="${diff>0?"expense":"income"}">${diff>0?"▲":"▼"} ${Math.abs(diff).toFixed(0)}%</span>`;
   $("pulse").innerHTML=`<div class="pulseRow">
     <div><span class="muted">Despesas vs. ${esc(monthLabel(prevK))}</span><b>${seta}</b></div>
-    <div><span class="muted">${rotulo}</span><b class="${prevista<0?"expense":""}">${privacy?"R$ ••••":money(prevista)}</b></div>
+    <div><span class="muted">${rotulo}</span><b data-priv class="${prevista<0?"expense":""}">${money(prevista)}</b></div>
   </div>`;
 }
 // Regra 50/30/20: necessidades até 50%, desejos até 30%, poupança de pelo menos 20% da receita
