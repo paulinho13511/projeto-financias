@@ -573,7 +573,7 @@ function renderCal(){
   for(let d=1;d<=n;d++){
     const ds=`${sel}-${pad(d)}`;
     const due=items.filter(o=>parseInt(dueOf(o.b,sel).slice(8),10)===d);
-    h+=`<div class="d ${ds===today()?"today":""}"><div class="n">${d}</div>${due.map(o=>{
+    h+=`<div class="d ${ds===today()?"today":""} ${due.length?"has":""}" data-day="${d}"><div class="n">${d}</div>${due.map(o=>{
       const paid=(o.b.paid||[]).includes(sel);
       const label=compactCal?"●":esc(o.b.name);
       return `<div class="b ${paid?"paid":""}" title="${esc(o.b.name)} · ${money(o.amount)} · ${o.label}">${label}</div>`;
@@ -590,6 +590,22 @@ function renderCal(){
 const compactQuery=matchMedia("(max-width:480px)");
 let compactCal=compactQuery.matches;
 compactQuery.addEventListener("change",e=>{compactCal=e.matches;renderCal()});
+// Toque em um dia com contas abre a lista daquele dia numa folha inferior
+$("calGrid").addEventListener("click",e=>{
+  const cell=e.target.closest(".d.has[data-day]");
+  if(!cell)return;
+  const d=+cell.dataset.day;
+  const items=occ(sel).filter(o=>parseInt(dueOf(o.b,sel).slice(8),10)===d);
+  if(!items.length)return;
+  const rows=items.map(o=>{
+    const paid=(o.b.paid||[]).includes(sel);
+    return `<div class="row"><div class="rmain"><div class="t">${esc(o.b.name)}</div><div class="s">${esc(o.label)}${paid?" · pago":""}</div></div><div class="amt">${money(o.amount)}</div></div>`;
+  }).join("");
+  $("dayBox").innerHTML=`<div class="sheetTitle" id="dayTitle">${d} de ${esc(monthLabel(sel))}</div>${rows}<button class="close" id="dayClose">Fechar</button>`;
+  $("daySheet").hidden=false;
+  $("dayClose").onclick=()=>{$("daySheet").hidden=true};
+});
+$("daySheet").addEventListener("click",e=>{if(e.target.id==="daySheet")$("daySheet").hidden=true});
 
 function renderRev(){
   const t=totals(sel);

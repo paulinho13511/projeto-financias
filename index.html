@@ -164,6 +164,9 @@ form.f{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .sheetbox button{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:16px;padding:15px;text-align:left;font-weight:600;font-size:15px;min-height:52px}
 .sheetbox button.close{background:transparent;color:var(--muted);text-align:center}
 
+.sheetTitle{font-weight:700;font-size:16px;margin-bottom:4px}
+.cal .d.has{cursor:pointer}
+.cal .d.has:active{transform:scale(.98)}
 .toast{position:fixed;left:50%;top:18px;transform:translate(-50%,-180%);background:var(--accent);color:var(--ink);padding:12px 18px;border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.45);transition:transform .45s cubic-bezier(.22,1,.36,1);z-index:96;font-size:14px;font-weight:600;max-width:90vw;text-align:center;pointer-events:none}
 .toast.show{transform:translate(-50%,0)}
 
@@ -753,6 +756,7 @@ body{background:var(--bg)}
 </nav>
 
 <!-- menu "Mais" -->
+<div class="sheet" id="daySheet" hidden><div class="sheetbox" id="dayBox" role="dialog" aria-modal="true" aria-labelledby="dayTitle"></div></div>
 <div class="sheet" id="menu" hidden>
   <div class="sheetbox">
     <button data-go="lanc">Lançamentos e histórico</button>
