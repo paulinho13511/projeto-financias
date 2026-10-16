@@ -2,7 +2,7 @@
 
 ## 1. Segredos da função (Supabase → Edge Functions → Secrets)
 - Nenhum segredo manual: o token de chamada é gerado pelo `reminders.sql` e guardado na tabela `reminder_config`.
-- `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`: par VAPID. A chave pública precisa ser a mesma usada em `js/app.js` (`VAPID_PUBLIC`).
+- `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`: par VAPID. A chave pública precisa ser a mesma usada em `js/services/push.js` (`VAPID_PUBLIC`).
   Se a chave privada antiga não estiver disponível, gere um novo par e troque também a constante no app; quem já tinha ativado notificações precisa ativar de novo.
 - `VAPID_SUBJECT`: `mailto:seu-email@dominio`.
 - `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` já são fornecidos pelo Supabase às funções.

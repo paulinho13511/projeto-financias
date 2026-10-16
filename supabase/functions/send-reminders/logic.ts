@@ -1,4 +1,4 @@
-// Cálculo dos avisos de contas e cartões. Espelha as regras de index.html / js/app.js
+// Cálculo dos avisos de contas e cartões. Espelha as regras de js/core/billing.js e js/core/cards.js
 // (occ, dueOf, billStatus, faturaOf, currentCloseYm, cardAlerts). Função pura: sem I/O.
 
 export interface Bill {
