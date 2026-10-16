@@ -1,0 +1,23 @@
+{
+  "name": "financas-api",
+  "version": "1.0.0",
+  "description": "API do app Minhas Finanças: autenticação JWT, contas de acesso por administrador e dados isolados por usuário.",
+  "private": true,
+  "type": "commonjs",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "create-admin": "node scripts/create-admin.js",
+    "test": "node --test --test-concurrency=1 tests/"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.0",
+    "better-sqlite3": "^12.0.0",
+    "express": "^5.0.0",
+    "jsonwebtoken": "^9.0.0"
+  }
+}
