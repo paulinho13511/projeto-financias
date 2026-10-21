@@ -1,16 +1,16 @@
 /* Tela de entrada. Animação no lado esquerdo (computador) ou em faixa compacta (celular). */
-#lock{display:flex;padding:0;background:#050505;overflow:hidden}
+#lock{display:flex;padding:0;background:#0a0a0a;overflow:hidden}
 #lock .lk-shell{width:100%;min-height:100vh;min-height:100dvh;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:24px;padding:24px;max-width:1200px;margin:0 auto;box-sizing:border-box}
 #lock .lk-stage{position:relative;width:100%;height:min(560px,72vh);min-width:0;animation:lkStageIn 1.2s cubic-bezier(.22,1,.36,1) both}
 #lock .lk-canvas{position:absolute;inset:0;display:block;width:100%;height:100%}
-#lock .lk-panel{width:100%;max-width:400px;min-width:0;justify-self:center;display:grid;gap:14px;justify-items:center;animation:lkPanelIn .9s cubic-bezier(.22,1,.36,1) 1.3s both}
+#lock .lk-panel{width:100%;max-width:400px;min-width:0;justify-self:center;display:grid;gap:14px;justify-items:center;animation:lkPanelIn .6s cubic-bezier(.22,1,.36,1) .2s both}
 #lock .lk-logo{width:112px;height:112px;animation:lkGlow 3.2s ease-in-out infinite}
 #lock .lk-logo img{display:block;width:100%;height:100%;position:relative}
 #lock .lk-brand{font-size:26px;font-weight:800;margin-top:4px}
 #lock .lk-tag{margin:0;color:#d8dbe6;font-size:14px}
 #lock .lk-form{width:100%;display:grid;gap:12px;margin-top:8px}
 #lock .lk-fld{display:grid;gap:6px;font-size:13px;color:#8a8fa3}
-#lock .lk-fld input{width:100%;padding:14px;border-radius:14px;border:1px solid #1f2330;background:#0b0d13;color:#fff;font-size:16px;box-sizing:border-box}
+#lock .lk-fld input{width:100%;padding:14px;border-radius:14px;border:1px solid #242424;background:#111;color:#fff;font-size:16px;box-sizing:border-box}
 #lock .lk-fld input::placeholder{color:#4c5163}
 #lock .lk-fld input:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,.22)}
 #lock .lk-err{color:#f87171;font-size:13px;min-height:18px}
@@ -34,18 +34,8 @@
 @keyframes lkGlow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.18)}}
 @media(prefers-reduced-motion:reduce){#lock .lk-stage,#lock .lk-panel{animation:none}}
 
-/* Efeito de abertura: ondas ao fundo e brilho que passa pelo logo (igual à versão anterior) */
-#lock .authBg{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:radial-gradient(ellipse at 50% 35%,#101a33 0%,#050505 70%)}
-#lock .wave{position:absolute;left:0;width:200%;height:200px;animation:waveMove 18s linear infinite}
-#lock .waveTop{top:0}
-#lock .waveBottom{bottom:0;animation-duration:24s;animation-direction:reverse}
 #lock .lk-shell{position:relative;z-index:1}
 #lock .lk-logo{position:relative;border-radius:24px;overflow:hidden;animation:logoIn .9s cubic-bezier(.22,1,.36,1) both,lkGlow 3.2s ease-in-out .9s infinite}
 #lock .lk-panel{position:relative}
-#lock .lk-panel::before{content:"";position:absolute;left:50%;top:-30px;width:340px;height:340px;margin-left:-170px;border-radius:50%;background:radial-gradient(circle,rgba(139,92,246,.34),transparent 65%);z-index:-1;pointer-events:none;animation:glowPulse 3.2s ease-in-out infinite}
-#lock .lk-logo::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.35) 50%,transparent 65%);transform:translateX(-120%);animation:shine 3.8s ease-in-out 1.2s infinite;pointer-events:none}
-@keyframes waveMove{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @keyframes logoIn{from{opacity:0;transform:scale(.7) rotate(-6deg)}to{opacity:1;transform:none}}
-@keyframes shine{0%,40%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
-@media(prefers-reduced-motion:reduce){#lock .wave{animation:none}#lock .lk-stage,#lock .lk-panel{animation:none}}
-@keyframes glowPulse{0%,100%{transform:scale(.9);opacity:.55}50%{transform:scale(1.12);opacity:1}}
+@media(prefers-reduced-motion:reduce){

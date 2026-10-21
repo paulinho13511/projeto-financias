@@ -8,7 +8,7 @@
   var SPHERES = 3;
   var SPEED = 0.012;            // rad/quadro, rotação lenta e contínua
   var TAIL = 2.6;               // comprimento da cauda em raios da esfera
-  var FADE_IN = 1400;           // ms da abertura
+  var FADE_IN = 800;            // ms da abertura, junto com o formulário (como no vídeo)
   var NAVY = [30, 58, 138];
   var PURPLE = [139, 92, 246];  // cor do ícone (uma esfera)
   var WHITE = [255, 255, 255];
@@ -25,31 +25,34 @@
     canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     R = Math.min(W, H) * 0.34;
-    RS = Math.max(8, R * 0.2);
+    RS = Math.max(8, R * 0.26);
     draw(1);
   }
 
+  var radiusNow = 0, speedNow = 0.012;
   function center(a) {
-    return [W / 2 + R * Math.cos(a), H / 2 + R * Math.sin(a)];
+    return [W / 2 + radiusNow * Math.cos(a), H / 2 + radiusNow * Math.sin(a)];
   }
 
   function drawTail(a, color, alpha) {
-    // direção oposta ao movimento: derivada de (cos a, sin a) negada
+    // cilindro de largura constante atrás da esfera (sentido oposto ao movimento),
+    // com ponta arredondada e que apaga aos poucos, como na referência
     var dx = Math.sin(a), dy = -Math.cos(a);
     var p = center(a);
     var L = RS * TAIL;
     var tx = p[0] + dx * L, ty = p[1] + dy * L;
-    // perpendicular para dar largura à cauda
-    var px = -dy, py = dx;
+    var hw = RS * 0.95;                       // meia largura = raio da esfera
+    var px = -dy * hw, py = dx * hw;
     var g = ctx.createLinearGradient(p[0], p[1], tx, ty);
     g.addColorStop(0, rgba(color, 0.95 * alpha));
-    g.addColorStop(0.55, rgba(color, 0.45 * alpha));
+    g.addColorStop(0.6, rgba(color, 0.5 * alpha));
     g.addColorStop(1, rgba(WHITE, 0));
     ctx.beginPath();
-    ctx.moveTo(p[0] + px * RS * 0.9, p[1] + py * RS * 0.9);
-    ctx.lineTo(tx + px * RS * 0.18, ty + py * RS * 0.18);
-    ctx.lineTo(tx - px * RS * 0.18, ty - py * RS * 0.18);
-    ctx.lineTo(p[0] - px * RS * 0.9, p[1] - py * RS * 0.9);
+    ctx.moveTo(p[0] + px, p[1] + py);
+    ctx.lineTo(tx + px, ty + py);
+    var angP = Math.atan2(py, px);             // perpendicular; a ponta fica no sentido de d
+    ctx.arc(tx, ty, hw, angP, angP - Math.PI, true);
+    ctx.lineTo(p[0] - px, p[1] - py);
     ctx.closePath();
     ctx.fillStyle = g;
     ctx.fill();
@@ -77,6 +80,7 @@
   }
 
   function draw(alpha) {
+    if (!radiusNow) radiusNow = R;
     ctx.clearRect(0, 0, W, H);
     var i, angles = [];
     for (i = 0; i < SPHERES; i++) angles.push(theta + (i * 2 * Math.PI) / SPHERES);
@@ -88,7 +92,12 @@
     if (!start) start = now;
     var t = Math.min(1, (now - start) / FADE_IN);
     var ease = 1 - Math.pow(1 - t, 3);
-    theta += SPEED;
+    // entrada: as esferas chegam do raio maior e giram mais rápido, depois se acomodam
+    var k = Math.min(1, (now - start) / 1400);
+    var e = 1 - Math.pow(1 - k, 3);
+    radiusNow = R * (1.45 - 0.45 * e);
+    speedNow = SPEED * (3.2 - 2.2 * e);
+    theta += speedNow;
     draw(ease);
     requestAnimationFrame(frame);
   }
