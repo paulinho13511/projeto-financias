@@ -1,0 +1,50 @@
+/* Tela de entrada: esferas 3D em CSS, formulário à direita (computador) ou abaixo (celular). */
+#lock{display:flex;padding:0;background:#050505;overflow:hidden}
+#lock .lk-shell{width:100%;min-height:100vh;min-height:100dvh;display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:24px;padding:24px;max-width:1200px;margin:0 auto;box-sizing:border-box}
+#lock .lk-stage{position:relative;height:min(520px,70vh);display:grid;place-items:center;overflow:hidden;animation:lkStageIn 1.4s cubic-bezier(.22,1,.36,1) both}
+#lock .lk-orbit{position:absolute;width:300px;height:300px;animation:lkSpin 14s linear infinite}
+#lock .lk-orbit.o2{width:240px;height:240px;animation-duration:10s;animation-direction:reverse}
+#lock .lk-orbit.o3{width:180px;height:180px;animation-duration:18s}
+#lock .lk-sphere{position:absolute;top:50%;left:50%;width:84px;height:84px;margin:-42px;border-radius:50%;
+  background:radial-gradient(circle at 32% 28%,#4a6fbf 0%,#1d3a72 35%,#0b1d3a 60%,#050a18 100%);
+  box-shadow:inset -10px -14px 26px rgba(0,0,0,.6),0 0 40px rgba(30,64,140,.35)}
+#lock .o1 .lk-sphere{transform:translateX(150px)}
+#lock .o2 .lk-sphere{width:64px;height:64px;margin:-32px;transform:translateX(120px)}
+#lock .o3 .lk-sphere{width:44px;height:44px;margin:-22px;transform:translateX(90px)}
+#lock .lk-panel{width:100%;max-width:400px;justify-self:center;display:grid;gap:14px;justify-items:center;animation:lkPanelIn .9s cubic-bezier(.22,1,.36,1) .7s both}
+#lock .lk-logo{width:112px;height:112px;animation:lkGlow 3.2s ease-in-out infinite}
+#lock .lk-logo img{display:block;width:100%;height:100%;filter:drop-shadow(0 0 22px rgba(167,139,250,.55)) drop-shadow(0 0 60px rgba(139,92,246,.35));transition:filter .3s}
+#lock .lk-logo:hover img{filter:drop-shadow(0 0 20px rgba(255,255,255,.5)) drop-shadow(0 0 70px rgba(167,139,250,.6))}
+#lock .lk-brand{font-size:26px;font-weight:800;margin-top:4px}
+#lock .lk-tag{margin:0;color:#d8dbe6;font-size:14px}
+#lock .lk-form{width:100%;display:grid;gap:12px;margin-top:8px}
+#lock .lk-fld{display:grid;gap:6px;font-size:13px;color:#8a8fa3}
+#lock .lk-fld input{width:100%;padding:14px;border-radius:14px;border:1px solid #1f2330;background:#0b0d13;color:#fff;font-size:16px;box-sizing:border-box}
+#lock .lk-fld input::placeholder{color:#4c5163}
+#lock .lk-fld input:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,.22)}
+#lock .lk-err{color:#f87171;font-size:13px;min-height:18px}
+#lock .lk-btn{width:100%;min-height:52px;border:0;border-radius:16px;background:linear-gradient(135deg,#8b5cf6,#c4b5fd);color:#fff;font-weight:700;font-size:16px;cursor:pointer;transition:box-shadow .3s,filter .3s}
+#lock .lk-btn:hover{box-shadow:0 0 30px rgba(196,181,253,.55),0 0 60px rgba(139,92,246,.35);filter:brightness(1.06)}
+#lock .lk-btn:disabled{opacity:.6;cursor:default}
+#lock .lk-foot{margin:4px 0 0;color:#8a8fa3;font-size:12.5px;text-align:center}
+@media(max-width:1100px){
+  #lock .lk-stage{height:min(420px,60vh)}
+  #lock .lk-orbit{width:240px;height:240px}#lock .lk-orbit.o2{width:200px;height:200px}#lock .lk-orbit.o3{width:140px;height:140px}
+  #lock .o1 .lk-sphere{transform:translateX(120px)}#lock .o2 .lk-sphere{transform:translateX(100px)}#lock .o3 .lk-sphere{transform:translateX(72px)}
+}
+@media(max-width:820px){
+  #lock .lk-shell{grid-template-columns:1fr;align-content:start;padding:16px;gap:8px;overflow-y:auto;height:100dvh;min-height:0}
+  #lock .lk-stage{height:150px}
+  #lock .lk-orbit{width:150px;height:150px}#lock .lk-orbit.o2{width:120px;height:120px}#lock .lk-orbit.o3{width:90px;height:90px}
+  #lock .lk-sphere{width:44px;height:44px;margin:-22px}
+  #lock .o2 .lk-sphere{width:36px;height:36px;margin:-18px}#lock .o3 .lk-sphere{width:26px;height:26px;margin:-13px}
+  #lock .o1 .lk-sphere{transform:translateX(72px)}#lock .o2 .lk-sphere{transform:translateX(58px)}#lock .o3 .lk-sphere{transform:translateX(40px)}
+  #lock .lk-logo{width:88px;height:88px}
+  #lock .lk-brand{font-size:22px}
+}
+@media(max-width:380px){#lock .lk-logo{width:76px;height:76px}}
+@keyframes lkSpin{to{transform:rotate(360deg)}}
+@keyframes lkStageIn{from{transform:scale(1.7)}to{transform:none}}
+@keyframes lkPanelIn{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+@keyframes lkGlow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.18)}}
+@media(prefers-reduced-motion:reduce){#lock .lk-orbit,#lock .lk-logo,#lock .lk-stage,#lock .lk-panel{animation:none}}
