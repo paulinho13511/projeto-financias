@@ -202,7 +202,7 @@ async function loadAcl(){
   if(error){list.innerHTML=`<div class="empty">Não foi possível carregar a lista.</div>`;return}
   list.innerHTML=data.length?data.map(r=>`
     <div class="row"><div class="rmain"><div class="t">${esc(r.email)}</div>
-    <div class="s">${r.is_admin?"Administrador":"Pode usar o app"}</div></div>
+    <div class="s">${r.is_admin?"Administrador":"Usuário"}</div></div>
     ${r.email===sessionUser.email.toLowerCase()?"":`<button class="ghost" data-adm="${esc(r.email)}" data-val="${r.is_admin?"0":"1"}">${r.is_admin?"Tirar admin":"Dar admin"}</button>`}
     ${r.is_admin?"":`<button class="ico" title="Remover acesso" data-rm="${esc(r.email)}">×</button>`}</div>`).join("")
     :`<div class="empty">Nenhum outro e-mail liberado</div>`;
@@ -230,8 +230,8 @@ $("aclForm").onsubmit=async e=>{
   const password=$("aclPw").value;
   if(password.length<10){showToast("A senha precisa ter pelo menos 10 caracteres");return}
   try{
-    await adminCall({action:"create",email,password,is_admin:$("aclAdmin").checked});
-    $("aclEmail").value="";$("aclPw").value="";$("aclAdmin").checked=false;
+    await adminCall({action:"create",email,password});
+    $("aclEmail").value="";$("aclPw").value="";
     showToast("Acesso criado. Envie o e-mail e a senha para a pessoa.");
     loadAcl();
   }catch(err){showToast(err.message||"Não foi possível criar o acesso")}
