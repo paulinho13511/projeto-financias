@@ -208,10 +208,12 @@ async function loadAcl(){
     :`<div class="empty">Nenhum outro e-mail liberado</div>`;
   list.querySelectorAll("[data-rm]").forEach(b=>b.onclick=async()=>{
     const em=b.dataset.rm;
-    if(!(await ask(`Remover o acesso de ${em}?`)))return;
-    const {error}=await sb.from("allowed_emails").delete().eq("email",em);
-    if(error){showToast("Não foi possível remover o acesso");return}
-    showToast("Acesso removido");
+    if(!(await ask(`Remover o acesso de ${em}? A conta de login dela será apagada.`)))return;
+    const guardar=await ask("Guardar um backup dos dados dessa pessoa antes de apagar?");
+    try{
+      await adminCall({action:"remove",email:em,keep_backup:guardar});
+      showToast(guardar?"Acesso removido. Backup guardado.":"Acesso removido");
+    }catch(err){showToast(err.message||"Não foi possível remover o acesso");return}
     loadAcl();
   });
   list.querySelectorAll("[data-adm]").forEach(b=>b.onclick=async()=>{
