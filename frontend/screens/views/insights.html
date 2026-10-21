@@ -1,0 +1,28 @@
+  <!-- INSIGHTS -->
+  <section class="view" id="v-ins">
+    <div class="card">
+      <h2>Despesas dos últimos 6 meses</h2>
+      <div class="hist" id="hist"></div>
+    </div>
+    <div class="card cmpCard">
+      <h2>Receitas × despesas (6 meses)</h2>
+      <div class="cmp" id="cmp"></div>
+      <div class="legend legendRow"><div><i style="background:#8b5cf6"></i>Receitas</div><div><i style="background:#f87171"></i>Despesas</div></div>
+    </div>
+    <div class="grid2" id="insBody"></div>
+    <div class="card">
+      <h2>Renda variável</h2>
+      <label class="chk"><input type="checkbox" id="varIncome"> Minha renda é variável (autônomo ou freelancer)</label>
+      <div class="muted" id="varInfo" style="font-size:14px;line-height:1.5"></div>
+    </div>
+    <div class="card" id="goalCard">
+      <h2>Metas e caixinhas</h2>
+      <form class="f" id="goalForm">
+        <input class="full" id="gName" placeholder="Nome (ex.: Reserva de emergência, Viagem)" required>
+        <input id="gTarget" type="number" step="0.01" min="1" placeholder="Valor final (R$)" required>
+        <input id="gDeadline" type="month" title="Prazo" required>
+        <button class="primary full" type="submit">Criar meta</button>
+      </form>
+      <div class="list" id="goalList" style="margin-top:14px"></div>
+    </div>
+  </section>

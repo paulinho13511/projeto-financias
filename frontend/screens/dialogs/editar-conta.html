@@ -1,0 +1,20 @@
+<div class="sheet" id="editSheet" hidden>
+  <div class="sheetbox">
+    <h2 style="font-size:17px;color:var(--text);text-transform:none;letter-spacing:0;margin:0">Editar conta</h2>
+    <form id="editForm" style="display:grid;gap:8px">
+      <input type="hidden" id="eId">
+      <input id="eName" placeholder="Nome" required>
+      <input id="eAmt" type="number" step="0.01" min="0.01" placeholder="Valor (R$)" required>
+      <input id="eDay" type="number" min="1" max="31" placeholder="Dia do vencimento">
+      <input id="eDate" type="date" hidden>
+      <select id="eEndType"><option value="forever">Para sempre</option><option value="until">Até um mês</option></select>
+      <input id="eEnd" type="month" hidden title="Último mês em que a conta aparece">
+      <select id="eCard"></select>
+      <select id="eCat"></select>
+      <label class="chk" id="eSubBox"><input type="checkbox" id="eSub"> É assinatura</label>
+      <div class="muted" id="eNote" style="font-size:13px" hidden></div>
+      <button type="submit" style="background:var(--accent);color:#fff;border:0;border-radius:12px;padding:0 16px;font-weight:600;min-height:46px">Salvar alterações</button>
+    </form>
+    <button class="close" id="eClose" type="button">Cancelar</button>
+  </div>
+</div>

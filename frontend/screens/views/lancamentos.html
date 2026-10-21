@@ -1,0 +1,60 @@
+  <!-- LANÇAMENTOS -->
+  <section class="view" id="v-lanc">
+    <div class="card">
+      <h2>Novo lançamento</h2>
+      <div class="chips" id="quick" style="margin-bottom:12px"></div>
+      <form class="f" id="txForm">
+        <div class="seg full">
+          <label><input type="radio" name="type" value="expense" checked><span>Despesa</span></label>
+          <label><input type="radio" name="type" value="income"><span>Receita</span></label>
+        </div>
+        <input class="full" id="txDesc" placeholder="Descrição" required>
+        <input id="txAmt" type="number" step="0.01" min="0.01" placeholder="Valor (R$)" required>
+        <input id="txDate" type="date" required>
+        <select class="full" id="txCat"></select>
+        <select class="full" id="txCard"></select>
+        <select class="full" id="txParc">
+          <option value="avista">À vista</option>
+          <option value="parc">Parcelado</option>
+        </select>
+        <div class="full" id="txParcBox" hidden style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <input id="txParcels" type="number" min="2" max="120" placeholder="Nº de parcelas">
+          <div class="muted" id="txParcInfo" style="align-self:center"></div>
+        </div>
+        <button class="primary full" type="submit">Adicionar lançamento</button>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Histórico</h2>
+      <div class="search">
+        <input id="search" placeholder="Buscar por descrição ou categoria">
+        <select id="filterType">
+          <option value="all">Todas</option>
+          <option value="expense">Despesas</option>
+          <option value="income">Receitas</option>
+        </select>
+      </div>
+      <div class="filters">
+        <input type="date" id="fFrom" title="De">
+        <input type="date" id="fTo" title="Até">
+        <select id="fSort" aria-label="Ordenar">
+          <option value="recent">Mais recentes</option>
+          <option value="high">Maior valor</option>
+          <option value="low">Menor valor</option>
+        </select>
+      </div>
+      <div class="chips" id="fCards" style="margin-top:8px"></div>
+      <div id="feed"></div>
+    </div>
+    <div class="card">
+      <h2>Exportar e importar</h2>
+      <div class="btnrow">
+        <button class="ghost" id="csvBtn" type="button">Baixar CSV do mês</button>
+        <button class="ghost" id="pdfBtn" type="button">Imprimir / salvar PDF</button>
+      </div>
+      <p class="muted" style="margin:16px 0 8px;font-size:13px">Importar extrato do banco (.ofx ou .csv). Você revisa antes de salvar.</p>
+      <input type="file" id="impFile" accept=".ofx,.csv,text/csv" style="width:100%">
+      <div id="impBox" hidden></div>
+    </div>
+    <div id="printArea"></div>
+  </section>

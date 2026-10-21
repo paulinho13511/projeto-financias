@@ -1,0 +1,40 @@
+  <!-- INÍCIO -->
+  <section class="view on" id="v-inicio">
+    <div class="hero">
+      <div class="lbl">Saldo do mês</div>
+      <div class="big" id="balance"></div>
+      <div class="pills">
+        <div class="pill"><span class="pic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span><div style="min-width:0"><div class="lb">Receitas</div><div class="v" id="inc"></div></div></div>
+        <div class="pill"><span class="pic out"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg></span><div style="min-width:0"><div class="lb">Despesas</div><div class="v" id="exp"></div></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chartHead">
+        <div><small class="muted" id="chartLabel">Gastos acumulados no mês</small><b id="chartTotal"></b></div>
+      </div>
+      <div class="muted" id="perDay" style="font-size:13px;margin:-2px 0 8px"></div>
+      <div id="spendChart" style="touch-action:pan-y;cursor:pointer"></div>
+      <div class="axis" id="chartAxis"></div>
+    </div>
+
+    <div class="nextcard card-glow" id="nextBill"></div>
+
+    <div class="card">
+      <h2>Lembretes de contas · 7 dias</h2>
+      <div class="list" id="reminders"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>Prévia de notificações</h2>
+        <div class="list" id="notifs"></div>
+        <div style="margin-top:14px"><button class="ghost" id="notifBtn">Ativar notificações</button></div>
+        <p class="muted" style="margin-top:8px">Esta é a prévia dos avisos. Com o app fechado, os avisos de contas e cartões chegam pelo envio automático, quando ele está ativo.</p>
+      </div>
+      <div class="card">
+        <h2>Últimos lançamentos</h2>
+        <div class="list" id="recent"></div>
+      </div>
+    </div>
+  </section>
