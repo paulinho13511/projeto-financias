@@ -380,6 +380,38 @@ body.blur-values .nx-amt {
 }
 @media(prefers-reduced-motion:reduce){.wave{animation:none}}
 
+/* Tela de entrada: tamanhos por aparelho (celular, tablet, computador) */
+@media(max-width:480px){
+  .authWrap{width:min(420px,calc(100% - 32px))}
+  .brandGlow{width:240px;height:240px}
+  .brandLogo{width:124px;height:124px;border-radius:28px}
+  .brandLogoWrap{border-radius:28px}
+  .brandName{font-size:19px}
+  .authCard{padding:20px}
+  .wave{height:120px}
+}
+@media(min-width:481px) and (max-width:1024px){
+  .authWrap{width:min(480px,calc(100% - 48px))}
+  .brandGlow{width:300px;height:300px}
+  .brandLogo{width:156px;height:156px;border-radius:36px}
+  .brandLogoWrap{border-radius:36px}
+  .authCard{padding:26px}
+  .wave{height:160px}
+}
+@media(min-width:1025px){
+  .authWrap{width:min(440px,calc(100% - 48px))}
+  .wave{height:200px}
+}
+/* Celulares baixos (ex.: 360 x 640): diminui a altura para caber sem rolar */
+@media(max-width:480px) and (max-height:700px){
+  .authWrap{gap:10px}
+  .brandGlow{width:200px;height:200px}
+  .brandLogo{width:96px;height:96px;border-radius:22px}
+  .brandLogoWrap{border-radius:22px}
+  .authCard{padding:16px}
+  .wave{height:90px}
+}
+
 /* v23: layout com navegação lateral no computador e grade de cards na tela inicial */
 .side{display:none}
 body.locked .side{display:none!important}
