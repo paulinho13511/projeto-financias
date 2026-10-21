@@ -373,11 +373,12 @@ body.blur-values .nx-amt {
 
 /* v18: login em tela cheia, logo no centro, fundo com movimento de câmera */
 .lock{overflow:hidden;background:var(--bg)}
-/* v21: foto da cidade com voo de câmera em loop */
-.authBg{position:absolute;inset:-4%;z-index:0;pointer-events:none;background:url(assets/auth-bg.jpg) center/cover no-repeat,#0f1d33;animation:camPan 30s ease-in-out infinite}
-.authBg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,18,34,.25),rgba(10,18,34,.72))}
-
-@keyframes camPan{0%{transform:translate3d(-4%,2%,0) scale(1.12)}25%{transform:translate3d(2%,-2%,0) scale(1.2)}50%{transform:translate3d(5%,3%,0) scale(1.14)}75%{transform:translate3d(-1%,-3%,0) scale(1.22)}100%{transform:translate3d(-4%,2%,0) scale(1.12)}}
+/* Fundo: ondas animadas no topo e na base, em azul marinho e preto (paleta do app) */
+.authBg{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:radial-gradient(ellipse at 50% 35%,#101a33 0%,var(--bg) 70%)}
+.wave{position:absolute;left:0;width:200%;height:200px;animation:waveMove 18s linear infinite}
+.waveTop{top:0}
+.waveBottom{bottom:0;animation-duration:24s;animation-direction:reverse}
+@keyframes waveMove{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .authWrap{position:relative;z-index:1;width:min(420px,100%);grid-template-columns:1fr;gap:18px;justify-items:center}
 .authBrand{background:none;border:0;min-height:0;padding:0;gap:10px;justify-items:center;overflow:visible}
 .brandGlow{width:340px;height:340px}
@@ -392,7 +393,7 @@ body.blur-values .nx-amt {
   .brandLogoWrap{border-radius:34px}
   .brandGlow{width:280px;height:280px}
 }
-@media(prefers-reduced-motion:reduce){.authBg{animation:none}}
+@media(prefers-reduced-motion:reduce){.wave{animation:none}}
 
 /* v23: layout com navegação lateral no computador e grade de cards na tela inicial */
 .side{display:none}
@@ -830,7 +831,16 @@ body{background:var(--bg)}
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <div class="lock" id="lock" hidden>
-  <div class="authBg" aria-hidden="true"></div>
+  <div class="authBg" aria-hidden="true">
+    <svg class="wave waveTop" viewBox="0 0 2880 200" preserveAspectRatio="none">
+      <path fill="rgba(139,92,246,.10)" transform="translate(0,28)" d="M0,120 C240,50 480,170 720,110 C960,50 1200,170 1440,120 C1680,50 1920,170 2160,110 C2400,50 2640,170 2880,120 L2880,0 L0,0 Z"/>
+      <path fill="#14264a" d="M0,110 C240,160 480,40 720,100 C960,160 1200,40 1440,110 C1680,160 1920,40 2160,100 C2400,160 2640,40 2880,110 L2880,0 L0,0 Z"/>
+    </svg>
+    <svg class="wave waveBottom" viewBox="0 0 2880 200" preserveAspectRatio="none">
+      <path fill="rgba(139,92,246,.08)" transform="translate(0,-26)" d="M0,80 C240,150 480,20 720,90 C960,150 1200,20 1440,80 C1680,150 1920,20 2160,90 C2400,150 2640,20 2880,80 L2880,200 L0,200 Z"/>
+      <path fill="#0e1b35" d="M0,100 C240,40 480,170 720,110 C960,40 1200,170 1440,100 C1680,40 1920,170 2160,110 C2400,40 2640,170 2880,100 L2880,200 L0,200 Z"/>
+    </svg>
+  </div>
   <div class="authWrap">
     <section class="authBrand" aria-hidden="true">
       <div class="brandGlow"></div>
