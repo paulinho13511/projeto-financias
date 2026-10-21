@@ -68,13 +68,14 @@ function save(){
   if(dbConflict){showToast("Dados alterados em outro aparelho. Recarregue a página antes de continuar.");return}
   const snapshot=JSON.parse(JSON.stringify(db));
   const email=sessionUser.email;
+  const uid=sessionUser.id;
   writeChain=writeChain
     .then(async()=>{
       const expected=dbUpdatedAt;   // lido aqui, dentro da fila, para refletir a gravação anterior
       const nowIso=new Date().toISOString();
       const {data,error}=await sb.from("app_data")
         .update({data:snapshot,updated_by:email,updated_at:nowIso})
-        .eq("id",1)
+        .eq("user_id",uid)
         .eq("updated_at",expected)
         .select("updated_at");
       if(error)throw error;
@@ -96,11 +97,20 @@ async function fetchAccess(email){
   if(error)throw error;
   return data; // null = este e-mail não tem acesso
 }
-async function fetchData(){
-  const {data,error}=await sb.from("app_data").select("data,updated_at").eq("id",1).single();
+// Cada usuário tem a própria linha em app_data; a primeira entrada cria uma linha vazia.
+async function fetchData(user){
+  const {data:row,error}=await sb.from("app_data").select("data,updated_at").eq("user_id",user.id).maybeSingle();
   if(error)throw error;
-  dbUpdatedAt=data.updated_at;dbConflict=false;
-  const d=data.data||{};
+  let rec=row;
+  if(!rec){
+    const ins=await sb.from("app_data")
+      .insert({user_id:user.id,data:{},updated_by:user.email,updated_at:new Date().toISOString()})
+      .select("data,updated_at").single();
+    if(ins.error)throw ins.error;
+    rec=ins.data;
+  }
+  dbUpdatedAt=rec.updated_at;dbConflict=false;
+  const d=rec.data||{};
   d.tx=d.tx||[];d.bills=d.bills||[];d.budgets=d.budgets||{};d.cards=d.cards||[];d.goals=d.goals||[];d.settings=d.settings||{};
   return d;
 }
@@ -116,7 +126,7 @@ function showLock(){
 async function startSession(user){
   const access=await fetchAccess(user.email.toLowerCase());
   if(!access)throw new Error("sem-acesso");
-  const data=await fetchData();
+  const data=await fetchData(user);
   db=data;sessionUser=user;isAdmin=!!access.is_admin;
   enterApp();
 }
@@ -193,6 +203,7 @@ async function loadAcl(){
   list.innerHTML=data.length?data.map(r=>`
     <div class="row"><div class="rmain"><div class="t">${esc(r.email)}</div>
     <div class="s">${r.is_admin?"Administrador":"Pode usar o app"}</div></div>
+    ${r.email===sessionUser.email.toLowerCase()?"":`<button class="ghost" data-adm="${esc(r.email)}" data-val="${r.is_admin?"0":"1"}">${r.is_admin?"Tirar admin":"Dar admin"}</button>`}
     ${r.is_admin?"":`<button class="ico" title="Remover acesso" data-rm="${esc(r.email)}">×</button>`}</div>`).join("")
     :`<div class="empty">Nenhum outro e-mail liberado</div>`;
   list.querySelectorAll("[data-rm]").forEach(b=>b.onclick=async()=>{
@@ -201,6 +212,13 @@ async function loadAcl(){
     const {error}=await sb.from("allowed_emails").delete().eq("email",em);
     if(error){showToast("Não foi possível remover o acesso");return}
     showToast("Acesso removido");
+    loadAcl();
+  });
+  list.querySelectorAll("[data-adm]").forEach(b=>b.onclick=async()=>{
+    const em=b.dataset.adm, val=b.dataset.val==="1";
+    const {error}=await sb.from("allowed_emails").update({is_admin:val}).eq("email",em);
+    if(error){showToast("Não foi possível alterar a permissão");return}
+    showToast(val?"Agora pode adicionar pessoas":"Permissão de administrador removida");
     loadAcl();
   });
 }
@@ -212,8 +230,8 @@ $("aclForm").onsubmit=async e=>{
   const password=$("aclPw").value;
   if(password.length<10){showToast("A senha precisa ter pelo menos 10 caracteres");return}
   try{
-    await adminCall({action:"create",email,password});
-    $("aclEmail").value="";$("aclPw").value="";
+    await adminCall({action:"create",email,password,is_admin:$("aclAdmin").checked});
+    $("aclEmail").value="";$("aclPw").value="";$("aclAdmin").checked=false;
     showToast("Acesso criado. Envie o e-mail e a senha para a pessoa.");
     loadAcl();
   }catch(err){showToast(err.message||"Não foi possível criar o acesso")}

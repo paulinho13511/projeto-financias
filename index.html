@@ -798,6 +798,7 @@ body{background:var(--bg)}
     <form id="aclForm" style="display:grid;gap:8px">
       <input type="email" id="aclEmail" placeholder="E-mail da pessoa" required>
       <input type="password" id="aclPw" placeholder="Senha inicial (mín. 10 caracteres)" autocomplete="new-password" required>
+      <label class="chk"><input type="checkbox" id="aclAdmin"> Pode adicionar pessoas (administrador)</label>
       <button type="submit" style="background:var(--accent);color:#fff;border:0;border-radius:12px;padding:0 16px;font-weight:600;min-height:46px">Criar acesso</button>
     </form>
     <div class="list" id="aclList"></div>
