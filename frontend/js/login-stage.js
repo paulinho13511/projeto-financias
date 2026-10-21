@@ -10,6 +10,7 @@
   var TAIL_STEPS = 60;
   var NAVY = [30, 58, 138];
   var WHITE = [255, 255, 255];
+  var PURPLE = [139, 92, 246];   // cor do ícone
   var W = 0, H = 0, R = 0, RS = 0, theta = 0, dpr = 1;
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -35,7 +36,7 @@
       Math.round(a[2] + (b[2] - a[2]) * t) + ")";
   }
 
-  function drawTail(base) {
+  function drawTail(base, from) {
     // a cauda fica atrás da esfera: ângulos menores que o da esfera
     for (var k = TAIL_STEPS; k > 0; k--) {
       var t0 = k / TAIL_STEPS;          // 1 = ponta da cauda, 0 = junto da esfera
@@ -46,7 +47,7 @@
       ctx.beginPath();
       ctx.moveTo(p1[0], p1[1]);
       ctx.lineTo(p2[0], p2[1]);
-      ctx.strokeStyle = mix(NAVY, WHITE, t0);
+      ctx.strokeStyle = mix(from, WHITE, t0);
       ctx.globalAlpha = 0.15 + 0.8 * fade;
       ctx.lineWidth = Math.max(0.6, RS * 1.6 * (0.25 + 0.75 * fade));
       ctx.lineCap = "round";
@@ -55,12 +56,19 @@
     ctx.globalAlpha = 1;
   }
 
-  function drawSphere(p) {
+  function drawSphere(p, purple) {
     var g = ctx.createRadialGradient(p[0] - RS * 0.35, p[1] - RS * 0.35, RS * 0.1, p[0], p[1], RS);
-    g.addColorStop(0, "#4a6fbf");
-    g.addColorStop(0.35, "#1d3a72");
-    g.addColorStop(0.6, "#0b1d3a");
-    g.addColorStop(1, "#050a18");
+    if (purple) {
+      g.addColorStop(0, "#d4c2ff");
+      g.addColorStop(0.35, "#8b5cf6");
+      g.addColorStop(0.6, "#4c1d95");
+      g.addColorStop(1, "#1e0b3d");
+    } else {
+      g.addColorStop(0, "#4a6fbf");
+      g.addColorStop(0.35, "#1d3a72");
+      g.addColorStop(0.6, "#0b1d3a");
+      g.addColorStop(1, "#050a18");
+    }
     ctx.beginPath();
     ctx.arc(p[0], p[1], RS, 0, Math.PI * 2);
     ctx.fillStyle = g;
@@ -88,9 +96,9 @@
     for (var n = 0; n < SPHERES; n++) v.push(point(theta + (n * 2 * Math.PI) / SPHERES));
     for (var m = 0; m < SPHERES; m++) drawLink(v[m], v[(m + 1) % SPHERES]);
     for (var i = 0; i < SPHERES; i++) {
-      drawTail(theta + (i * 2 * Math.PI) / SPHERES);
+      drawTail(theta + (i * 2 * Math.PI) / SPHERES, i === 0 ? PURPLE : NAVY);
     }
-    for (var j = 0; j < SPHERES; j++) drawSphere(v[j]);
+    for (var j = 0; j < SPHERES; j++) drawSphere(v[j], j === 0);
   }
 
   function loop() {
