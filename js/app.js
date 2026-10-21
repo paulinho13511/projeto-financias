@@ -170,7 +170,7 @@ $("lockNow").onclick=()=>lockApp();
 
 /* ---------- chamadas de administrador (função segura no Supabase) ---------- */
 async function adminCall(body){
-  const {data,error}=await sb.functions.invoke("admin-users",{body});
+  const {data,error}=await sb.functions.invoke("hyper-api",{body});
   if(error){
     let msg="Não foi possível concluir";
     try{const j=await error.context.json();if(j&&j.error)msg=j.error}catch(e){}
