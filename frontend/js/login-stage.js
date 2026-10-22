@@ -34,28 +34,31 @@
     return [W / 2 + radiusNow * Math.cos(a), H / 2 + radiusNow * Math.sin(a)];
   }
 
+  var GRAY = [200, 205, 215];   // gradação de cinza do rastro até desaparecer
   function drawTail(a, color, alpha) {
-    // cilindro de largura constante atrás da esfera (sentido oposto ao movimento),
-    // com ponta arredondada e que apaga aos poucos, como na referência
+    // rastro suave atrás da esfera (sentido oposto ao movimento): várias camadas de
+    // largura decrescente com pouca opacidade, para não ter borda dura
     var dx = Math.sin(a), dy = -Math.cos(a);
     var p = center(a);
     var L = RS * TAIL;
     var tx = p[0] + dx * L, ty = p[1] + dy * L;
-    var hw = RS * 0.95;                       // meia largura = raio da esfera
-    var px = -dy * hw, py = dx * hw;
     var g = ctx.createLinearGradient(p[0], p[1], tx, ty);
-    g.addColorStop(0, rgba(color, 0.95 * alpha));
-    g.addColorStop(0.6, rgba(color, 0.5 * alpha));
-    g.addColorStop(1, rgba(WHITE, 0));
-    ctx.beginPath();
-    ctx.moveTo(p[0] + px, p[1] + py);
-    ctx.lineTo(tx + px, ty + py);
-    var angP = Math.atan2(py, px);             // perpendicular; a ponta fica no sentido de d
-    ctx.arc(tx, ty, hw, angP, angP - Math.PI, true);
-    ctx.lineTo(p[0] - px, p[1] - py);
-    ctx.closePath();
-    ctx.fillStyle = g;
-    ctx.fill();
+    g.addColorStop(0, rgba(color, 0.9 * alpha));
+    g.addColorStop(0.35, rgba(GRAY, 0.55 * alpha));
+    g.addColorStop(0.75, rgba(GRAY, 0.18 * alpha));
+    g.addColorStop(1, rgba(GRAY, 0));
+    ctx.lineCap = "round";
+    ctx.strokeStyle = g;
+    for (var i = 0; i < 14; i++) {
+      var hw = RS * (1.0 - i * 0.065);      // meia largura da camada
+      ctx.lineWidth = hw * 2;
+      ctx.globalAlpha = 0.1;
+      ctx.beginPath();
+      ctx.moveTo(p[0], p[1]);
+      ctx.lineTo(tx, ty);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
   }
 
   function drawSphere(p, purple, alpha) {
