@@ -19,6 +19,13 @@ const dueOf=(b,ym)=>{
   const[y,m]=parts(ym);return ymd(new Date(y,m-1,Math.min(b.day,dim(ym))));
 };
 const monthDiff=(a,b)=>{const[ay,am]=parts(a),[by,bm]=parts(b);return (by-ay)*12+(bm-am)};
+// Parcelamento em centavos exatos: a última parcela (b.last) absorve a diferença do arredondamento
+function splitParcel(total,n){
+  const p=Math.round(total/n*100)/100;
+  return{p,last:Math.round((total-p*(n-1))*100)/100};
+}
+const parcelAmt=(b,i)=>b.last!=null&&i===b.parcels-1?b.last:b.amount;
+const billTotal=b=>b.kind==="parcelada"?Math.round((b.amount*(b.parcels-1)+(b.last!=null?b.last:b.amount))*100)/100:b.amount;
 // Ocorrências de contas num mês: mensal (sempre), parcelada (1/12, 2/12...) ou única (uma vez)
 function occ(ym){
   const out=[];
@@ -27,7 +34,7 @@ function occ(ym){
     if(kind==="unica"){if(mKey(b.date)===ym)out.push({b,amount:b.amount,label:"Única"});return}
     if(kind==="parcelada"){
       const i=monthDiff(b.start,ym);
-      if(i>=0&&i<b.parcels)out.push({b,amount:b.amount,label:`${i+1}/${b.parcels}`});
+      if(i>=0&&i<b.parcels)out.push({b,amount:parcelAmt(b,i),label:`${i+1}/${b.parcels}`});
       return;
     }
     if((!b.start||ym>=b.start)&&(!b.end||ym<=b.end)){
@@ -42,6 +49,12 @@ function remainingAfter(b,ym){
   const i=monthDiff(b.start,ym);
   if(i<0)return b.parcels;
   return Math.max(0,b.parcels-(i+1));
+}
+// Valor que ainda falta pagar depois do mês informado (as parcelas restantes sempre incluem a última)
+function remainingValue(b,ym){
+  const k=remainingAfter(b,ym);
+  if(!k)return 0;
+  return b.last!=null?Math.round((b.amount*(k-1)+b.last)*100)/100:Math.round(k*b.amount*100)/100;
 }
 const daysBetween=(a,b)=>{const[ay,am,ad]=parts(a),[by,bm,bd]=parts(b);return Math.round((Date.UTC(by,bm-1,bd)-Date.UTC(ay,am-1,ad))/864e5)};
 const monthLabel=ym=>{const[y,m]=parts(ym);return new Date(y,m-1,1).toLocaleDateString("pt-BR",{month:"long",year:"numeric"})};
@@ -155,9 +168,10 @@ $("lockForm").onsubmit=async e=>{
   const wait=lockedUntil-Date.now();
   if(wait>0){$("lockErr").textContent=`Muitas tentativas. Aguarde ${Math.ceil(wait/1000)} s.`;return}
   $("lockBtn").disabled=true;
+  let authFailed=false;   // true = o erro veio da conferência de e-mail e senha
   try{
     const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
-    if(error)throw error;
+    if(error){authFailed=true;throw error}
     await startSession(data.user);
     fails=0;
   }catch(err){
@@ -166,10 +180,16 @@ $("lockForm").onsubmit=async e=>{
       try{await sb.auth.signOut()}catch(_){}
       $("lockErr").textContent="Este e-mail ainda não tem acesso. Peça ao administrador para liberar.";
     }
-    else{
+    else if(authFailed&&(err.code==="invalid_credentials"||err.status===400)){
+      // só senha/e-mail errados contam para o bloqueio de tentativas
       fails++;
       if(fails>=5){lockedUntil=Date.now()+30000;fails=0;$("lockErr").textContent="Muitas tentativas. Aguarde 30 s."}
       else $("lockErr").textContent="E-mail ou senha incorretos.";
+    }
+    else{
+      // falha de rede ou da nuvem: não é culpa da senha e não deixa sessão pela metade
+      try{await sb.auth.signOut()}catch(_){}
+      $("lockErr").textContent="Não foi possível conectar à nuvem. Tente entrar de novo.";
     }
   }finally{
     $("lockBtn").disabled=false;
@@ -382,8 +402,11 @@ function countUp(el,to,duration){
   };
   requestAnimationFrame(step);
 }
+// As animações de entrada só tocam ao abrir uma tela ou trocar de mês; marcar uma conta como
+// paga, por exemplo, atualiza as listas sem fazê-las "pular" de novo.
+let animNow=false, replayAnim=false;
 function animateBars(){
-  if(reduceMotion)return;
+  if(reduceMotion||!animNow)return;
   document.querySelectorAll(".bar i,.hbar").forEach(bar=>{
     const h=bar.style.height, w=bar.style.width;
     bar.style.transition="none";
@@ -398,7 +421,10 @@ function animateBars(){
 }
 function stagger(el,step){
   if(reduceMotion||!el)return;
-  [...el.children].forEach((child,i)=>{
+  const kids=[...el.children];
+  kids.forEach(child=>{child.style.animation="none"});
+  void el.offsetWidth;   // reinicia a animação mesmo em itens que já tinham tocado
+  kids.forEach((child,i)=>{
     child.style.animation="enter .42s cubic-bezier(.22,1,.36,1) "+(Math.min(i,12)*(step||45))+"ms both";
   });
 }
@@ -451,16 +477,13 @@ function renderInicio(){
   countUp($("inc"),t.inc);
   countUp($("exp"),t.exp);
 
-  const cur=mKey(today());
-  const rem=occ(cur).map(o=>({...o,st:billStatus(o.b,cur)}))
-    .filter(x=>x.st.key!=="paid"&&x.st.d<=7)
-    .sort((a,b)=>a.st.d-b.st.d);
+  const rem=openBills().filter(x=>x.st.d<=7);
   const cards=cardAlerts();
-  const billRows=rem.map(({b,st,amount,label})=>`
+  const billRows=rem.map(({b,st,amount,label,ym})=>`
     <div class="row">
       <div class="rmain"><div class="t">${esc(b.name)}<span class="tag">${label}</span><span class="tag ${st.cls}">${st.label}</span></div>
       <div class="s">Vence em ${fmtDate(st.due,true)} · ${money(amount)}</div></div>
-      <button class="ghost" data-act="togglePaid" data-id="${b.id}" data-ym="${cur}">Marcar paga</button>
+      <button class="ghost" data-act="togglePaid" data-id="${b.id}" data-ym="${ym}">Marcar paga</button>
     </div>`).join("");
   const cardRows=cards.map(c=>`
     <div class="row">
@@ -541,13 +564,20 @@ window.addEventListener("pointermove",e=>{if(chartDrag)chartPick(e)});
 window.addEventListener("pointerup",()=>{chartDrag=false});
 
 
-function renderNext(){
+// Contas em aberto do mês atual e do seguinte, da mais urgente para a mais distante
+// (assim o vencimento do dia 1 ou 2 não some nos últimos dias do mês)
+function openBills(){
   const cur=mKey(today());
-  const list=occ(cur).map(o=>({...o,st:billStatus(o.b,cur)}))
-    .filter(x=>x.st.key!=="paid").sort((a,b)=>a.st.d-b.st.d);
+  return [cur,shiftMonth(cur,1)]
+    .flatMap(ym=>occ(ym).map(o=>({...o,ym,st:billStatus(o.b,ym)})))
+    .filter(x=>x.st.key!=="paid")
+    .sort((a,b)=>a.st.d-b.st.d);
+}
+function renderNext(){
+  const list=openBills();
   const el=$("nextBill");
   if(!list.length){
-    el.innerHTML=`<div class="muted">Próxima conta</div><div class="nx-empty">Nenhuma conta em aberto neste mês</div>`;
+    el.innerHTML=`<div class="muted">Próxima conta</div><div class="nx-empty">Nenhuma conta em aberto</div>`;
     return;
   }
   const {b,st,amount,label}=list[0];
@@ -564,7 +594,7 @@ function renderContas(){
   const rows=occ(sel).map(({b,amount,label})=>{
     const st=billStatus(b,sel);
     total+=amount;if(st.key==="paid")paid+=amount;
-    const compra=b.kind==="parcelada"?` · compra de ${money(b.amount*b.parcels)}`:"";
+    const compra=b.kind==="parcelada"?` · compra de ${money(billTotal(b))}`:"";
     return `<div class="row">
       <div class="rmain"><div class="t">${esc(b.name)}<span class="tag">${label}</span><span class="tag ${st.cls}">${st.label}</span></div>
       <div class="s">${money(amount)} · vence ${fmtDate(st.due)}${compra} · ${esc(b.category)}</div></div>
@@ -574,7 +604,7 @@ function renderContas(){
         <button class="ico" title="Excluir" data-act="delBill" data-id="${b.id}">×</button>
       </div></div>`;
   }).join("");
-  const debt=db.bills.reduce((s,b)=>s+remainingAfter(b,sel)*b.amount,0);
+  const debt=db.bills.reduce((s,b)=>s+remainingValue(b,sel),0);
   $("billsList").innerHTML=db.bills.length
     ?`<div class="row" style="background:var(--accent);color:var(--ink)"><div class="t">Total do mês</div><div class="amt">${money(paid)} pagos de ${money(total)}</div></div>${rows}
       <div class="row"><div class="t">Parcelamentos a pagar depois deste mês</div><div class="amt">${money(debt)}</div></div>`
@@ -687,7 +717,15 @@ function renderIns(){
     </div>`;
 }
 
+const STAGGERS=[["reminders"],["notifs"],["recent"],["billsList"],["catList"],["top"],["insBody",80],["calGrid",10]];
+function playEnter(){
+  animNow=true;
+  STAGGERS.forEach(([id,step])=>stagger($(id),step));
+  animateBars();
+  animNow=false;
+}
 function renderAll(){
+  animNow=replayAnim;
   populateMonths();
   renderCardChips();
   renderInicio();
@@ -702,14 +740,8 @@ function renderAll(){
   renderCards();
   populateCardSelects();
   renderV13();
-  stagger($("reminders"));
-  stagger($("notifs"));
-  stagger($("recent"));
-  stagger($("billsList"));
-  stagger($("catList"));
-  stagger($("top"));
-  stagger($("insBody"),80);
-  stagger($("calGrid"),10);
+  animNow=false;
+  if(replayAnim){replayAnim=false;playEnter()}
 }
 
 function renderCards(){
@@ -758,6 +790,7 @@ function go(v){
   $("pageTitle").textContent=TITLES[v]||"Início";
   $("menu").hidden=true;
   window.scrollTo({top:0,behavior:"auto"});
+  if(db)playEnter();
   if(v==="metas")requestAnimationFrame(()=>$("goalCard").scrollIntoView({block:"start",behavior:"smooth"}));
 }
 document.querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>go(b.dataset.nav));
@@ -767,7 +800,7 @@ $("menuBtn").onclick=()=>{$("menu").hidden=false};
 $("menuClose").onclick=()=>{$("menu").hidden=true};
 $("menu").onclick=e=>{if(e.target.id==="menu")$("menu").hidden=true};
 
-$("month").onchange=e=>{sel=e.target.value;renderAll()};
+$("month").onchange=e=>{sel=e.target.value;replayAnim=true;renderAll()};
 $("search").oninput=renderFeed;
 $("filterType").onchange=renderFeed;
 
@@ -787,7 +820,10 @@ $("txForm").onsubmit=e=>{
   if($("txParc").value==="parc"){
     if(type==="income"){showToast("Parcelamento só vale para despesas");return}
     const n=Math.min(120,Math.max(2,parseInt($("txParcels").value,10)));
-    db.bills.push({id:uid(),kind:"parcelada",name:desc,amount:Math.round(amount/n*100)/100,parcels:n,start:mKey(date),day:parseInt(date.slice(8,10),10),category,card,paid:[]});
+    const {p,last}=splitParcel(amount,n);
+    const pb={id:uid(),kind:"parcelada",name:desc,amount:p,parcels:n,start:mKey(date),day:parseInt(date.slice(8,10),10),category,card,paid:[]};
+    if(last!==p)pb.last=last;
+    db.bills.push(pb);
     showToast(`Compra parcelada em ${n}x cadastrada`);
   }else{
     db.tx.push({id:uid(),type,desc,amount,date,category,card,created:Date.now()});
@@ -1223,7 +1259,9 @@ $("editForm").onsubmit=e=>{
   if(!b)return;
   const kind=b.kind||"mensal";
   b.name=$("eName").value.trim();
-  b.amount=parseFloat($("eAmt").value);
+  const novo=parseFloat($("eAmt").value);
+  if(novo!==b.amount)delete b.last;   // valor da parcela mudou: o ajuste de centavos não vale mais
+  b.amount=novo;
   b.category=$("eCat").value;
   b.card=$("eCard").value||null;
   if(kind==="unica"){b.date=$("eDate").value}

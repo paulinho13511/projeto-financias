@@ -19,7 +19,15 @@ curl -X POST https://htkrdndcbfnngzlghcjj.supabase.co/functions/v1/send-reminder
 ```
 A resposta mostra `candidates` (avisos calculados) e `sent` (enviados agora).
 
+Para só ver o que seria enviado, sem enviar nem registrar nada, mande o corpo `{"dry": true}`.
+
 ## Regras
-- Mesmas datas do app: fechamento em até 3 dias, vencimento em até 3 dias, conta vencendo em até 2 dias ou atrasada.
-- Cada aviso é enviado uma vez (`reminder_log`).
+- Cada pessoa recebe só os avisos dos próprios dados (`app_data.user_id`), nos próprios aparelhos.
+- Fechamento do cartão em até 3 dias; vencimento da fatura 3, 2 e 1 dia antes e no dia; conta sem cartão 2 e 1 dia antes e no dia.
+- Contas e faturas atrasadas avisam todo dia por até 7 dias.
+- Contas do mês seguinte entram (vencimento do dia 1 ou 2 avisado nos últimos dias do mês).
+- Compras no cartão não geram aviso de conta: são pagas pela fatura.
+- Todo aviso informa quanto ainda falta pagar no mês; no dia 1 sai um resumo do mês.
+- Cada aviso é enviado uma vez por aparelho (`reminder_log`); aparelho que falhou tenta de novo no dia seguinte.
 - Só são enviados avisos para e-mails que ainda estão em `allowed_emails`.
+- Testes da lógica: `node --experimental-strip-types --test supabase/functions/send-reminders/logic.test.ts`.

@@ -1,8 +1,8 @@
-// Cálculo dos avisos de contas e cartões. Espelha as regras de index.html / js/app.js
-// (occ, dueOf, billStatus, faturaOf, currentCloseYm, cardAlerts). Função pura: sem I/O.
+// Cálculo dos avisos de contas e cartões. Espelha as regras de js/app.js
+// (occ, dueOf, faturaOf, currentCloseYm, cardAlerts). Função pura: sem I/O.
 
 export interface Bill {
-  id: string; kind?: string; name: string; amount: number; day?: number; date?: string;
+  id: string; kind?: string; name: string; amount: number; last?: number; day?: number; date?: string;
   start?: string; end?: string; parcels?: number; card?: string | null; paid?: string[];
 }
 export interface Tx { id: string; type: string; desc: string; amount: number; date: string; card?: string | null }
@@ -28,7 +28,11 @@ export const daysBetween = (a: string, b: string) => {
   const [ay, am, ad] = parts(a), [by, bm, bd] = parts(b);
   return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 864e5);
 };
-export const money = (v: number) => "R$ " + v.toFixed(2).replace(".", ",");
+export const money = (v: number) => "R$ " + v.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+const round2 = (v: number) => Math.round(v * 100) / 100;
+
+// Avisos de atraso continuam por até 7 dias; depois disso o app ainda mostra, mas o push para.
+const MAX_LATE_DAYS = 7;
 
 // Dia de hoje no fuso de São Paulo (YYYY-MM-DD)
 export function todaySP(now = new Date()): string {
@@ -42,7 +46,7 @@ export function dueOf(b: Bill, ym: string): string {
   return ymd(y, m, Math.min(b.day!, dim(ym)));
 }
 
-// Ocorrências de contas num mês (mesma regra de occ() do app)
+// Ocorrências de contas num mês (mesma regra de occ() do app; a última parcela pode ter ajuste de centavos)
 export function occ(bills: Bill[], ym: string): { b: Bill; amount: number }[] {
   const out: { b: Bill; amount: number }[] = [];
   bills.forEach(b => {
@@ -50,7 +54,7 @@ export function occ(bills: Bill[], ym: string): { b: Bill; amount: number }[] {
     if (kind === "unica") { if (mKey(b.date!) === ym) out.push({ b, amount: b.amount }); return; }
     if (kind === "parcelada") {
       const i = monthDiff(b.start!, ym);
-      if (i >= 0 && i < b.parcels!) out.push({ b, amount: b.amount });
+      if (i >= 0 && i < b.parcels!) out.push({ b, amount: b.last != null && i === b.parcels! - 1 ? b.last : b.amount });
       return;
     }
     if ((!b.start || ym >= b.start) && (!b.end || ym <= b.end)) out.push({ b, amount: b.amount });
@@ -81,7 +85,7 @@ export function faturaOf(data: Data, card: Card, closeYm: string) {
       if (d > prevClose && d <= close) total += o.amount;
     });
   });
-  return { close, closeYm, due: dueDateOfFatura(card, closeYm), total: Math.round(total * 100) / 100 };
+  return { close, closeYm, due: dueDateOfFatura(card, closeYm), total: round2(total) };
 }
 
 export function currentCloseYm(card: Card, today: string): string {
@@ -89,36 +93,70 @@ export function currentCloseYm(card: Card, today: string): string {
   return closeDateOf(card, cm) >= today ? cm : shiftMonth(cm, 1);
 }
 
-// Todos os avisos que o app mostraria hoje, com chave estável para não repetir envio
+// Quanto ainda falta pagar no mês de "today": contas sem cartão não pagas + faturas de cartão
+// que vencem neste mês e não foram pagas. (Compras no cartão já entram na fatura, não são somadas duas vezes.)
+export function owedInMonth(data: Data, today: string): number {
+  const cur = mKey(today);
+  let total = 0;
+  occ(data.bills, cur).forEach(({ b, amount }) => {
+    if (b.card) return;
+    if (!(b.paid || []).includes(cur)) total += amount;
+  });
+  (data.cards || []).forEach(c => {
+    const closeYm = c.dueDay > c.closeDay ? cur : shiftMonth(cur, -1);
+    if ((c.paid || []).includes(closeYm)) return;
+    total += faturaOf(data, c, closeYm).total;
+  });
+  return round2(total);
+}
+
+const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+
+// Todos os avisos que o app mostraria hoje, com chave estável para não repetir envio.
+// Cada aviso leva no texto quanto ainda falta pagar no mês.
 export function buildReminders(data: Data, today: string): Reminder[] {
   const out: Reminder[] = [];
   const cur = mKey(today);
+  const owed = owedInMonth(data, today);
+  const tail = owed > 0 ? ` · Em aberto no mês: ${money(owed)}` : "";
 
-  // Contas do mês corrente: vencem em até 2 dias, atrasadas ou vencendo hoje
-  occ(data.bills, cur).forEach(({ b, amount }) => {
-    if ((b.paid || []).includes(cur)) return;
-    const d = daysBetween(today, dueOf(b, cur));
-    if (d > 2) return;
-    const title = d < 0 ? "Conta atrasada" : d === 0 ? "Conta vence hoje" : `Conta vence em ${d} dia(s)`;
-    out.push({ key: `bill:${b.id}:${cur}:${d < 0 ? "late" : d === 0 ? "today" : "soon" + d}`, title, body: `${b.name}: ${money(amount)}` });
+  // Resumo no dia 1: quanto o mês inteiro ainda tem a pagar
+  if (today.endsWith("-01") && owed > 0) {
+    const [, m] = parts(cur);
+    out.push({ key: `sum:${cur}`, title: `Resumo de ${MESES[m - 1]}`, body: `Você tem ${money(owed)} em contas e faturas em aberto neste mês.` });
+  }
+
+  // Contas sem cartão do mês atual e do seguinte (o vencimento do dia 1 ou 2 aparece nos últimos dias do mês).
+  // Compras no cartão são pagas pela fatura, então não geram aviso de conta.
+  [cur, shiftMonth(cur, 1)].forEach(ym => {
+    occ(data.bills, ym).forEach(({ b, amount }) => {
+      if (b.card) return;
+      if ((b.paid || []).includes(ym)) return;
+      const d = daysBetween(today, dueOf(b, ym));
+      if (d > 2 || d < -MAX_LATE_DAYS) return;
+      const title = d < 0 ? `Conta atrasada há ${-d} dia(s)` : d === 0 ? "Conta vence hoje" : d === 1 ? "Conta vence amanhã" : `Conta vence em ${d} dias`;
+      const tag = d < 0 ? `late${-d}` : d === 0 ? "today" : `soon${d}`;
+      out.push({ key: `bill:${b.id}:${ym}:${tag}`, title, body: `${b.name}: ${money(amount)}${tail}` });
+    });
   });
 
-  // Cartões: fechamento (até 3 dias) e vencimento de faturas abertas/recentes
+  // Cartões: fechamento (até 3 dias) e vencimento da fatura (até 3 dias antes, no dia e atrasada)
   (data.cards || []).forEach(c => {
     const cy = currentCloseYm(c, today);
     const open = faturaOf(data, c, cy);
     const dClose = daysBetween(today, open.close);
-    if (dClose === 0) out.push({ key: `close:${c.id}:${cy}:0`, title: `${c.name}: fatura fecha hoje`, body: `Valor até agora: ${money(open.total)}` });
-    else if (dClose > 0 && dClose <= 3) out.push({ key: `close:${c.id}:${cy}:${dClose}`, title: `${c.name}: fatura fecha em ${dClose} dia(s)`, body: `Valor até agora: ${money(open.total)}` });
+    if (dClose === 0) out.push({ key: `close:${c.id}:${cy}:0`, title: `${c.name}: fatura fecha hoje`, body: `Valor até agora: ${money(open.total)}${tail}` });
+    else if (dClose > 0 && dClose <= 3) out.push({ key: `close:${c.id}:${cy}:${dClose}`, title: `${c.name}: fatura fecha em ${dClose} dia(s)`, body: `Valor até agora: ${money(open.total)}${tail}` });
 
     [shiftMonth(cy, -1), cy].forEach(ym => {
       if ((c.paid || []).includes(ym)) return;
       const f = faturaOf(data, c, ym);
       if (f.total <= 0) return;
       const d = daysBetween(today, f.due);
-      if (d < 0) out.push({ key: `due:${c.id}:${ym}:late`, title: `${c.name}: fatura vencida`, body: `${money(f.total)} venceu em ${f.due}. Pague logo para evitar juros e multa.` });
-      else if (d === 0) out.push({ key: `due:${c.id}:${ym}:0`, title: `${c.name}: fatura vence hoje`, body: `${money(f.total)}. Pague hoje para evitar juros.` });
-      else if (d <= 3) out.push({ key: `due:${c.id}:${ym}:${d}`, title: `${c.name}: fatura vence em ${d} dia(s)`, body: `${money(f.total)} até ${f.due}` });
+      if (d > 3 || d < -MAX_LATE_DAYS) return;
+      if (d < 0) out.push({ key: `due:${c.id}:${ym}:late${-d}`, title: `${c.name}: fatura vencida há ${-d} dia(s)`, body: `${money(f.total)} venceu em ${f.due.split("-").reverse().join("/")}. Pague logo para evitar juros e multa.${tail}` });
+      else if (d === 0) out.push({ key: `due:${c.id}:${ym}:0`, title: `${c.name}: fatura vence hoje`, body: `${money(f.total)}. Pague hoje para evitar juros.${tail}` });
+      else out.push({ key: `due:${c.id}:${ym}:${d}`, title: d === 1 ? `${c.name}: fatura vence amanhã` : `${c.name}: fatura vence em ${d} dias`, body: `${money(f.total)} até ${f.due.split("-").reverse().join("/")}${tail}` });
     });
   });
   return out;
