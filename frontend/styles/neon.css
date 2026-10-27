@@ -1,0 +1,199 @@
+/* Minhas Finanças — visual neon (mesma paleta da tela de entrada: preto-índigo, violeta, magenta e um fio de ciano).
+   Camada de aparência por cima do app.css: não muda HTML, scripts nem a tela de entrada (#lock).
+   Fontes: só as do sistema (a política de segurança da página não permite fontes externas). */
+
+body:not(.locked){
+  --nx-ink:#f6f3ff;--nx-mut:#a9a1d6;--nx-lil:#c4b5fd;--nx-mag:#e879f9;--nx-cy:#67e8f9;--nx-exp:#fb7185;--nx-warn:#fcd34d;
+  --nx-grad:linear-gradient(135deg,#6d28d9,#9333ea 55%,#c026d3);
+  --nx-hair:rgba(167,139,250,.22);
+  --nx-glass:linear-gradient(160deg,rgba(44,22,98,.62),rgba(12,6,32,.74));
+  /* mesmas variáveis do app, agora na paleta neon */
+  --bg:#03020b;--card:rgba(20,10,48,.72);--card2:rgba(255,255,255,.05);--border:rgba(167,139,250,.22);
+  --accent:#8b5cf6;--text:#f6f3ff;--muted:#a9a1d6;--expense:#fb7185;--income:#67e8f9;--warn:#fcd34d;
+  background:
+    radial-gradient(520px 420px at 6% -4%,rgba(124,58,237,.46),transparent 70%),
+    radial-gradient(460px 420px at 104% 22%,rgba(192,38,211,.22),transparent 70%),
+    radial-gradient(520px 460px at -8% 70%,rgba(91,33,182,.32),transparent 70%),
+    radial-gradient(620px 480px at 62% 104%,rgba(109,40,217,.4),transparent 70%),
+    #03020b;
+  background-attachment:fixed;
+  color:var(--nx-ink);
+}
+
+/* títulos */
+.app h1{text-shadow:0 0 22px rgba(167,139,250,.7);letter-spacing:-.5px}
+.top .ttl small{color:var(--nx-mut)}
+.app h2{color:var(--nx-lil);letter-spacing:1.3px;text-shadow:0 0 12px rgba(196,181,253,.65)}
+
+/* topo: mês e botões de ícone */
+#month,.iconbtn{background:rgba(20,10,48,.7);border:1px solid rgba(167,139,250,.4);color:var(--nx-ink);box-shadow:0 0 18px rgba(139,92,246,.25)}
+.iconbtn{color:var(--nx-lil)}
+.iconbtn[aria-pressed="true"]{background:rgba(139,92,246,.4);color:#fff;box-shadow:0 0 20px rgba(139,92,246,.7)}
+#month option{background:#0c0620;color:#f6f3ff}
+
+/* cartões de vidro com fio de luz */
+.app .card{position:relative;background:var(--nx-glass);border:1px solid var(--nx-hair);
+  box-shadow:0 0 28px rgba(124,58,237,.30),0 18px 40px rgba(0,0,0,.5);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.app .card::before{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;pointer-events:none;
+  background:linear-gradient(135deg,rgba(216,200,255,.95),rgba(139,92,246,.06) 42%,rgba(103,232,249,.6));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+
+/* saldo do mês */
+.hero{background:linear-gradient(155deg,rgba(76,29,149,.72),rgba(14,7,38,.8) 70%);border:1px solid var(--nx-hair);
+  box-shadow:0 0 34px rgba(124,58,237,.38),0 18px 40px rgba(0,0,0,.5)}
+.hero::after{background:radial-gradient(circle,rgba(192,38,211,.38),transparent 70%)}
+.hero .lbl{color:var(--nx-mut);font-weight:500}
+.hero .big{background:linear-gradient(180deg,#fff,#e0d4ff 55%,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent;
+  -webkit-text-fill-color:transparent;filter:drop-shadow(0 0 16px rgba(167,139,250,.75))}
+.hero .big.expense{background:linear-gradient(180deg,#ffe4e9,#fda4af 60%,#fb7185);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 16px rgba(251,113,133,.6))}
+.pill{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09)}
+.pill .lb{color:var(--nx-mut)}
+.pill .pic{background:rgba(103,232,249,.14);color:var(--nx-cy);box-shadow:0 0 14px rgba(103,232,249,.5)}
+.pill .pic.out{background:rgba(251,113,133,.14);color:var(--nx-exp);box-shadow:0 0 14px rgba(251,113,133,.5)}
+
+/* gráfico */
+.chartHead b{text-shadow:0 0 16px rgba(232,121,249,.6)}
+.axis{color:var(--nx-mut)}
+#spendChart svg path[stroke="#8b5cf6"]{filter:drop-shadow(0 0 7px #c084fc)}
+#spendChart svg circle{filter:drop-shadow(0 0 8px #e879f9)}
+
+/* próxima conta (destaque) */
+.nextcard{background:linear-gradient(150deg,rgba(192,38,211,.34),rgba(76,29,149,.5) 55%,rgba(12,6,32,.8))!important;border:1px solid rgba(216,200,255,.3);
+  box-shadow:0 0 40px rgba(192,38,211,.4),0 18px 40px rgba(0,0,0,.5)}
+.nextcard.card-glow{isolation:isolate}
+.nextcard.card-glow::before{inset:-1px;border-radius:inherit;padding:1px;opacity:1;z-index:auto;pointer-events:none;
+  background:linear-gradient(135deg,rgba(216,200,255,.95),rgba(139,92,246,.06) 45%,rgba(103,232,249,.6));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.nextcard .muted,.nx-empty{color:var(--nx-mut)}
+.nextcard .nx-title{text-shadow:0 0 16px rgba(232,121,249,.5)}
+.nx-amt{color:var(--nx-lil);text-shadow:0 0 14px rgba(232,121,249,.6)}
+
+/* listas */
+.row,.card .row{background:rgba(255,255,255,.04);border:1px solid rgba(167,139,250,.18)}
+.row .s,.muted,.hcol span,.cmp .lb,.day{color:var(--nx-mut)}
+.ic{border-radius:14px;color:#fff;background:linear-gradient(135deg,#6d28d9,#c026d3);box-shadow:0 0 16px rgba(168,85,247,.6)}
+.ic.out{background:linear-gradient(135deg,#0e7490,#6d28d9);color:#fff;border:0;box-shadow:0 0 16px rgba(34,211,238,.5)}
+.income,.row .amt.income{color:var(--nx-cy);text-shadow:0 0 12px rgba(103,232,249,.55)}
+.expense,.row .amt.expense{color:var(--nx-exp);text-shadow:0 0 12px rgba(251,113,133,.5)}
+.warn{color:var(--nx-warn)}
+.tag{border:1px solid rgba(167,139,250,.45);background:rgba(139,92,246,.14);color:var(--nx-lil)}
+.tag.ok{color:var(--nx-cy);border-color:rgba(103,232,249,.5);background:rgba(103,232,249,.1)}
+.tag.late{color:#fda4af;border-color:rgba(251,113,133,.55);background:rgba(251,113,133,.12)}
+.tag.soon{color:var(--nx-warn);border-color:rgba(252,211,77,.5);background:rgba(252,211,77,.1)}
+.ico{color:var(--nx-mut)}
+.ico:hover{color:var(--nx-exp);text-shadow:0 0 10px rgba(251,113,133,.7)}
+.empty{color:var(--nx-mut)}
+.notif{border:1px solid rgba(167,139,250,.25);background:rgba(255,255,255,.05)}
+.notif .app-n{color:var(--nx-mut)}
+
+/* botões */
+.primary,.app button.primary,.modal button.primary{background:var(--nx-grad);color:#fff;border:0;
+  box-shadow:inset 0 0 0 1px rgba(233,213,255,.55),0 0 26px rgba(168,85,247,.7),0 0 64px rgba(139,92,246,.38)}
+.primary:hover{filter:brightness(1.08)}
+.ghost{background:rgba(139,92,246,.14);border:1px solid rgba(167,139,250,.55);color:var(--nx-lil);font-weight:600;box-shadow:0 0 14px rgba(139,92,246,.32)}
+.ghost:hover{border-color:#e9d5ff;box-shadow:0 0 22px rgba(139,92,246,.6)}
+
+/* formulários (só dentro do app e dos diálogos: a tela de entrada tem estilo próprio) */
+.app input:not([type=checkbox]):not([type=radio]),.app select,.modal input,.sheet input{background:rgba(8,4,26,.75);border:1px solid rgba(167,139,250,.3);color:var(--nx-ink)}
+.app input::placeholder,.sheet input::placeholder{color:#8b83b8}
+.app input:focus,.app select:focus,.sheet input:focus,.modal input:focus{border-color:#a78bfa;box-shadow:0 0 0 3px rgba(139,92,246,.3),0 0 24px rgba(139,92,246,.55)}
+.app select option{background:#0c0620;color:#f6f3ff}
+.seg{padding:4px;gap:4px;border-radius:16px;background:rgba(8,4,26,.75);border:1px solid rgba(167,139,250,.28)}
+.seg label{background:transparent;color:var(--nx-mut);border-radius:12px}
+.seg label:has(input:checked){color:#fff;background:linear-gradient(135deg,#6d28d9,#c026d3);box-shadow:0 0 20px rgba(192,38,211,.65)}
+.chip{background:rgba(139,92,246,.1);border:1px solid rgba(167,139,250,.38);color:var(--nx-lil)}
+.chip[aria-pressed="true"]{color:#fff;border-color:rgba(233,213,255,.7);background:rgba(139,92,246,.4);box-shadow:0 0 16px rgba(139,92,246,.6)}
+.chk,.chk span{color:var(--nx-ink)}
+.chk input,.imp input{accent-color:#c026d3}
+
+.row[style*="var(--accent)"]{background:var(--nx-grad)!important;border:0;box-shadow:inset 0 0 0 1px rgba(233,213,255,.5),0 0 22px rgba(168,85,247,.55)}
+
+/* barras de progresso */
+.bar,.goal .bar{background:rgba(255,255,255,.08)}
+.bar i,.goal .bar i{background:linear-gradient(90deg,#7c3aed,#e879f9);box-shadow:0 0 14px rgba(232,121,249,.85)}
+.bar i.near{background:linear-gradient(90deg,#f59e0b,#fcd34d);box-shadow:0 0 14px rgba(252,211,77,.8)}
+.bar i.over{background:linear-gradient(90deg,#f59e0b,#fb7185);box-shadow:0 0 14px rgba(251,113,133,.8)}
+.goal,.sbox{background:rgba(255,255,255,.045);border:1px solid rgba(167,139,250,.2)}
+.sbox b{text-shadow:0 0 12px rgba(167,139,250,.6)}
+.sbox small,.goal .s,.gh .s{color:var(--nx-mut)}
+
+/* histórico e comparativos */
+.hbar{background:rgba(255,255,255,.08)}
+.hcol.cur .hbar{background:linear-gradient(180deg,#e879f9,#7c3aed);box-shadow:0 0 18px rgba(192,38,211,.7)}
+.cmp .pair i{box-shadow:0 0 12px currentColor}
+.cmp .pair i[style*="#8b5cf6"]{background:linear-gradient(180deg,#a78bfa,#6d28d9)!important}
+.donutWrap svg{filter:drop-shadow(0 0 12px rgba(139,92,246,.6))}
+
+/* dicas */
+.tip{border-left:0;background:rgba(255,255,255,.04);border:1px solid rgba(167,139,250,.2)}
+.tip b{color:#fff;text-shadow:0 0 14px rgba(167,139,250,.55)}
+.tip p{color:#d7d0f3}
+
+/* calendário */
+.cal .dow{color:var(--nx-mut)}
+.cal .d{background:rgba(255,255,255,.035);border:1px solid rgba(167,139,250,.12)}
+.cal .d.today{border-color:rgba(233,213,255,.8);background:rgba(139,92,246,.3);box-shadow:0 0 18px rgba(167,139,250,.8)}
+.cal .d.blank{background:none;border:none;box-shadow:none}
+.cal .n{color:var(--nx-mut)}
+.cal .d.today .n{color:#fff}
+.cal .b{background:rgba(251,113,133,.14);color:#fda4af;border:1px solid rgba(251,113,133,.3)}
+.cal .b.paid{background:rgba(103,232,249,.12);color:var(--nx-cy);border-color:rgba(103,232,249,.35)}
+
+/* barra inferior flutuante */
+.bottom{background:rgba(10,5,28,.84)!important;border:1px solid rgba(167,139,250,.38)!important;
+  box-shadow:0 0 32px rgba(124,58,237,.45),0 16px 40px rgba(0,0,0,.6)!important}
+.bottom button{color:var(--nx-mut)}
+.bottom button.on{color:#fff;text-shadow:0 0 12px #c4b5fd;position:relative}
+.bottom button.on svg{filter:drop-shadow(0 0 8px #a78bfa)}
+.bottom button.on:not(.fab)::after{content:"";position:absolute;bottom:2px;width:20px;height:3px;border-radius:3px;background:linear-gradient(90deg,#8b5cf6,#67e8f9);box-shadow:0 0 12px #8b5cf6}
+.bottom .fab,.bottom .fab.on{color:#fff;background:radial-gradient(circle at 35% 28%,#f0e4ff,#a855f7 36%,#5b21b6 78%);
+  box-shadow:0 0 0 2px rgba(233,213,255,.65),0 0 0 8px rgba(139,92,246,.18),0 0 34px rgba(168,85,247,.95),0 0 76px rgba(124,58,237,.65);animation:nxPulse 3s infinite}
+@keyframes nxPulse{
+  0%,100%{box-shadow:0 0 0 2px rgba(233,213,255,.65),0 0 0 8px rgba(139,92,246,.18),0 0 34px rgba(168,85,247,.95),0 0 76px rgba(124,58,237,.65)}
+  50%{box-shadow:0 0 0 2px rgba(233,213,255,.8),0 0 0 14px rgba(139,92,246,.08),0 0 44px rgba(192,38,211,1),0 0 96px rgba(124,58,237,.8)}
+}
+
+/* lateral no computador */
+.side{background:rgba(8,4,24,.72);border-right:1px solid var(--nx-hair);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.side .brand{text-shadow:0 0 18px rgba(167,139,250,.8)}
+.side .brand i{background:var(--nx-grad);box-shadow:0 0 18px rgba(192,38,211,.8)}
+.side button{color:var(--nx-mut)}
+.side button:hover{background:rgba(139,92,246,.14);color:#fff}
+.side button.on{background:rgba(139,92,246,.28);color:#fff;box-shadow:0 0 20px rgba(139,92,246,.55),inset 0 0 0 1px rgba(216,200,255,.5)}
+.side .sideNew,.side .sideNew:hover{background:var(--nx-grad);color:#fff;box-shadow:0 0 26px rgba(168,85,247,.7)}
+
+/* menu "Mais", diálogos e aviso */
+.modal,.sheet{background:rgba(2,1,8,.66);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.sheetbox{background:linear-gradient(180deg,rgba(40,18,92,.96),rgba(10,5,28,.98));border-top:1px solid rgba(216,200,255,.6);
+  box-shadow:0 -10px 50px rgba(124,58,237,.6);color:var(--nx-ink)}
+.sheetbox button{background:rgba(255,255,255,.05);border:1px solid rgba(167,139,250,.22);color:var(--nx-ink)}
+.sheetbox button:hover{border-color:#c4b5fd}
+.sheetbox button.close{background:rgba(139,92,246,.18);color:var(--nx-lil);text-align:center;font-weight:600}
+.sheetbox #lockNow{color:#fda4af;border-color:rgba(251,113,133,.45)}
+.sheetbox h2{color:var(--nx-ink)}
+.box{background:linear-gradient(160deg,rgba(44,22,98,.96),rgba(12,6,32,.98));border:1px solid rgba(216,200,255,.4);
+  box-shadow:0 0 40px rgba(124,58,237,.5);color:var(--nx-ink)}
+.toast{background:var(--nx-grad);color:#fff;box-shadow:inset 0 0 0 1px rgba(233,213,255,.5),0 0 28px rgba(168,85,247,.7),0 12px 32px rgba(0,0,0,.45)}
+
+/* esconder valores */
+body.blur-values .nx-amt{filter:blur(7px)}
+
+/* celular: o mês cabe inteiro */
+@media(max-width:480px){.top{gap:6px}#month{max-width:126px;min-width:0;font-size:12px;padding:10px 4px 10px 8px}.top .ttl h1{font-size:21px}}
+
+/* computador: cartões altos ficam com o conteúdo centralizado e os números não são cortados */
+@media(min-width:1000px){
+  #v-inicio .hero,#v-inicio .nextcard{display:flex;flex-direction:column;justify-content:center}
+  #v-inicio .nextcard{gap:10px}
+  #v-inicio .pills{grid-template-columns:1fr}
+  .pill .v{overflow:visible;text-overflow:clip}
+}
+
+/* metas: a caixinha não pode ultrapassar a largura do cartão no celular */
+.goal{grid-template-columns:minmax(0,1fr);min-width:0}
+.goal .gr{min-width:0}
+.goal .gr button{flex:0 0 auto}
+
+/* botão do seletor de arquivo (importar extrato) */
+.app input[type=file]::file-selector-button{margin-right:10px;padding:8px 12px;border-radius:10px;border:1px solid rgba(167,139,250,.55);background:rgba(139,92,246,.18);color:var(--nx-lil);font-weight:600}
