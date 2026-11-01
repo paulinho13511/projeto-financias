@@ -12,6 +12,22 @@ const parts=s=>s.split("-").map(Number);
 let privacy=false;
 const r2=v=>Math.round((Number(v)||0)*100)/100+0;   // centavos exatos; o "+0" troca -0 por 0
 const money=v=>privacy?"R$ ****":BRL.format(r2(v));
+// Campos de valor em reais: aceitam 1.626,76 · 1626,76 · R$ 1.626,76 · 1626.76. Devolve NaN se não der para entender com segurança.
+function parseValor(s,neg){
+  let v=String(s==null?"":s).replace(/R\$|\s/g,"");
+  if(!v)return NaN;
+  const n=v.startsWith("-");
+  if(n){if(!neg)return NaN;v=v.slice(1)}
+  if(v.includes(",")){
+    if(!/^\d{1,3}(\.\d{3})+,\d{1,2}$|^\d+,\d{1,2}$/.test(v))return NaN;   // ponto só como milhar, vírgula como decimal
+    v=v.replace(/\./g,"").replace(",",".");
+  }else if(/^\d{1,3}(\.\d{3})+$/.test(v)){v=v.replace(/\./g,"")}            // 1.626 = mil seiscentos e vinte e seis
+  else if(!/^\d+(\.\d{1,2})?$/.test(v))return NaN;                          // 1626 ou 1626.76
+  const x=parseFloat(v);
+  return Number.isFinite(x)?(n?-x:x):NaN;
+}
+const fmtValor=v=>(+v).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const MSG_VALOR="Digite um valor válido, por exemplo 1.626,76";
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const dim=ym=>{const[y,m]=parts(ym);return new Date(y,m,0).getDate()};
@@ -507,8 +523,9 @@ async function delTx(id){
   db.tx=db.tx.filter(t=>t.id!==id);save();renderAll();
 }
 function setBudget(cat,val){
-  const v=parseFloat(val);
-  if(!v||v<=0)delete db.budgets[cat];else db.budgets[cat]=v;
+  const v=parseValor(val);
+  if(String(val).trim()&&!(v>0)){showToast(MSG_VALOR);renderAll();return}   // texto inválido: não apaga o limite sem avisar
+  if(!(v>0))delete db.budgets[cat];else db.budgets[cat]=v;
   save();renderAll();
 }
 window.togglePaid=togglePaid;window.delBill=delBill;window.delTx=delTx;window.setBudget=setBudget;
@@ -714,7 +731,7 @@ function renderRev(){
 
   $("budgetList").innerHTML=CATS.map(c=>`
     <div class="row"><span class="t">${c}</span>
-    <input type="number" min="0" step="50" style="width:140px;text-align:right" value="${db.budgets[c]||""}" placeholder="sem limite" data-act="setBudget" data-cat="${esc(c)}"></div>`).join("");
+    <input type="text" inputmode="decimal" autocomplete="off" data-money style="width:140px;text-align:right" value="${db.budgets[c]?fmtValor(db.budgets[c]):""}" placeholder="sem limite" data-act="setBudget" data-cat="${esc(c)}"></div>`).join("");
 
   const topRows=[
     ...t.items.filter(x=>x.type==="expense").map(x=>({name:x.desc,cat:x.category,amount:x.amount})),
@@ -866,9 +883,9 @@ function renderStatement(accs){
 $("stmtAcc").onchange=()=>renderStatement(db.accounts||[]);
 $("trForm").onsubmit=e=>{
   e.preventDefault();
-  const from=$("trFrom").value,to=$("trTo").value,amount=Math.round((parseFloat($("trAmt").value)||0)*100)/100;
+  const from=$("trFrom").value,to=$("trTo").value,amount=Math.round((parseValor($("trAmt").value)||0)*100)/100;
   if(!from||!to||from===to){showToast("Escolha duas contas diferentes");return}
-  if(amount<=0){showToast("Informe um valor maior que zero");return}
+  if(!(amount>0)){showToast(MSG_VALOR);return}
   const date=$("trDate").value||today();
   db.tx.push({id:uid(),type:"transfer",desc:$("trDesc").value.trim()||"Transferência",amount,date,category:"Transferência",from,to,created:Date.now()});
   save();
@@ -880,8 +897,10 @@ $("accForm").onsubmit=e=>{
   e.preventDefault();
   const name=$("accName").value.trim();
   if(!name)return;
+  const ini=$("accInit").value.trim()?parseValor($("accInit").value,true):0;
+  if(!Number.isFinite(ini)){showToast(MSG_VALOR);return}
   db.accounts=db.accounts||[];
-  db.accounts.push({id:uid(),name,type:$("accType").value,initial:Math.round((parseFloat($("accInit").value)||0)*100)/100});
+  db.accounts.push({id:uid(),name,type:$("accType").value,initial:Math.round(ini*100)/100});
   save();
   e.target.reset();
   renderAll();
@@ -946,14 +965,15 @@ function updateTxParc(){
   const parc=$("txParc").value==="parc";
   $("txParcBox").hidden=!parc;
   $("txParcels").required=parc;
-  const n=parseInt($("txParcels").value,10)||0, a=parseFloat($("txAmt").value)||0;
+  const n=parseInt($("txParcels").value,10)||0, a=parseValor($("txAmt").value)||0;
   $("txParcInfo").textContent=parc&&n>0&&a>0?`${n}x de ${money(a/n)}`:"";
 }
 $("txForm").onsubmit=e=>{
   e.preventDefault();
   const type=document.querySelector('input[name="type"]:checked').value;
   const date=$("txDate").value;
-  const desc=$("txDesc").value.trim(), amount=parseFloat($("txAmt").value);
+  const desc=$("txDesc").value.trim(), amount=parseValor($("txAmt").value);
+  if(!(amount>0)){showToast(MSG_VALOR);return}
   const category=$("txCat").value, card=type==="income"?null:($("txCard").value||null);   // receita não é compra no cartão
   const account=card?null:($("txAcc").value||null);   // compra no cartão sai da conta só quando a fatura é paga
   if($("txParc").value==="parc"){
@@ -995,7 +1015,7 @@ function syncBillForm(){
 }
 function updateParcTotal(){
   const kind=document.querySelector('input[name="kind"]:checked').value;
-  const a=parseFloat($("bAmt").value)||0, n=parseInt($("bParcels").value,10)||0;
+  const a=parseValor($("bAmt").value)||0, n=parseInt($("bParcels").value,10)||0;
   const box=$("parcTotal");
   box.hidden=!(kind==="parcelada"&&a>0&&n>0);
   box.textContent=`Total da compra: ${money(a*n)} em ${n} parcelas de ${money(a)}`;
@@ -1003,7 +1023,9 @@ function updateParcTotal(){
 $("billForm").onsubmit=e=>{
   e.preventDefault();
   const kind=document.querySelector('input[name="kind"]:checked').value;
-  const b={id:uid(),kind,name:$("bName").value.trim(),amount:parseFloat($("bAmt").value),category:$("bCat").value,card:$("bCard").value||null,paid:[]};
+  const valorConta=parseValor($("bAmt").value);
+  if(!(valorConta>0)){showToast(MSG_VALOR);return}
+  const b={id:uid(),kind,name:$("bName").value.trim(),amount:valorConta,category:$("bCat").value,card:$("bCard").value||null,paid:[]};
   if(kind==="unica")b.date=$("bDate").value;
   else b.day=Math.min(31,Math.max(1,parseInt($("bDay").value,10)));
   if(kind==="parcelada"){b.parcels=Math.min(120,Math.max(2,parseInt($("bParcels").value,10)));b.start=$("bStart").value}
@@ -1116,7 +1138,7 @@ function renderQuick(){
     const f=top[+b.dataset.q];
     $("txDesc").value=f.desc;
     if([...$("txCat").options].some(o=>o.value===f.cat))$("txCat").value=f.cat;
-    $("txAmt").value=f.amt;
+    $("txAmt").value=fmtValor(f.amt);
     $("txAmt").focus();
   });
 }
@@ -1301,14 +1323,15 @@ function renderGoals(){
       <div class="gh"><div style="min-width:0"><div class="t">${esc(g.name)}</div><div class="s">${money(g.saved)} de ${money(g.target)}</div></div><button class="ico" title="Excluir meta" data-gdel="${esc(g.id)}">×</button></div>
       <div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>
       <div class="s">${info}</div>
-      ${done?"":`<div class="gr"><input type="number" step="0.01" min="0.01" placeholder="Guardar agora (R$)" data-gin="${esc(g.id)}"><button class="ghost" type="button" data-gadd="${esc(g.id)}">Guardar</button></div>`}
+      ${done?"":`<div class="gr"><input type="text" inputmode="decimal" autocomplete="off" data-money placeholder="Guardar agora (R$)" data-gin="${esc(g.id)}"><button class="ghost" type="button" data-gadd="${esc(g.id)}">Guardar</button></div>`}
     </div>`;
   }).join(""):`<div class="empty">Crie uma meta: reserva de emergência, viagem, troca de celular...</div>`;
 }
 $("goalForm").onsubmit=e=>{
   e.preventDefault();
-  const name=$("gName").value.trim(), target=parseFloat($("gTarget").value), deadline=$("gDeadline").value;
-  if(!name||!(target>0)||!deadline){showToast("Preencha nome, valor e prazo");return}
+  const name=$("gName").value.trim(), target=parseValor($("gTarget").value), deadline=$("gDeadline").value;
+  if(!(target>0)){showToast(MSG_VALOR);return}
+  if(!name||!deadline){showToast("Preencha nome, valor e prazo");return}
   db.goals=db.goals||[];
   db.goals.push({id:uid(),name,target,deadline,saved:0});
   save();e.target.reset();renderV13();
@@ -1319,8 +1342,8 @@ $("goalList").onclick=async e=>{
   if(add){
     const g=db.goals.find(x=>x.id===add.dataset.gadd);
     const input=document.querySelector(`[data-gin="${CSS.escape(g.id)}"]`);
-    const v=parseFloat(input.value);
-    if(!(v>0)){showToast("Digite um valor");return}
+    const v=parseValor(input.value);
+    if(!(v>0)){showToast(MSG_VALOR);return}
     g.saved=Math.round((g.saved+v)*100)/100;
     save();renderV13();
     showToast(g.saved>=g.target?"Meta alcançada!":"Valor guardado");
@@ -1404,7 +1427,7 @@ function openEdit(id){
   const kind=b.kind||"mensal";
   $("eId").value=b.id;
   $("eName").value=b.name;
-  $("eAmt").value=b.amount;
+  $("eAmt").value=fmtValor(b.amount);
   $("eCat").innerHTML=CATS.map(c=>`<option ${c===b.category?"selected":""}>${c}</option>`).join("");
   $("eCard").innerHTML=`<option value="">Sem cartão</option>`+(db.cards||[]).map(c=>`<option value="${esc(c.id)}" ${c.id===b.card?"selected":""}>${esc(c.name)}</option>`).join("");
   const isUnica=kind==="unica", isMensal=kind==="mensal";
@@ -1435,7 +1458,8 @@ $("editForm").onsubmit=e=>{
   let b=db.bills.find(x=>x.id===$("eId").value);
   if(!b)return;
   const kind=b.kind||"mensal";
-  const novo=parseFloat($("eAmt").value);
+  const novo=parseValor($("eAmt").value);
+  if(!(novo>0)){showToast(MSG_VALOR);return}
   // Conta fixa com valor novo: o valor vale a partir do mês aberto. A conta antiga termina no mês anterior
   // e uma nova começa agora; os meses passados continuam com o valor que tinham.
   if(kind==="mensal"&&novo!==b.amount&&hasHistory(b,sel)){
@@ -1490,6 +1514,12 @@ const ACTIONS={
   togglePaid:d=>togglePaid(d.id,d.ym),
   markFaturaPaid:d=>markFaturaPaid(d.id,d.ym),
 };
+document.addEventListener("focusout",e=>{            // ao sair do campo de valor, deixa no formato 1.626,76
+  const el=e.target;
+  if(!el.matches||!el.matches("input[data-money]")||!el.value.trim())return;
+  const v=parseValor(el.value,el.hasAttribute("data-neg"));
+  if(Number.isFinite(v))el.value=fmtValor(v);
+});
 document.addEventListener("click",e=>{
   const el=e.target.closest("button[data-act]");
   if(!el)return;

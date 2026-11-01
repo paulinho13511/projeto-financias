@@ -4,7 +4,7 @@
     <form id="editForm" style="display:grid;gap:8px">
       <input type="hidden" id="eId">
       <input id="eName" placeholder="Nome" required>
-      <input id="eAmt" type="number" step="0.01" min="0.01" placeholder="Valor (R$)" required>
+      <input id="eAmt" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="Valor (R$)" required>
       <input id="eDay" type="number" min="1" max="31" placeholder="Dia do vencimento">
       <input id="eDate" type="date" hidden>
       <select id="eEndType"><option value="forever">Para sempre</option><option value="until">Até um mês</option></select>
