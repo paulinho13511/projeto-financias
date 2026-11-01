@@ -62,10 +62,7 @@ const monthLabel=ym=>{const[y,m]=parts(ym);return new Date(y,m-1,1).toLocaleDate
 const shiftMonth=(ym,delta)=>{const[y,m]=parts(ym);return ymd(new Date(y,m-1+delta,1)).slice(0,7)};
 const fmtDate=(s,long)=>{const[y,m,d]=parts(s);return new Date(y,m-1,d).toLocaleDateString("pt-BR",long?{weekday:"long",day:"numeric",month:"long"}:{day:"2-digit",month:"2-digit"})};
 
-/* ---------- nuvem: Supabase (login por e-mail + acesso controlado no banco) ---------- */
-const SB_URL="https://htkrdndcbfnngzlghcjj.supabase.co";
-const SB_KEY="sb_publishable_RCdmuHeF4RFa3eoYO-NdNQ_Tr-yhnRo";
-const sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+/* ---------- nuvem: API própria (funções da Vercel + Neon); cliente em js/api.js ---------- */
 let db=null;           // dados do app, carregados da nuvem depois do login
 let sessionUser=null;  // usuário logado (null = bloqueado)
 let isAdmin=false;
@@ -81,22 +78,15 @@ function save(){
   if(!db||!sessionUser)return;
   if(dbConflict){showToast("Dados alterados em outro aparelho. Recarregue a página antes de continuar.");return}
   const snapshot=JSON.parse(JSON.stringify(db));
-  const email=sessionUser.email;
-  const uid=sessionUser.id;
   writeChain=writeChain
     .then(async()=>{
       const expected=dbUpdatedAt;   // lido aqui, dentro da fila, para refletir a gravação anterior
-      const nowIso=new Date().toISOString();
-      const {data,error}=await sb.from("app_data")
-        .update({data:snapshot,updated_by:email,updated_at:nowIso})
-        .eq("user_id",uid)
-        .eq("updated_at",expected)
-        .select("updated_at");
-      if(error)throw error;
-      if(!data||!data.length){dbConflict=true;throw new Error("conflito")}
-      dbUpdatedAt=data[0].updated_at;
+      const r=await API.put("/api/dados",{data:snapshot,versao:expected});
+      dbUpdatedAt=r.versao;
     })
     .catch(err=>{
+      if(err&&err.status===409)dbConflict=true;
+      if(err&&err.status===401){lockApp("Sessão expirada. Entre de novo.");return}
       const now=Date.now();
       if(now-lastSaveErr>4000){
         lastSaveErr=now;
@@ -106,42 +96,28 @@ function save(){
       }
     });
 }
-async function fetchAccess(email){
-  const {data,error}=await sb.from("allowed_emails").select("email,is_admin").eq("email",email).maybeSingle();
-  if(error)throw error;
-  return data; // null = este e-mail não tem acesso
-}
-// Cada usuário tem a própria linha em app_data; a primeira entrada cria uma linha vazia.
-async function fetchData(user){
-  const {data:row,error}=await sb.from("app_data").select("data,updated_at").eq("user_id",user.id).maybeSingle();
-  if(error)throw error;
-  let rec=row;
-  if(!rec){
-    const ins=await sb.from("app_data")
-      .insert({user_id:user.id,data:{},updated_by:user.email,updated_at:new Date().toISOString()})
-      .select("data,updated_at").single();
-    if(ins.error)throw ins.error;
-    rec=ins.data;
-  }
-  dbUpdatedAt=rec.updated_at;dbConflict=false;
+// Carrega quem está logado e os dados dele (a primeira entrada cria um registro vazio no servidor).
+async function fetchSession(){
+  const me=await API.get("/api/me");
+  const rec=await API.get("/api/dados");
+  dbUpdatedAt=rec.versao;dbConflict=false;
   const d=rec.data||{};
   d.tx=d.tx||[];d.bills=d.bills||[];d.budgets=d.budgets||{};d.cards=d.cards||[];d.goals=d.goals||[];d.settings=d.settings||{};d.accounts=d.accounts||[];
-  return d;
+  return {me,data:d};
 }
 
 /* ---------- tela de entrada (somente login: contas são criadas pelo administrador) ---------- */
-let fails=0,lockedUntil=0;
+let lockedUntil=0;
 function showLock(){
   $("lock").hidden=false;
   $("lockForm").hidden=false;$("lockSkel").hidden=true;
   $("pw").value="";
   $("lockErr").textContent="";
 }
-async function startSession(user){
-  const access=await fetchAccess(user.email.toLowerCase());
-  if(!access)throw new Error("sem-acesso");
-  const data=await fetchData(user);
-  db=data;sessionUser=user;isAdmin=!!access.is_admin;
+async function startSession(){
+  const {me,data}=await fetchSession();
+  db=data;sessionUser={email:me.email};isAdmin=!!me.is_admin;
+  try{localStorage.setItem("mf_sessao","1")}catch(_){}   // só uma dica para mostrar o esqueleto ao reabrir; a sessão de verdade é o cookie
   enterApp();
 }
 function enterApp(){
@@ -159,7 +135,8 @@ async function lockApp(reason){
   $("payModal").hidden=true;$("editSheet").hidden=true;   // nada de diálogo aberto por cima da tela de entrada
   $("payYes").onclick=null;$("payNo").onclick=null;$("mYes").onclick=null;$("mNo").onclick=null;
   document.body.classList.add("locked");
-  try{await sb.auth.signOut()}catch(e){}
+  try{localStorage.removeItem("mf_sessao")}catch(_){}
+  try{await API.post("/api/logout")}catch(e){}
   showLock();
   if(reason)$("lockErr").textContent=reason;
 }
@@ -171,27 +148,25 @@ $("lockForm").onsubmit=async e=>{
   const wait=lockedUntil-Date.now();
   if(wait>0){$("lockErr").textContent=`Muitas tentativas. Aguarde ${Math.ceil(wait/1000)} s.`;return}
   $("lockBtn").disabled=true;
-  let authFailed=false;   // true = o erro veio da conferência de e-mail e senha
+  let entrou=false;   // true = e-mail e senha foram aceitos pelo servidor
   try{
-    const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
-    if(error){authFailed=true;throw error}
-    await startSession(data.user);
-    fails=0;
+    await API.post("/api/login",{email,senha:pw});
+    entrou=true;
+    await startSession();
   }catch(err){
-    const msg=(err&&err.message)||"";
-    if(msg==="sem-acesso"){
-      try{await sb.auth.signOut()}catch(_){}
+    if(err&&err.status===403){
       $("lockErr").textContent="Este e-mail ainda não tem acesso. Peça ao administrador para liberar.";
     }
-    else if(authFailed&&(err.code==="invalid_credentials"||err.status===400)){
-      // só senha/e-mail errados contam para o bloqueio de tentativas
-      fails++;
-      if(fails>=5){lockedUntil=Date.now()+30000;fails=0;$("lockErr").textContent="Muitas tentativas. Aguarde 30 s."}
-      else $("lockErr").textContent="E-mail ou senha incorretos.";
+    else if(err&&err.status===401&&!entrou){
+      $("lockErr").textContent="E-mail ou senha incorretos.";   // o servidor conta as tentativas e bloqueia
+    }
+    else if(err&&err.status===429){
+      lockedUntil=Date.now()+30000;
+      $("lockErr").textContent="Muitas tentativas. Aguarde alguns minutos.";
     }
     else{
       // falha de rede ou da nuvem: não é culpa da senha e não deixa sessão pela metade
-      try{await sb.auth.signOut()}catch(_){}
+      if(entrou){try{await API.post("/api/logout")}catch(_){}}
       $("lockErr").textContent="Não foi possível conectar à nuvem. Tente entrar de novo.";
     }
   }finally{
@@ -200,17 +175,6 @@ $("lockForm").onsubmit=async e=>{
   }
 };
 $("lockNow").onclick=()=>lockApp();
-
-/* ---------- chamadas de administrador (função segura no Supabase) ---------- */
-async function adminCall(body){
-  const {data,error}=await sb.functions.invoke("hyper-api",{body});
-  if(error){
-    let msg="Não foi possível concluir";
-    try{const j=await error.context.json();if(j&&j.error)msg=j.error}catch(e){}
-    throw new Error(msg);
-  }
-  return data;
-}
 
 /* ---------- acesso de usuários (somente administrador) ---------- */
 function openAcl(){
@@ -221,8 +185,9 @@ function openAcl(){
 async function loadAcl(){
   const list=$("aclList");
   list.innerHTML=`<div class="empty">Carregando…</div>`;
-  const {data,error}=await sb.from("allowed_emails").select("email,is_admin").order("email");
-  if(error){list.innerHTML=`<div class="empty">Não foi possível carregar a lista.</div>`;return}
+  let data;
+  try{data=(await API.get("/api/acessos")).lista}
+  catch(err){list.innerHTML=`<div class="empty">Não foi possível carregar a lista.</div>`;return}
   list.innerHTML=data.length?data.map(r=>`
     <div class="row"><div class="rmain"><div class="t">${esc(r.email)}</div>
     <div class="s">${r.is_admin?"Administrador":"Usuário"}</div></div>
@@ -234,15 +199,15 @@ async function loadAcl(){
     if(!(await ask(`Remover o acesso de ${em}? A conta de login dela será apagada.`)))return;
     const guardar=await ask("Guardar um backup dos dados dessa pessoa antes de apagar?");
     try{
-      await adminCall({action:"remove",email:em,keep_backup:guardar});
+      await API.del("/api/acessos",{email:em,guardar_backup:guardar});
       showToast(guardar?"Acesso removido. Backup guardado.":"Acesso removido");
     }catch(err){showToast(err.message||"Não foi possível remover o acesso");return}
     loadAcl();
   });
   list.querySelectorAll("[data-adm]").forEach(b=>b.onclick=async()=>{
     const em=b.dataset.adm, val=b.dataset.val==="1";
-    const {error}=await sb.from("allowed_emails").update({is_admin:val}).eq("email",em);
-    if(error){showToast("Não foi possível alterar a permissão");return}
+    try{await API.patch("/api/acessos",{email:em,is_admin:val})}
+    catch(err){showToast("Não foi possível alterar a permissão");return}
     showToast(val?"Agora pode adicionar pessoas":"Permissão de administrador removida");
     loadAcl();
   });
@@ -255,7 +220,7 @@ $("aclForm").onsubmit=async e=>{
   const password=$("aclPw").value;
   if(password.length<10){showToast("A senha precisa ter pelo menos 10 caracteres");return}
   try{
-    await adminCall({action:"create",email,password});
+    await API.post("/api/acessos",{email,senha:password});
     $("aclEmail").value="";$("aclPw").value="";
     showToast("Acesso criado. Envie o e-mail e a senha para a pessoa.");
     loadAcl();
@@ -274,8 +239,8 @@ $("pwForm").onsubmit=async e=>{
   const a=$("newPw").value,b=$("newPw2").value;
   if(a.length<10){showToast("A senha precisa ter pelo menos 10 caracteres");return}
   if(a!==b){showToast("As senhas não conferem");return}
-  const {error}=await sb.auth.updateUser({password:a});
-  if(error){showToast("Não foi possível trocar a senha");return}
+  try{await API.post("/api/senha",{nova:a})}
+  catch(err){showToast("Não foi possível trocar a senha");return}
   $("pwSheet").hidden=true;
   showToast("Senha trocada com sucesso");
 };
@@ -1053,7 +1018,7 @@ $("billForm").onsubmit=e=>{
 };
 
 // Chave pública VAPID (não é segredo). Gerada com: npx web-push generate-vapid-keys
-const VAPID_PUBLIC="BHf5RmIEowZkC5Nb8ONCW1N57VtopLk-PjE6FePRKvIlfpgCKN1WatRQY9OmDDVhAylk_wRhp-Srfsh6cJyeQMo";
+const VAPID_PUBLIC="BGGyVgDKPPa-kxNRAaaBdaP2JNTbLhcvbbETAfc_0Q0pbwKpYXkEFe2uPKQiGWWKQtvfz4NLzSgrMCfOdYqWeu4";
 function b64ToBytes(s){
   const pad="=".repeat((4-s.length%4)%4);
   const raw=atob((s+pad).replace(/-/g,"+").replace(/_/g,"/"));
@@ -1083,20 +1048,14 @@ $("notifBtn").onclick=async()=>{
       const cur=sub.options&&sub.options.applicationServerKey;
       const same=cur&&cur.byteLength===key.length&&new Uint8Array(cur).every((v,i)=>v===key[i]);
       if(!same){
-        try{await sb.from("push_subscriptions").delete().eq("endpoint",sub.endpoint)}catch(e){}
+        try{await API.del("/api/push",{endpoint:sub.endpoint})}catch(e){}
         await sub.unsubscribe();
         sub=null;
       }
     }
     if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key});
     const j=sub.toJSON();
-    const {error}=await sb.from("push_subscriptions").upsert({
-      endpoint:j.endpoint,
-      email:sessionUser.email.toLowerCase(),
-      p256dh:j.keys.p256dh,
-      auth:j.keys.auth
-    },{onConflict:"endpoint"});
-    if(error)throw error;
+    await API.post("/api/push",{endpoint:j.endpoint,p256dh:j.keys.p256dh,auth:j.keys.auth});
     showToast("Notificações ativadas neste aparelho");
     // aviso local de confirmação: se ele aparecer, o aparelho consegue mostrar notificações
     try{await reg.showNotification("Notificações ativadas",{body:"Os avisos de contas e cartões vão chegar aqui.",tag:"ativado"})}catch(e){}
@@ -1507,21 +1466,18 @@ $("editForm").onsubmit=e=>{
 };
 
 (async()=>{
-  let session=null;
-  try{session=(await sb.auth.getSession()).data.session}catch(e){}
-  if(session){
-    $("lock").hidden=false;$("lockForm").hidden=true;$("lockSkel").hidden=false;
-    try{await startSession(session.user);return}
-    catch(err){
-      if(err&&err.message==="sem-acesso"){try{await sb.auth.signOut()}catch(_){}}
-      showLock();
-      $("lockErr").textContent=err&&err.message==="sem-acesso"
-        ?"Este e-mail ainda não tem acesso. Peça ao administrador para liberar."
-        :"Não foi possível conectar à nuvem. Tente entrar de novo.";
-      return;
-    }
+  let temDica=false;
+  try{temDica=localStorage.getItem("mf_sessao")==="1"}catch(_){}
+  if(!temDica){showLock();return}   // nunca entrou neste aparelho: tela de entrada direto
+  $("lock").hidden=false;$("lockForm").hidden=true;$("lockSkel").hidden=false;
+  try{await startSession();return}
+  catch(err){
+    if(err&&err.status===401){try{localStorage.removeItem("mf_sessao")}catch(_){}}   // sessão expirou ou foi encerrada
+    showLock();
+    $("lockErr").textContent=err&&err.status===403
+      ?"Este e-mail ainda não tem acesso. Peça ao administrador para liberar."
+      :(err&&err.status===401?"":"Não foi possível conectar à nuvem. Tente entrar de novo.");
   }
-  showLock();
 })();
 
 

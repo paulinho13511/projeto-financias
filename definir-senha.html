@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0b10">
+<meta name="color-scheme" content="dark">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<title>Definir senha · Minhas Finanças</title>
+<link rel="icon" type="image/png" sizes="64x64" href="/favicon.png">
+<link rel="stylesheet" href="frontend/styles/app.css">
+<link rel="stylesheet" href="frontend/styles/definir-senha.css">
+</head>
+<body>
+<main class="ds">
+  <img class="ds-logo" src="frontend/assets/logo-mark.svg" alt="">
+  <h1>Definir sua senha</h1>
+  <p class="ds-sub">Crie a senha do seu acesso ao Minhas Finanças.</p>
+  <form id="dsForm" autocomplete="off">
+    <label>Nova senha<input type="password" id="dsPw" minlength="10" maxlength="200" autocomplete="new-password" required></label>
+    <label>Repita a senha<input type="password" id="dsPw2" minlength="10" maxlength="200" autocomplete="new-password" required></label>
+    <p class="ds-hint">Pelo menos 10 caracteres.</p>
+    <div class="ds-msg" id="dsMsg" role="alert"></div>
+    <button type="submit" id="dsBtn">Salvar senha</button>
+  </form>
+  <a class="ds-link" id="dsIr" href="/" hidden>Ir para a tela de entrada</a>
+</main>
+<script src="frontend/js/api.js"></script>
+<script src="frontend/js/definir-senha.js"></script>
+</body>
+</html>

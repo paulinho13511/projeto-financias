@@ -1,0 +1,12 @@
+.ds{max-width:420px;margin:0 auto;padding:max(48px,env(safe-area-inset-top)) 20px 40px;display:flex;flex-direction:column;gap:12px}
+.ds-logo{width:56px;height:56px}
+.ds h1{font-size:26px;margin-top:8px}
+.ds-sub{color:var(--muted)}
+.ds form{display:flex;flex-direction:column;gap:14px;margin-top:10px}
+.ds label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
+.ds-hint{font-size:12px;color:var(--muted);margin-top:-6px}
+.ds-msg{min-height:20px;font-size:14px;color:#ff8f8f}
+.ds-msg.ok{color:#7ee0a3}
+.ds button{background:var(--accent);color:var(--ink);border:0;border-radius:14px;padding:14px;font-size:16px;font-weight:600}
+.ds button:disabled{opacity:.6}
+.ds-link{color:var(--accent);font-weight:600;margin-top:6px}
