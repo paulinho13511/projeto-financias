@@ -6,6 +6,7 @@ const SCREENS = [
   "shell/app-start.html",
   "views/inicio.html",
   "views/lancamentos.html",
+  "views/carteira.html",
   "views/contas.html",
   "views/calendario.html",
   "views/categorias.html",
@@ -18,6 +19,7 @@ const SCREENS = [
   "dialogs/acessos.html",
   "dialogs/trocar-senha.html",
   "dialogs/modal.html",
+  "dialogs/pagar.html",
   "overlays/toast.html",
   "overlays/lock.html"
 ];

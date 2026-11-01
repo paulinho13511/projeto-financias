@@ -169,15 +169,6 @@ form.f{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .lock{position:fixed;inset:0;background:var(--bg);z-index:90;display:grid;place-items:center;padding:20px;overflow-y:auto}
 [hidden]{display:none!important}
 .lock[hidden]{display:none}
-.lockbox{width:min(380px,100%);display:grid;gap:14px}
-.lockbox .logo{width:68px;height:68px;border-radius:24px;background:var(--accent);color:var(--ink);display:grid;place-items:center;margin:0 auto}
-.lockbox h1{text-align:center}
-.lockbox p{color:var(--muted);font-size:14px;text-align:center;line-height:1.5}
-.lockbox .err{color:var(--expense);font-size:14px;text-align:center;min-height:20px}
-.lockbox .link{background:none;border:0;color:var(--muted);font-size:13px;text-decoration:underline;padding:8px;min-height:44px}
-.lockbox .warnbox{background:rgba(255,200,87,.12);color:var(--warn);border-radius:14px;padding:12px;font-size:13px;line-height:1.5;text-align:left}
-.lockbox[hidden],.lockbox input[hidden]{display:none}
-.lockbox button:disabled{opacity:.6}
 body.locked .app,body.locked .bottom{display:none}
 .modal{z-index:95}
 /* v13 */
@@ -251,15 +242,6 @@ body.locked .app,body.locked .bottom{display:none}
 }
 
 /* v16: efeitos visuais */
-/* Esconder valores com desfoque (ativa com a classe blur-values no body) */
-body.blur-values .big,
-body.blur-values .v,
-body.blur-values .amt,
-body.blur-values .nx-amt {
-  filter: blur(7px);
-  user-select: none;
-  transition: filter 0.25s ease;
-}
 /* Cards com borda em gradiente brilhante */
 .card-glow {
   position: relative;
@@ -324,93 +306,13 @@ body.blur-values .nx-amt {
 /* v17: tela de entrada */
 .lock[hidden]{display:none!important}
 .lock{background:radial-gradient(circle at 20% 10%,rgba(139,92,246,.08),transparent 45%),var(--bg)}
-.authWrap{width:min(940px,100%);display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:center}
-.authBrand{position:relative;display:grid;place-items:center;align-content:center;gap:12px;min-height:420px;border-radius:28px;background:var(--card);border:1px solid var(--border);overflow:hidden;padding:24px}
-.brandGlow{position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(139,92,246,.38),transparent 65%);animation:glowPulse 3.2s ease-in-out infinite;pointer-events:none}
-.brandLogoWrap{position:relative;z-index:1;border-radius:44px;overflow:hidden;animation:logoIn .9s cubic-bezier(.22,1,.36,1) both,logoFloat 4.5s ease-in-out .9s infinite;box-shadow:0 18px 50px rgba(0,0,0,.45)}
-.brandLogoWrap::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.35) 50%,transparent 65%);transform:translateX(-120%);animation:shine 3.8s ease-in-out 1.2s infinite}
-.brandLogo{display:block;width:200px;height:200px;border-radius:44px}
-.brandName{position:relative;z-index:1;font-size:22px;font-weight:800;letter-spacing:.2px;margin-top:6px;text-shadow:0 2px 12px rgba(0,0,0,.8)}
-.brandTag{position:relative;z-index:1;color:#e4e6ee;font-size:14px;text-shadow:0 1px 8px rgba(0,0,0,.8)}
-.authCard{background:var(--card);border:1px solid var(--border);border-radius:28px;padding:28px}
-.authCard .lockbox{width:100%;gap:14px}
-.authCard h1{text-align:left;font-size:28px;margin:0}
-.authCard #lockText{text-align:left;margin:-6px 0 4px}
-.authCard .lockbox .muted{text-align:center;font-size:13px}
-.authCard .lockbox .fld{display:grid;gap:6px}
-.authCard .lockbox .fld span{font-size:13px;color:var(--muted)}
-.authCard #lockBtn{background:linear-gradient(135deg,var(--accent),#a78bfa);color:var(--ink);font-weight:700;border:0;box-shadow:0 10px 30px rgba(139,92,246,.25);min-height:52px;border-radius:16px}
-.authCard #lockBtn:hover{filter:brightness(1.05)}
-.authCard input:focus{box-shadow:0 0 0 3px rgba(139,92,246,.18)}
-@keyframes logoIn{from{opacity:0;transform:scale(.7) rotate(-6deg)}to{opacity:1;transform:none}}
-@keyframes logoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
-@keyframes glowPulse{0%,100%{transform:scale(.9);opacity:.55}50%{transform:scale(1.12);opacity:1}}
-@keyframes shine{0%,40%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
-@media(max-width:720px){
-  .authWrap{grid-template-columns:1fr;gap:14px}
-  .authBrand{min-height:0;background:none;border:0;padding:8px 0 0;gap:6px}
-  .brandGlow{width:220px;height:220px}
-  .brandLogo{width:112px;height:112px;border-radius:26px}
-  .brandLogoWrap{border-radius:26px}
-  .brandName{font-size:19px}
-  .authCard{padding:22px}
-}
 
 /* v18: login em tela cheia, logo no centro, fundo com movimento de câmera */
 .lock{overflow:hidden;background:var(--bg)}
 /* Fundo: ondas animadas no topo e na base, em azul marinho e preto (paleta do app) */
-.authBg{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:radial-gradient(ellipse at 50% 35%,#101a33 0%,var(--bg) 70%)}
-.wave{position:absolute;left:0;width:200%;height:200px;animation:waveMove 18s linear infinite}
-.waveTop{top:0}
-.waveBottom{bottom:0;animation-duration:24s;animation-direction:reverse}
-@keyframes waveMove{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-.authWrap{position:relative;z-index:1;width:min(420px,100%);grid-template-columns:1fr;gap:18px;justify-items:center}
-.authBrand{background:none;border:0;min-height:0;padding:0;gap:10px;justify-items:center;overflow:visible}
-.brandGlow{width:340px;height:340px}
-.brandLogo{width:180px;height:180px;border-radius:40px}
-.brandLogoWrap{border-radius:40px}
-.authCard{width:100%;background:rgba(17,26,46,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:24px}
-.authCard #lockForm h1{display:none}
-.authCard #lockText{display:none}
-@media(max-width:720px){
-  .authBrand{padding:0}
-  .brandLogo{width:150px;height:150px;border-radius:34px}
-  .brandLogoWrap{border-radius:34px}
-  .brandGlow{width:280px;height:280px}
-}
-@media(prefers-reduced-motion:reduce){.wave{animation:none}}
 
 /* Tela de entrada: tamanhos por aparelho (celular, tablet, computador) */
-@media(max-width:480px){
-  .authWrap{width:min(420px,calc(100% - 32px))}
-  .brandGlow{width:240px;height:240px}
-  .brandLogo{width:124px;height:124px;border-radius:28px}
-  .brandLogoWrap{border-radius:28px}
-  .brandName{font-size:19px}
-  .authCard{padding:20px}
-  .wave{height:120px}
-}
-@media(min-width:481px) and (max-width:1024px){
-  .authWrap{width:min(480px,calc(100% - 48px))}
-  .brandGlow{width:300px;height:300px}
-  .brandLogo{width:156px;height:156px;border-radius:36px}
-  .brandLogoWrap{border-radius:36px}
-  .authCard{padding:26px}
-  .wave{height:160px}
-}
-@media(min-width:1025px){
-  .authWrap{width:min(440px,calc(100% - 48px))}
-  .wave{height:200px}
-}
 /* Celulares baixos (ex.: 360 x 640): diminui a altura para caber sem rolar */
-@media(max-width:480px) and (max-height:700px){
-  .authWrap{gap:10px}
-  .brandGlow{width:200px;height:200px}
-  .brandLogo{width:96px;height:96px;border-radius:22px}
-  .brandLogoWrap{border-radius:22px}
-  .authCard{padding:16px}
-  .wave{height:90px}
-}
 
 /* v23: layout com navegação lateral no computador e grade de cards na tela inicial */
 .side{display:none}
@@ -465,4 +367,7 @@ body{background:var(--bg)}
 .tag.ok{background:rgba(52,211,153,.14);color:var(--income)}
 .bar{background:rgba(255,255,255,.07)}
 .sheetbox button:hover{border-color:var(--accent)}
-.authCard{background:rgba(19,21,28,.8)}
+.heroAcc{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;padding:11px 14px;border-radius:16px;background:rgba(255,255,255,.06);font-size:13px;color:var(--muted)}
+.heroAcc b{font-size:15px;color:var(--text);white-space:nowrap}
+.amt.neutral{color:#c4b5fd}
+.ic.xfer{font-size:19px}

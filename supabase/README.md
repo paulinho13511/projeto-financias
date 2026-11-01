@@ -20,6 +20,7 @@ curl -X POST https://htkrdndcbfnngzlghcjj.supabase.co/functions/v1/send-reminder
 A resposta mostra `candidates` (avisos calculados) e `sent` (enviados agora).
 
 Para só ver o que seria enviado, sem enviar nem registrar nada, mande o corpo `{"dry": true}`.
+Para conferir se o aviso chega nos aparelhos, mande `{"test": true}`: cada aparelho recebe um aviso fixo de teste, sem ler nem gravar dados.
 
 ## Regras
 - Cada pessoa recebe só os avisos dos próprios dados (`app_data.user_id`), nos próprios aparelhos.

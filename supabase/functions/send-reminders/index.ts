@@ -2,7 +2,9 @@
 // Disparada todo dia pelo pg_cron (ver supabase/reminders.sql). O token de chamada fica na
 // tabela reminder_config (só a service role lê); o pg_cron lê o mesmo token do banco.
 // Cada pessoa recebe só os avisos dos próprios dados, nos próprios aparelhos.
+// O título do aviso diz o que aconteceu; o iPhone já escreve o nome do app ("from Minhas Finanças") sozinho.
 // Corpo opcional: {"dry": true} calcula e devolve os avisos sem enviar nem registrar nada.
+//                 {"test": true} manda um aviso de teste fixo a cada aparelho (não lê nem grava dados).
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import webpush from "npm:web-push@3.6.7";
 import { buildReminders, todaySP, type Data, type Reminder } from "./logic.ts";
@@ -39,6 +41,29 @@ async function handle(req: Request): Promise<Response> {
   const { data: subs, error: e2 } = await sb.from("push_subscriptions").select("endpoint,p256dh,auth,email");
   if (e2) return new Response("erro ao ler inscrições", { status: 500 });
   const targets = (subs || []).filter((s: Sub) => allowed.has(s.email.toLowerCase())) as Sub[];
+
+  // Teste: manda um aviso fixo a cada aparelho, sem ler dados de ninguém e sem registrar nada.
+  if (body?.test === true) {
+    webpush.setVapidDetails(env("VAPID_SUBJECT"), env("VAPID_PUBLIC_KEY"), env("VAPID_PRIVATE_KEY"));
+    let sent = 0, failed = 0;
+    const errors: { device: string; status?: number; msg: string }[] = [];
+    const results: { device: string; status: number }[] = [];
+    for (const s of targets) {
+      try {
+        const r = await webpush.sendNotification(
+          { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+          JSON.stringify({ title: "Aviso de teste", body: "Os avisos estão chegando neste aparelho.", tag: "teste" }),
+          { TTL: 60 * 10, urgency: "high" },
+        );
+        results.push({ device: s.endpoint.split("/")[2], status: r.statusCode });
+        sent++;
+      } catch (err) {
+        failed++;
+        errors.push({ device: s.endpoint.split("/")[2], status: (err as { statusCode?: number }).statusCode, msg: String((err as Error).message ?? err).slice(0, 120) });
+      }
+    }
+    return Response.json({ test: true, devices: targets.length, sent, failed, results, errors, vapidPublicKey: env("VAPID_PUBLIC_KEY") });
+  }
 
   // e-mail -> id do usuário -> dados dele
   const { data: list, error: eU } = await sb.auth.admin.listUsers({ page: 1, perPage: 1000 });

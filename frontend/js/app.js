@@ -1,7 +1,7 @@
 const CATS=["Alimentação","Moradia","Transporte","Lazer","Saúde","Contas","Educação","Outros"];
 const ICATS=["Salário","Freelance","Investimentos"];
 const KEY="financas_v2";
-const TITLES={inicio:"Início",subs:"Assinaturas",lanc:"Lançamentos",contas:"Contas",cal:"Calendário",rev:"Categorias",ins:"Insights",dicas:"Dicas",metas:"Metas"};
+const TITLES={inicio:"Início",subs:"Assinaturas",lanc:"Lançamentos",contas:"Contas",cal:"Calendário",rev:"Categorias",ins:"Insights",dicas:"Dicas",metas:"Metas",carteira:"Carteira"};
 const BRL=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,"0");
@@ -10,7 +10,8 @@ const today=()=>ymd(new Date());
 const mKey=s=>s.slice(0,7);
 const parts=s=>s.split("-").map(Number);
 let privacy=false;
-const money=v=>privacy?"R$ ****":BRL.format(v);
+const r2=v=>Math.round((Number(v)||0)*100)/100+0;   // centavos exatos; o "+0" troca -0 por 0
+const money=v=>privacy?"R$ ****":BRL.format(r2(v));
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const dim=ym=>{const[y,m]=parts(ym);return new Date(y,m,0).getDate()};
@@ -124,7 +125,7 @@ async function fetchData(user){
   }
   dbUpdatedAt=rec.updated_at;dbConflict=false;
   const d=rec.data||{};
-  d.tx=d.tx||[];d.bills=d.bills||[];d.budgets=d.budgets||{};d.cards=d.cards||[];d.goals=d.goals||[];d.settings=d.settings||{};
+  d.tx=d.tx||[];d.bills=d.bills||[];d.budgets=d.budgets||{};d.cards=d.cards||[];d.goals=d.goals||[];d.settings=d.settings||{};d.accounts=d.accounts||[];
   return d;
 }
 
@@ -155,6 +156,8 @@ function enterApp(){
 async function lockApp(reason){
   db=null;sessionUser=null;isAdmin=false;dbUpdatedAt=null;dbConflict=false;clearTimeout(idleTimer);
   $("menu").hidden=true;$("modal").hidden=true;$("aclSheet").hidden=true;$("pwSheet").hidden=true;
+  $("payModal").hidden=true;$("editSheet").hidden=true;   // nada de diálogo aberto por cima da tela de entrada
+  $("payYes").onclick=null;$("payNo").onclick=null;$("mYes").onclick=null;$("mNo").onclick=null;
   document.body.classList.add("locked");
   try{await sb.auth.signOut()}catch(e){}
   showLock();
@@ -293,19 +296,48 @@ document.addEventListener("visibilitychange",()=>{
 let sel=mKey(today());
 
 const txOf=ym=>db.tx.filter(t=>mKey(t.date)===ym);
-const sortedTx=()=>[...db.tx].sort((a,b)=>b.date.localeCompare(a.date)||(b.created||0)-(a.created||0));
+const sortedTx=()=>db.tx.filter(t=>t.type!=="payment").sort((a,b)=>b.date.localeCompare(a.date)||(b.created||0)-(a.created||0));
 function totals(ym){
   const items=txOf(ym);
   const bills=occ(ym);
   const inc=items.filter(t=>t.type==="income").reduce((s,t)=>s+t.amount,0);
   const exp=items.filter(t=>t.type==="expense").reduce((s,t)=>s+t.amount,0)+bills.reduce((s,o)=>s+o.amount,0);
-  return{inc,exp,bal:inc-exp,items,bills};
+  return{inc:r2(inc),exp:r2(exp),bal:r2(inc-exp),items,bills};   // somas em centavos: 0,30 − 0,10 − 0,20 dá 0, não −0,00
 }
+/* ---------- carteira: contas (corrente, poupança, dinheiro) e saldo de cada uma ----------
+   Saldo = saldo inicial + receitas − despesas dos lançamentos ligados à conta (em centavos, sem erro de arredondamento).
+   Lançamentos sem conta e compras no cartão (pagas pela fatura) não entram no saldo. */
+const ACC_TYPES={corrente:"Conta corrente",poupanca:"Poupança",carteira:"Carteira"};
+const toCents=v=>Math.round((Number(v)||0)*100);
+function accBalance(a){
+  let c=toCents(a.initial);
+  accMoves(a).forEach(m=>{c+=m.delta});
+  return c/100;
+}
+// Movimentos de uma conta, em centavos (positivo entra, negativo sai): lançamentos, transferências e pagamentos.
+function accMoves(a){
+  const out=[];
+  db.tx.forEach(t=>{
+    const v=toCents(t.amount);
+    if(t.type==="transfer"){
+      if(t.from===a.id)out.push({t,delta:-v});
+      if(t.to===a.id)out.push({t,delta:v});
+      return;
+    }
+    if(t.account!==a.id||(t.card&&t.type!=="income"))return;   // compra no cartão sai pela fatura; receita nunca é "no cartão"
+    out.push({t,delta:t.type==="income"?v:-v});
+  });
+  return out;
+}
+const accTotal=()=>(db.accounts||[]).reduce((s,a)=>s+toCents(accBalance(a)),0)/100;
+const accName=id=>{const a=(db.accounts||[]).find(x=>x.id===id);return a?a.name:""};
 function billStatus(b,ym){
   const paid=(b.paid||[]).includes(ym);
   const due=dueOf(b,ym);
   const d=daysBetween(today(),due);
   if(paid)return{key:"paid",label:"Paga",cls:"ok",due,d};
+  // conta no cartão não vence sozinha: ela é paga junto com a fatura
+  if(b.card&&(db.cards||[]).some(c=>c.id===b.card))return{key:"card",label:"Na fatura",cls:"",due,d};
   if(d<0)return{key:"late",label:"Atrasada",cls:"late",due,d};
   if(d===0)return{key:"today",label:"Vence hoje",cls:"late",due,d};
   if(d<=3)return{key:"soon",label:"Vence em "+d+"d",cls:"soon",due,d};
@@ -328,10 +360,10 @@ function faturaOf(card,closeYm){
     });
     occ(ym).filter(o=>o.b.card===card.id).forEach(o=>{
       const d=dueOf(o.b,ym);
-      if(d>prevClose&&d<=close)items.push({desc:`${o.b.name} (${o.label})`,amount:o.amount,date:d});
+      if(d>prevClose&&d<=close)items.push({desc:`${o.b.name} (${o.label})`,amount:o.amount,date:d,bill:o.b.id,billYm:ym});
     });
   });
-  return{close,closeYm,due:dueDateOfFatura(card,closeYm),total:items.reduce((s,i)=>s+i.amount,0),items};
+  return{close,closeYm,due:dueDateOfFatura(card,closeYm),total:r2(items.reduce((s,i)=>s+i.amount,0)),items};
 }
 // Fatura aberta hoje: a que fecha no próximo fechamento (inclusive hoje)
 function currentCloseYm(card){
@@ -359,10 +391,37 @@ function cardAlerts(){
   });
   return out;
 }
-function markFaturaPaid(cardId,closeYm){
+/* Ao pagar, o usuário escolhe de qual conta o dinheiro sai. O pagamento vira um movimento da conta
+   (tipo "payment"), que não conta como despesa de novo: a despesa já está no mês. Sem contas cadastradas, nada pergunta. */
+let lastPayAcc="";
+function askPayAccount(msg){
+  const accs=db.accounts||[];
+  if(!accs.length)return Promise.resolve("");
+  return new Promise(resolve=>{
+    $("payMsg").textContent=msg;
+    $("payAcc").innerHTML=`<option value="">Não descontar de nenhuma conta</option>`+accs.map(a=>`<option value="${a.id}">${esc(a.name)} · ${money(accBalance(a))}</option>`).join("");
+    $("payAcc").value=accs.some(a=>a.id===lastPayAcc)?lastPayAcc:accs[0].id;
+    $("payModal").hidden=false;
+    const done=v=>{$("payModal").hidden=true;$("payYes").onclick=null;$("payNo").onclick=null;resolve(v)};
+    $("payYes").onclick=()=>{lastPayAcc=$("payAcc").value||lastPayAcc;done($("payAcc").value)};
+    $("payNo").onclick=()=>done(null);
+  });
+}
+const dropPayment=(kind,match)=>{db.tx=db.tx.filter(t=>!(t.type==="payment"&&t.ref&&t.ref.kind===kind&&Object.keys(match).every(k=>t.ref[k]===match[k])))};
+async function markFaturaPaid(cardId,closeYm){
   const c=(db.cards||[]).find(x=>x.id===cardId);if(!c)return;
   c.paid=c.paid||[];
-  if(!c.paid.includes(closeYm))c.paid.push(closeYm);
+  if(c.paid.includes(closeYm))return;
+  const fat=faturaOf(c,closeYm), amount=fat.total;
+  const acc=await askPayAccount(`Pagar a fatura ${c.name} (${money(amount)}). De qual conta sai o dinheiro?`);
+  if(acc===null)return;
+  c.paid.push(closeYm);
+  // as contas que estavam nesta fatura (assinaturas, parcelas) ficam pagas junto com ela
+  fat.items.filter(i=>i.bill).forEach(i=>{
+    const b=db.bills.find(x=>x.id===i.bill);
+    if(b){b.paid=b.paid||[];if(!b.paid.includes(i.billYm))b.paid.push(i.billYm)}
+  });
+  if(acc&&amount>0)db.tx.push({id:uid(),type:"payment",desc:`Fatura ${c.name}`,amount,date:today(),category:"Cartão",account:acc,ref:{kind:"fatura",card:cardId,ym:closeYm},created:Date.now()});
   save();renderAll();showToast("Fatura marcada como paga");
 }
 async function delCard(id){
@@ -372,14 +431,19 @@ async function delCard(id){
 window.markFaturaPaid=markFaturaPaid;window.delCard=delCard;
 
 function txRow(t){
+  if(t.type==="transfer"){
+    const de=accName(t.from)||"Conta removida", para=accName(t.to)||"Conta removida";
+    return `<div class="row"><div class="ic xfer">⇄</div><div class="rmain"><div class="t">${esc(t.desc)}</div><div class="s">${esc(de)} → ${esc(para)} · ${fmtDate(t.date)}</div></div><div class="actions"><span class="amt neutral">${money(t.amount)}</span><button class="ico" title="Remover" data-act="delTx" data-id="${t.id}">×</button></div></div>`;
+  }
   const inc=t.type==="income";
-  return `<div class="row"><div class="ic ${inc?"":"out"}">${esc(t.category.charAt(0))}</div><div class="rmain"><div class="t">${esc(t.desc)}</div><div class="s">${esc(t.category)} · ${fmtDate(t.date)}</div></div><div class="actions"><span class="amt ${inc?"income":"expense"}">${inc?"+":"−"} ${money(t.amount)}</span><button class="ico" title="Remover" data-act="delTx" data-id="${t.id}">×</button></div></div>`;
+  return `<div class="row"><div class="ic ${inc?"":"out"}">${esc(t.category.charAt(0))}</div><div class="rmain"><div class="t">${esc(t.desc)}</div><div class="s">${esc(t.category)} · ${fmtDate(t.date)}${t.account&&accName(t.account)?" · "+esc(accName(t.account)):""}</div></div><div class="actions"><span class="amt ${inc?"income":"expense"}">${inc?"+":"−"} ${money(t.amount)}</span><button class="ico" title="Remover" data-act="delTx" data-id="${t.id}">×</button></div></div>`;
 }
 
 /* ---------- confirmação própria (o visualizador bloqueia a caixa padrão) ---------- */
-function ask(msg){
+function ask(msg,yes,no){
   return new Promise(resolve=>{
     $("modalMsg").textContent=msg;
+    $("mYes").textContent=yes||"Confirmar";$("mNo").textContent=no||"Cancelar";
     $("modal").hidden=false;
     const done=v=>{$("modal").hidden=true;$("mYes").onclick=null;$("mNo").onclick=null;resolve(v)};
     $("mYes").onclick=()=>done(true);
@@ -438,17 +502,40 @@ function showToast(msg){
 }
 
 /* ---------- ações ---------- */
-function togglePaid(id,ym){
+async function togglePaid(id,ym){
   const b=db.bills.find(x=>x.id===id);if(!b)return;
   b.paid=b.paid||[];
   const marcou=!b.paid.includes(ym);
-  b.paid=b.paid.includes(ym)?b.paid.filter(x=>x!==ym):[...b.paid,ym];
+  if(marcou){
+    // conta no cartão é paga pela fatura: só marca, sem tirar dinheiro de conta
+    if(!b.card){
+      const o=occ(ym).find(x=>x.b.id===id);
+      const amount=o?o.amount:b.amount;
+      const acc=await askPayAccount(`Pagar ${b.name} (${money(amount)}). De qual conta sai o dinheiro?`);
+      if(acc===null)return;
+      if(acc)db.tx.push({id:uid(),type:"payment",desc:`Pagamento: ${b.name}`,amount,date:today(),category:b.category||"Contas",account:acc,ref:{kind:"bill",id,ym},created:Date.now()});
+    }
+    b.paid=[...b.paid,ym];
+  }else{
+    b.paid=b.paid.filter(x=>x!==ym);
+    dropPayment("bill",{id,ym});   // desmarcar devolve o dinheiro à conta
+  }
   save();renderAll();
   if(marcou)showToast("Conta marcada como paga");
 }
+// Conta fixa que já existia antes do mês aberto e ainda está ativa nele: dá para encerrar daqui para frente
+const hasHistory=(b,ym)=>(b.kind||"mensal")==="mensal"&&!!b.start&&b.start<ym&&(!b.end||b.end>=ym);
 async function delBill(id){
-  if(!(await ask("Excluir esta conta? Todas as parcelas dela também serão removidas.")))return;
-  db.bills=db.bills.filter(b=>b.id!==id);save();renderAll();
+  const b=db.bills.find(x=>x.id===id);if(!b)return;
+  if(hasHistory(b,sel)){
+    // cancelar uma assinatura não pode apagar os meses em que ela existiu
+    if(await ask(`Encerrar "${b.name}" a partir de ${monthLabel(sel)}? Os meses anteriores continuam no histórico.`,"Encerrar","Apagar tudo")){
+      b.end=shiftMonth(sel,-1);
+      save();renderAll();showToast("Conta encerrada; o histórico foi mantido");return;
+    }
+    if(!(await ask(`Apagar "${b.name}" de todos os meses, inclusive do histórico? Isso muda os totais dos meses passados.`,"Apagar tudo","Voltar")))return;
+  }else if(!(await ask("Excluir esta conta? Todas as parcelas dela também serão removidas.")))return;
+  db.bills=db.bills.filter(x=>x.id!==id);save();renderAll();
 }
 async function delTx(id){
   if(!(await ask("Remover este lançamento?")))return;
@@ -564,13 +651,14 @@ window.addEventListener("pointermove",e=>{if(chartDrag)chartPick(e)});
 window.addEventListener("pointerup",()=>{chartDrag=false});
 
 
-// Contas em aberto do mês atual e do seguinte, da mais urgente para a mais distante
-// (assim o vencimento do dia 1 ou 2 não some nos últimos dias do mês)
+// Contas em aberto: as atrasadas do mês anterior, as do mês atual e as do seguinte, da mais urgente
+// para a mais distante (assim uma conta atrasada não some na virada do mês, nem o vencimento do dia 1 ou 2
+// nos últimos dias do mês). Contas no cartão ficam de fora: elas são pagas junto com a fatura.
 function openBills(){
   const cur=mKey(today());
-  return [cur,shiftMonth(cur,1)]
+  return [shiftMonth(cur,-1),cur,shiftMonth(cur,1)]
     .flatMap(ym=>occ(ym).map(o=>({...o,ym,st:billStatus(o.b,ym)})))
-    .filter(x=>x.st.key!=="paid")
+    .filter(x=>x.st.key!=="paid"&&x.st.key!=="card")
     .sort((a,b)=>a.st.d-b.st.d);
 }
 function renderNext(){
@@ -684,8 +772,13 @@ function renderIns(){
   const prev=totals(prevK);
   const diff=prev.exp?((cur.exp-prev.exp)/prev.exp)*100:null;
   const now=mKey(today());
+  // Média diária do que JÁ foi gasto: no mês atual conta só até hoje (um aluguel que vence dia 28 não
+  // entra na média do dia 5); em outros meses vale o mês inteiro.
   const days=sel===now?Math.max(1,parseInt(today().slice(8,10),10)):dim(sel);
-  const avg=cur.exp/days;
+  const upTo=sel===now?today():"9999-12-31";
+  const spent=cur.items.filter(x=>x.type==="expense"&&x.date<=upTo).reduce((s,x)=>s+x.amount,0)
+    +cur.bills.filter(o=>dueOf(o.b,sel)<=upTo).reduce((s,o)=>s+o.amount,0);
+  const avg=spent/days;
   const rate=cur.inc?((cur.inc-cur.exp)/cur.inc)*100:null;
   const byCat={};
   cur.items.filter(x=>x.type==="expense").forEach(x=>byCat[x.category]=(byCat[x.category]||0)+x.amount);
@@ -717,7 +810,7 @@ function renderIns(){
     </div>`;
 }
 
-const STAGGERS=[["reminders"],["notifs"],["recent"],["billsList"],["catList"],["top"],["insBody",80],["calGrid",10]];
+const STAGGERS=[["reminders"],["notifs"],["recent"],["billsList"],["accList"],["catList"],["top"],["insBody",80],["calGrid",10]];
 function playEnter(){
   animNow=true;
   STAGGERS.forEach(([id,step])=>stagger($(id),step));
@@ -739,6 +832,7 @@ function renderAll(){
   renderIns();
   renderCards();
   populateCardSelects();
+  renderCarteira();
   renderV13();
   animNow=false;
   if(replayAnim){replayAnim=false;playEnter()}
@@ -758,6 +852,85 @@ function renderCards(){
       ${pendingOpen?`<button class="ghost" data-act="markFaturaPaid" data-id="${c.id}" data-ym="${pendingYm}">Marcar paga</button>`:""}
       <button class="ico" title="Excluir cartão" data-act="delCard" data-id="${c.id}">×</button></div></div>`;
   }).join(""):`<div class="empty">Cadastre seus cartões para acompanhar as faturas</div>`;
+}
+function renderCarteira(){
+  const accs=db.accounts||[];
+  const total=accTotal();
+  $("accTotal").textContent=money(total);
+  $("accTotal").className="big "+(total<0?"expense":"");
+  $("heroAcc").hidden=!accs.length;
+  $("heroAccVal").textContent=money(total);
+  $("accList").innerHTML=accs.length?accs.map(a=>{
+    const b=accBalance(a);
+    return `<div class="row"><div class="ic">${esc(a.name.charAt(0).toUpperCase())}</div><div class="rmain"><div class="t">${esc(a.name)}</div><div class="s">${ACC_TYPES[a.type]||"Conta"} · saldo inicial ${money(a.initial||0)}</div></div><div class="actions"><span class="amt ${b<0?"expense":"income"}">${money(b)}</span><button class="ico" title="Excluir conta" data-act="delAcc" data-id="${a.id}">×</button></div></div>`;
+  }).join(""):`<div class="empty">Cadastre suas contas para acompanhar o saldo de cada uma</div>`;
+  $("txAcc").innerHTML=`<option value="">Sem conta</option>`+accs.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("");
+  $("txAcc").hidden=!accs.length;
+  renderTransfer(accs);
+  renderStatement(accs);
+}
+function renderTransfer(accs){
+  const opts=accs.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("");
+  const keep={from:$("trFrom").value,to:$("trTo").value};
+  $("trFrom").innerHTML=opts;$("trTo").innerHTML=opts;
+  if(accs.some(a=>a.id===keep.from))$("trFrom").value=keep.from;
+  if(accs.some(a=>a.id===keep.to))$("trTo").value=keep.to;
+  else if(accs.length>1)$("trTo").value=accs.find(a=>a.id!==$("trFrom").value).id;
+  $("trForm").hidden=accs.length<2;
+  $("trHint").hidden=accs.length>=2;
+}
+function renderStatement(accs){
+  $("stmtCard").hidden=!accs.length;
+  if(!accs.length)return;
+  const keep=$("stmtAcc").value;
+  $("stmtAcc").innerHTML=accs.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("");
+  if(accs.some(a=>a.id===keep))$("stmtAcc").value=keep;
+  const a=accs.find(x=>x.id===$("stmtAcc").value)||accs[0];
+  const moves=accMoves(a).sort((x,y)=>x.t.date.localeCompare(y.t.date)||(x.t.created||0)-(y.t.created||0));
+  let run=toCents(a.initial);
+  const rows=moves.map(m=>{run+=m.delta;return{...m,saldo:run/100}}).reverse();
+  const label=t=>{
+    if(t.type==="transfer"){
+      return t.from===a.id?`Transferência para ${accName(t.to)||"conta removida"}`:`Transferência de ${accName(t.from)||"conta removida"}`;
+    }
+    return t.desc;
+  };
+  $("stmtList").innerHTML=rows.slice(0,200).map(m=>`<div class="row"><div class="rmain"><div class="t">${esc(label(m.t))}</div><div class="s">${fmtDate(m.t.date)} · saldo ${money(m.saldo)}</div></div><span class="amt ${m.delta<0?"expense":"income"}">${m.delta<0?"−":"+"} ${money(Math.abs(m.delta)/100)}</span></div>`).join("")
+    +`<div class="row"><div class="rmain"><div class="t">Saldo inicial</div><div class="s">${esc(a.name)}</div></div><span class="amt neutral">${money(a.initial||0)}</span></div>`;
+}
+$("stmtAcc").onchange=()=>renderStatement(db.accounts||[]);
+$("trForm").onsubmit=e=>{
+  e.preventDefault();
+  const from=$("trFrom").value,to=$("trTo").value,amount=Math.round((parseFloat($("trAmt").value)||0)*100)/100;
+  if(!from||!to||from===to){showToast("Escolha duas contas diferentes");return}
+  if(amount<=0){showToast("Informe um valor maior que zero");return}
+  const date=$("trDate").value||today();
+  db.tx.push({id:uid(),type:"transfer",desc:$("trDesc").value.trim()||"Transferência",amount,date,category:"Transferência",from,to,created:Date.now()});
+  save();
+  $("trAmt").value="";$("trDesc").value="";
+  renderAll();
+  showToast("Transferência registrada");
+};
+$("accForm").onsubmit=e=>{
+  e.preventDefault();
+  const name=$("accName").value.trim();
+  if(!name)return;
+  db.accounts=db.accounts||[];
+  db.accounts.push({id:uid(),name,type:$("accType").value,initial:Math.round((parseFloat($("accInit").value)||0)*100)/100});
+  save();
+  e.target.reset();
+  renderAll();
+  showToast("Conta cadastrada");
+};
+async function delAcc(id){
+  if(!(await ask("Excluir esta conta? Os lançamentos continuam no histórico, só que sem conta, e as transferências dela ficam com a outra ponta só.")))return;
+  db.accounts=(db.accounts||[]).filter(a=>a.id!==id);
+  db.tx.forEach(t=>{
+    if(t.account===id)delete t.account;
+    if(t.from===id)t.from=null;
+    if(t.to===id)t.to=null;
+  });
+  save();renderAll();
 }
 function populateCardSelects(){
   const opts=`<option value="">Sem cartão</option>`+(db.cards||[]).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
@@ -816,7 +989,8 @@ $("txForm").onsubmit=e=>{
   const type=document.querySelector('input[name="type"]:checked').value;
   const date=$("txDate").value;
   const desc=$("txDesc").value.trim(), amount=parseFloat($("txAmt").value);
-  const category=$("txCat").value, card=$("txCard").value||null;
+  const category=$("txCat").value, card=type==="income"?null:($("txCard").value||null);   // receita não é compra no cartão
+  const account=card?null:($("txAcc").value||null);   // compra no cartão sai da conta só quando a fatura é paga
   if($("txParc").value==="parc"){
     if(type==="income"){showToast("Parcelamento só vale para despesas");return}
     const n=Math.min(120,Math.max(2,parseInt($("txParcels").value,10)));
@@ -826,12 +1000,15 @@ $("txForm").onsubmit=e=>{
     db.bills.push(pb);
     showToast(`Compra parcelada em ${n}x cadastrada`);
   }else{
-    db.tx.push({id:uid(),type,desc,amount,date,category,card,created:Date.now()});
+    const t={id:uid(),type,desc,amount,date,category,card,created:Date.now()};
+    if(account)t.account=account;
+    db.tx.push(t);
     showToast("Lançamento adicionado");
   }
   save();
   e.target.reset();
   $("txDate").value=today();
+  syncTxType();   // o reset volta para Despesa: mostra de novo cartão e parcelamento
   updateTxParc();
   sel=mKey(date);
   renderAll();
@@ -899,8 +1076,19 @@ $("notifBtn").onclick=async()=>{
     if(perm!=="granted"){showToast("Permissão de notificação não concedida");return}
     const reg=await navigator.serviceWorker.register("/sw.js");
     await navigator.serviceWorker.ready;
+    const key=b64ToBytes(VAPID_PUBLIC);
     let sub=await reg.pushManager.getSubscription();
-    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToBytes(VAPID_PUBLIC)});
+    if(sub){
+      // inscrição antiga criada com outra chave (ou sem chave conhecida): o serviço de push recusa os envios.
+      const cur=sub.options&&sub.options.applicationServerKey;
+      const same=cur&&cur.byteLength===key.length&&new Uint8Array(cur).every((v,i)=>v===key[i]);
+      if(!same){
+        try{await sb.from("push_subscriptions").delete().eq("endpoint",sub.endpoint)}catch(e){}
+        await sub.unsubscribe();
+        sub=null;
+      }
+    }
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key});
     const j=sub.toJSON();
     const {error}=await sb.from("push_subscriptions").upsert({
       endpoint:j.endpoint,
@@ -910,6 +1098,8 @@ $("notifBtn").onclick=async()=>{
     },{onConflict:"endpoint"});
     if(error)throw error;
     showToast("Notificações ativadas neste aparelho");
+    // aviso local de confirmação: se ele aparecer, o aparelho consegue mostrar notificações
+    try{await reg.showNotification("Notificações ativadas",{body:"Os avisos de contas e cartões vão chegar aqui.",tag:"ativado"})}catch(e){}
   }catch(err){
     showToast("Não foi possível ativar as notificações");
   }
@@ -919,11 +1109,19 @@ $("notifBtn").onclick=async()=>{
 $("txCat").innerHTML=[...new Set([...CATS,...ICATS])].map(c=>`<option>${c}</option>`).join("");
 $("bCat").innerHTML=CATS.map(c=>`<option>${c}</option>`).join("");
 $("txDate").value=today();
+$("trDate").value=today();
 document.querySelectorAll('input[name="kind"]').forEach(r=>r.onchange=syncBillForm);
 ["bAmt","bParcels","bStart"].forEach(id=>$(id).addEventListener("input",updateParcTotal));
 syncBillForm();
 $("bEndType").onchange=syncBillForm;
 $("txParc").onchange=updateTxParc;
+// Cartão e parcelamento só fazem sentido em despesa
+function syncTxType(){
+  const inc=document.querySelector('input[name="type"]:checked').value==="income";
+  $("txCard").hidden=inc;if(inc)$("txCard").value="";
+  $("txParc").hidden=inc;if(inc){$("txParc").value="avista";updateTxParc()}
+}
+document.querySelectorAll('input[name="type"]').forEach(r=>r.addEventListener("change",syncTxType));
 $("txParcels").addEventListener("input",updateTxParc);
 $("txAmt").addEventListener("input",updateTxParc);
 /* ---------- v13: privacidade, atalhos, filtros, exportação/importação, metas, renda variável, assinaturas, gráficos ---------- */
@@ -997,14 +1195,15 @@ function renderFeed(){
 /* exportação: CSV e PDF do mês */
 function monthRows(ym){
   return [
-    ...txOf(ym).map(t=>({date:t.date,desc:t.desc,cat:t.category,type:t.type,amount:t.amount,card:cardName(t.card)})),
-    ...occ(ym).map(o=>({date:dueOf(o.b,ym),desc:`${o.b.name} (${o.label})`,cat:o.b.category,type:"expense",amount:o.amount,card:cardName(o.b.card)}))
+    ...txOf(ym).filter(t=>t.type!=="payment").map(t=>({date:t.date,desc:t.desc,cat:t.category,type:t.type,amount:t.amount,card:cardName(t.card),acc:t.type==="transfer"?`${accName(t.from)||"—"} → ${accName(t.to)||"—"}`:accName(t.account)})),
+    ...occ(ym).map(o=>({date:dueOf(o.b,ym),desc:`${o.b.name} (${o.label})`,cat:o.b.category,type:"expense",amount:o.amount,card:cardName(o.b.card),acc:""}))
   ].sort((a,b)=>a.date.localeCompare(b.date));
 }
 $("csvBtn").onclick=()=>{
   const q=v=>{let s=String(v);if(/^[=+\-@\t\r]/.test(s))s="'"+s;return `"${s.replace(/"/g,'""')}"`};
-  const lines=["Data;Descrição;Categoria;Tipo;Valor;Cartão",
-    ...monthRows(sel).map(r=>[brDate(r.date),q(r.desc),q(r.cat),r.type==="income"?"Receita":"Despesa",r.amount.toFixed(2).replace(".",","),q(r.card)].join(";"))];
+  const typeLabel=t=>t==="income"?"Receita":t==="transfer"?"Transferência":"Despesa";
+  const lines=["Data;Descrição;Categoria;Tipo;Valor;Cartão;Conta",
+    ...monthRows(sel).map(r=>[brDate(r.date),q(r.desc),q(r.cat),typeLabel(r.type),r.amount.toFixed(2).replace(".",","),q(r.card),q(r.acc||"")].join(";"))];
   const blob=new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);a.download=`financas-${sel}.csv`;
@@ -1013,7 +1212,7 @@ $("csvBtn").onclick=()=>{
 };
 $("pdfBtn").onclick=()=>{
   const t=totals(sel);
-  const body=monthRows(sel).map(r=>`<tr><td>${brDate(r.date)}</td><td>${esc(r.desc)}</td><td>${esc(r.cat)}</td><td>${r.type==="income"?"Receita":"Despesa"}</td><td class="n">${BRL.format(r.amount)}</td></tr>`).join("");
+  const body=monthRows(sel).map(r=>`<tr><td>${brDate(r.date)}</td><td>${esc(r.desc)}</td><td>${esc(r.cat)}</td><td>${r.type==="income"?"Receita":r.type==="transfer"?"Transferência":"Despesa"}</td><td class="n">${BRL.format(r.amount)}</td></tr>`).join("");
   $("printArea").innerHTML=`<h2>Extrato de ${esc(monthLabel(sel))}</h2>
     <table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th class="n">Valor</th></tr></thead>
     <tbody>${body||'<tr><td colspan="5">Sem lançamentos</td></tr>'}</tbody></table>
@@ -1029,19 +1228,27 @@ function parseOFX(text){
     const g=tag=>{const m=b.match(new RegExp("<"+tag+">([^<\\r\\n]*)","i"));return m?m[1].trim():""};
     const d=g("DTPOSTED"), amt=parseFloat(g("TRNAMT").replace(",","."));
     const desc=(g("MEMO")||g("NAME")||"Transação").replace(/\s+/g," ");
-    if(!/^\d{8}/.test(d)||isNaN(amt))return;
+    if(!/^\d{8}/.test(d)||isNaN(amt)||amt===0||!validYmd(+d.slice(0,4),+d.slice(4,6),+d.slice(6,8))){impIgnored++;return}
     out.push({date:`${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}`,desc,amount:Math.abs(amt),type:amt<0?"expense":"income"});
   });
   return out;
 }
+// Só aceita datas que existem de verdade (31/02 e mês 13 não entram)
+function validYmd(y,m,d){
+  const dt=new Date(y,m-1,d);
+  return dt.getFullYear()===y&&dt.getMonth()===m-1&&dt.getDate()===d;
+}
 function parseDateBR(s){
-  let m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/); if(m)return `${m[3]}-${m[2]}-${m[1]}`;
-  m=s.match(/^(\d{4})-(\d{2})-(\d{2})/); if(m)return `${m[1]}-${m[2]}-${m[3]}`;
+  let m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})/); if(m)return validYmd(+m[3],+m[2],+m[1])?`${m[3]}-${m[2]}-${m[1]}`:null;
+  m=s.match(/^(\d{4})-(\d{2})-(\d{2})/); if(m)return validYmd(+m[1],+m[2],+m[3])?`${m[1]}-${m[2]}-${m[3]}`:null;
   return null;
 }
 function parseMoneyBR(s){
   let v=s.replace(/[R$\s]/g,"");
+  const neg=/^\(.*\)$/.test(v);                 // (35,50) = valor negativo
+  if(neg)v="-"+v.slice(1,-1);
   if(v.includes(","))v=v.replace(/\./g,"").replace(",",".");
+  else if(/^-?\d{1,3}(\.\d{3})+$/.test(v))v=v.replace(/\./g,"");   // 1.500 = mil e quinhentos (ponto de milhar, sem centavos)
   return parseFloat(v);
 }
 function parseCSV(text){
@@ -1057,14 +1264,16 @@ function parseCSV(text){
   return lines.slice(1).map(l=>{
     const c=cells(l);
     const date=parseDateBR(c[iD]||""), amt=parseMoneyBR(c[iV]||"");
-    return date&&!isNaN(amt)?{date,desc:(c[iDesc]||"Transação"),amount:Math.abs(amt),type:amt<0?"expense":"income"}:null;
+    if(date&&!isNaN(amt)&&amt!==0)return{date,desc:(c[iDesc]||"Transação"),amount:Math.abs(amt),type:amt<0?"expense":"income"};
+    impIgnored++;return null;
   }).filter(Boolean);
 }
-let impRows=[];
+let impRows=[], impIgnored=0;
 $("impFile").onchange=async e=>{
   const f=e.target.files[0];
   if(!f)return;
   const text=await f.text();
+  impIgnored=0;
   const rows=/<STMTTRN>/i.test(text)?parseOFX(text):parseCSV(text);
   if(!rows||!rows.length){
     showToast("Não encontrei lançamentos neste arquivo");
@@ -1076,17 +1285,24 @@ $("impFile").onchange=async e=>{
 function renderImport(){
   const box=$("impBox");
   box.hidden=false;
-  box.innerHTML=`<p class="muted" style="font-size:13px;margin:12px 0 8px">${impRows.length} lançamentos encontrados. Desmarque o que não quer importar.</p>
+  box.innerHTML=`<p class="muted" style="font-size:13px;margin:12px 0 8px">${impRows.length} lançamentos encontrados${impIgnored?` (${impIgnored} linha(s) ignorada(s): data ou valor inválido)`:""}. Desmarque o que não quer importar.</p>
     <div class="list">${impRows.map((r,i)=>`<label class="row imp"><input type="checkbox" data-i="${i}" ${r.on?"checked":""}><div class="rmain"><div class="t">${esc(r.desc)}</div><div class="s">${brDate(r.date)} · ${r.type==="income"?"Receita":"Despesa"}</div></div><div class="amt ${r.type==="income"?"income":"expense"}">${money(r.amount)}</div></label>`).join("")}</div>
+    ${(db.accounts||[]).length?`<select id="impAcc" aria-label="Conta do extrato" style="width:100%;margin-top:12px"><option value="">Sem conta</option>${db.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select>`:""}
     <div class="btnrow" style="margin-top:12px"><button class="ghost" id="impCancel" type="button">Cancelar</button><button class="primary" id="impOk" type="button">Importar selecionados</button></div>`;
   box.querySelectorAll("[data-i]").forEach(c=>c.onchange=()=>{impRows[+c.dataset.i].on=c.checked});
   $("impCancel").onclick=()=>{box.hidden=true;impRows=[];$("impFile").value=""};
   $("impOk").onclick=()=>{
     let added=0,skipped=0;
+    const impAccId=$("impAcc")?$("impAcc").value:"";
+    // "já existe" = bate com um lançamento que já estava salvo ANTES desta importação. Cada lançamento antigo
+    // cobre uma única linha, então dois cafés iguais no mesmo dia entram os dois.
+    const before=db.tx.slice(), used=new Set();
     impRows.filter(r=>r.on).forEach(r=>{
-      const dup=db.tx.some(t=>t.date===r.date&&Math.abs(t.amount-r.amount)<0.005&&t.desc===r.desc);
-      if(dup){skipped++;return}
-      db.tx.push({id:uid(),type:r.type,desc:r.desc,amount:r.amount,date:r.date,category:"Outros",card:null,created:Date.now()});
+      const hit=before.find(t=>!used.has(t.id)&&t.date===r.date&&Math.abs(t.amount-r.amount)<0.005&&t.desc===r.desc);
+      if(hit){used.add(hit.id);skipped++;return}
+      const nt={id:uid(),type:r.type,desc:r.desc,amount:r.amount,date:r.date,category:"Outros",card:null,created:Date.now()};
+      if(impAccId)nt.account=impAccId;
+      db.tx.push(nt);
       added++;
     });
     save();
@@ -1173,7 +1389,7 @@ function renderSubs(){
   $("subYear").textContent=money(annual);
   $("subAcc").textContent=money(acc);
   $("subList").innerHTML=monthSubs.length
-    ?monthSubs.map(o=>`<div class="row"><div class="rmain"><div class="t">${esc(o.b.name)}</div><div class="s">${esc(o.b.category)} · ${money(o.amount)} por mês · ${money(o.amount*12)} por ano</div></div></div>`).join("")
+    ?monthSubs.map(o=>`<div class="row"><div class="rmain"><div class="t">${esc(o.b.name)}</div><div class="s">${esc(o.b.category)} · ${money(o.amount)} por mês</div></div></div>`).join("")
     :`<div class="empty">${subsAll.length?"Nenhuma assinatura ativa neste mês":"Em Contas, cadastre uma conta fixa e marque \"É assinatura\""}</div>`;
 }
 
@@ -1243,8 +1459,10 @@ function openEdit(id){
   $("eEnd").value=b.end||"";
   $("eSubBox").hidden=!isMensal;
   $("eSub").checked=!!b.sub;
-  $("eNote").hidden=kind!=="parcelada";
-  $("eNote").textContent=kind==="parcelada"?"Parcelamento: dá para alterar nome, valor da parcela, dia, cartão e categoria. Número de parcelas e início não mudam.":"";
+  $("eNote").hidden=!(kind==="parcelada"||hasHistory(b,sel));
+  $("eNote").textContent=kind==="parcelada"
+    ?"Parcelamento: dá para alterar nome, valor da parcela, dia, cartão e categoria. Número de parcelas e início não mudam."
+    :hasHistory(b,sel)?`Se você mudar o valor, o novo valor vale a partir de ${monthLabel(sel)}. Os meses anteriores continuam como estavam.`:"";
   $("editSheet").hidden=false;
 }
 $("eEndType").onchange=()=>{$("eEnd").hidden=$("eEndType").value!=="until";if(!$("eEnd").value)$("eEnd").value=mKey(today())};
@@ -1255,11 +1473,22 @@ $("billsList").addEventListener("click",e=>{
 });
 $("editForm").onsubmit=e=>{
   e.preventDefault();
-  const b=db.bills.find(x=>x.id===$("eId").value);
+  let b=db.bills.find(x=>x.id===$("eId").value);
   if(!b)return;
   const kind=b.kind||"mensal";
-  b.name=$("eName").value.trim();
   const novo=parseFloat($("eAmt").value);
+  // Conta fixa com valor novo: o valor vale a partir do mês aberto. A conta antiga termina no mês anterior
+  // e uma nova começa agora; os meses passados continuam com o valor que tinham.
+  if(kind==="mensal"&&novo!==b.amount&&hasHistory(b,sel)){
+    const old=b;
+    b={...JSON.parse(JSON.stringify(old)),id:uid(),start:sel,paid:(old.paid||[]).filter(m=>m>=sel)};
+    delete b.end;
+    old.paid=(old.paid||[]).filter(m=>m<sel);
+    old.end=shiftMonth(sel,-1);
+    db.bills.push(b);
+    db.tx.forEach(t=>{if(t.type==="payment"&&t.ref&&t.ref.kind==="bill"&&t.ref.id===old.id&&t.ref.ym>=sel)t.ref.id=b.id});
+  }
+  b.name=$("eName").value.trim();
   if(novo!==b.amount)delete b.last;   // valor da parcela mudou: o ajuste de centavos não vale mais
   b.amount=novo;
   b.category=$("eCat").value;
@@ -1301,6 +1530,7 @@ const ACTIONS={
   delTx:d=>delTx(d.id),
   delBill:d=>delBill(d.id),
   delCard:d=>delCard(d.id),
+  delAcc:d=>delAcc(d.id),
   togglePaid:d=>togglePaid(d.id,d.ym),
   markFaturaPaid:d=>markFaturaPaid(d.id,d.ym),
 };

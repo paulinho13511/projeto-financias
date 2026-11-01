@@ -1,0 +1,42 @@
+  <!-- CARTEIRA -->
+  <section class="view" id="v-carteira">
+    <div class="card">
+      <h2>Saldo em contas</h2>
+      <div class="big" id="accTotal"></div>
+      <p class="muted" style="margin-top:6px">Soma de todas as contas. Lançamentos sem conta e compras no cartão não entram.</p>
+    </div>
+    <div class="card">
+      <h2>Minhas contas</h2>
+      <div class="list" id="accList"></div>
+    </div>
+    <div class="card">
+      <h2>Transferir entre contas</h2>
+      <p class="muted" id="trHint">Cadastre pelo menos duas contas para transferir.</p>
+      <form class="f" id="trForm">
+        <select id="trFrom" aria-label="Sai de"></select>
+        <select id="trTo" aria-label="Vai para"></select>
+        <input id="trAmt" type="number" step="0.01" min="0.01" placeholder="Valor (R$)" required>
+        <input id="trDate" type="date" aria-label="Data">
+        <input class="full" id="trDesc" placeholder="Descrição (opcional)" maxlength="60">
+        <button class="primary full" type="submit">Transferir</button>
+      </form>
+    </div>
+    <div class="card" id="stmtCard" hidden>
+      <h2>Extrato</h2>
+      <select id="stmtAcc" aria-label="Conta do extrato" style="width:100%;margin-bottom:12px"></select>
+      <div class="list" id="stmtList"></div>
+    </div>
+    <div class="card">
+      <h2>Nova conta</h2>
+      <form class="f" id="accForm">
+        <input class="full" id="accName" placeholder="Nome (ex.: Nubank, Carteira)" maxlength="40" required>
+        <select id="accType" aria-label="Tipo de conta">
+          <option value="corrente">Corrente</option>
+          <option value="poupanca">Poupança</option>
+          <option value="carteira">Dinheiro</option>
+        </select>
+        <input id="accInit" type="number" step="0.01" placeholder="Saldo inicial">
+        <button class="primary full" type="submit">Cadastrar conta</button>
+      </form>
+    </div>
+  </section>

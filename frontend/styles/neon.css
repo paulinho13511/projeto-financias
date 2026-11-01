@@ -95,7 +95,7 @@ body:not(.locked){
 .ghost:hover{border-color:#e9d5ff;box-shadow:0 0 22px rgba(139,92,246,.6)}
 
 /* formulários (só dentro do app e dos diálogos: a tela de entrada tem estilo próprio) */
-.app input:not([type=checkbox]):not([type=radio]),.app select,.modal input,.sheet input{background:rgba(8,4,26,.75);border:1px solid rgba(167,139,250,.3);color:var(--nx-ink)}
+.app input:not([type=checkbox]):not([type=radio]),.app select,.modal input,.modal select,.sheet input{background:rgba(8,4,26,.75);border:1px solid rgba(167,139,250,.3);color:var(--nx-ink)}
 .app input::placeholder,.sheet input::placeholder{color:#8b83b8}
 .app input:focus,.app select:focus,.sheet input:focus,.modal input:focus{border-color:#a78bfa;box-shadow:0 0 0 3px rgba(139,92,246,.3),0 0 24px rgba(139,92,246,.55)}
 .app select option{background:#0c0620;color:#f6f3ff}
@@ -176,9 +176,6 @@ body:not(.locked){
   box-shadow:0 0 40px rgba(124,58,237,.5);color:var(--nx-ink)}
 .toast{background:var(--nx-grad);color:#fff;box-shadow:inset 0 0 0 1px rgba(233,213,255,.5),0 0 28px rgba(168,85,247,.7),0 12px 32px rgba(0,0,0,.45)}
 
-/* esconder valores */
-body.blur-values .nx-amt{filter:blur(7px)}
-
 /* celular: o mês cabe inteiro */
 @media(max-width:480px){.top{gap:6px}#month{max-width:126px;min-width:0;font-size:12px;padding:10px 4px 10px 8px}.top .ttl h1{font-size:21px}}
 
@@ -197,3 +194,10 @@ body.blur-values .nx-amt{filter:blur(7px)}
 
 /* botão do seletor de arquivo (importar extrato) */
 .app input[type=file]::file-selector-button{margin-right:10px;padding:8px 12px;border-radius:10px;border:1px solid rgba(167,139,250,.55);background:rgba(139,92,246,.18);color:var(--nx-lil);font-weight:600}
+
+/* saldo em contas (Início e Carteira) */
+.heroAcc{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;padding:11px 14px;border-radius:16px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);font-size:13px;color:var(--nx-mut)}
+.heroAcc b{font-size:15px;color:var(--nx-ink);white-space:nowrap}
+#accTotal{text-shadow:0 0 18px rgba(232,121,249,.6)}
+.amt.neutral{color:var(--nx-lil);text-shadow:0 0 12px rgba(196,181,253,.5)}
+.ic.xfer{font-size:19px;background:linear-gradient(135deg,#4c1d95,#0e7490)}
