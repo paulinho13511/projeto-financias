@@ -1,0 +1,33 @@
+  <!-- COMO ESTOU -->
+  <section class="view" id="v-como">
+    <div class="card">
+      <h2>Estou bem?</h2>
+      <div class="ceSinal" id="ceSinal"></div>
+    </div>
+    <div class="card">
+      <h2>Posso gastar?</h2>
+      <div id="cePode"></div>
+    </div>
+    <div class="card">
+      <h2>O que vem aí?</h2>
+      <div id="ceVem"></div>
+    </div>
+    <button class="ghost ceMais" id="ceMaisBtn" type="button" aria-expanded="false">Ver detalhes (gráficos)</button>
+    <div class="ceDet" id="ceDetalhes" hidden>
+      <div class="card">
+        <h2>Despesas dos últimos 6 meses</h2>
+        <div class="hist" id="hist"></div>
+      </div>
+      <div class="card cmpCard">
+        <h2>Receitas × despesas (6 meses)</h2>
+        <div class="cmp" id="cmp"></div>
+        <div class="legend legendRow"><div><i style="background:#8b5cf6"></i>Receitas</div><div><i style="background:#f87171"></i>Despesas</div></div>
+      </div>
+      <div class="grid2" id="insBody"></div>
+      <div class="card">
+        <h2>Renda variável</h2>
+        <label class="chk"><input type="checkbox" id="varIncome"> Minha renda é variável (autônomo ou freelancer)</label>
+        <div class="muted" id="varInfo" style="font-size:14px;line-height:1.5"></div>
+      </div>
+    </div>
+  </section>

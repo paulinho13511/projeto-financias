@@ -233,8 +233,6 @@ body.locked .app,body.locked .bottom{display:none}
 /* tablet e computador: lado a lado */
 @media(min-width:721px){
   #v-lanc.on,#v-contas.on{grid-template-columns:minmax(300px,380px) minmax(0,1fr);align-items:start}
-  #v-ins.on{grid-template-columns:1fr 1fr;align-items:start}
-  #v-ins.on > .card:first-child,#v-ins.on > .cmpCard,#v-ins.on > .grid2{grid-column:1/-1}
   #v-rev.on > .card:first-child{grid-column:1/-1}
 }
 @media(min-width:1100px){
@@ -371,3 +369,29 @@ body{background:var(--bg)}
 .heroAcc b{font-size:15px;color:var(--text);white-space:nowrap}
 .amt.neutral{color:#c4b5fd}
 .ic.xfer{font-size:19px}
+
+/* Como estou: frases e uma cor, em vez de números soltos */
+.ceSinal{display:flex;gap:14px;align-items:center}
+.ceSinal b{font-size:21px;line-height:1.2;display:block}
+.ceSinal span{color:var(--muted);font-size:15px;line-height:1.4;display:block;margin-top:4px}
+.luz{width:58px;height:58px;border-radius:50%;flex:0 0 auto;background:#6b7280}
+.luz.verde{background:#34d399;box-shadow:0 0 0 8px rgba(52,211,153,.14),0 0 28px rgba(52,211,153,.35)}
+.luz.amarelo{background:var(--warn);box-shadow:0 0 0 8px rgba(251,191,36,.14),0 0 28px rgba(251,191,36,.35)}
+.luz.vermelho{background:var(--expense);box-shadow:0 0 0 8px rgba(248,113,113,.14),0 0 28px rgba(248,113,113,.35)}
+.ceFrase{font-size:19px;line-height:1.4}
+.ceGrande{display:block;font-size:30px;letter-spacing:-.6px;margin:2px 0}
+.ceGrande.neg{color:var(--expense)}
+.ceBarra{height:12px;border-radius:99px;background:var(--card2);margin-top:14px;overflow:hidden}
+.ceBarra>div{height:100%;background:linear-gradient(90deg,var(--accent),#a78bfa);border-radius:99px}
+.ceNota{color:var(--muted);font-size:14px;line-height:1.45;margin-top:8px}
+.ceItem{display:flex;align-items:center;gap:12px;background:var(--card2);border-radius:16px;padding:13px 14px}
+.ceItem+.ceItem{margin-top:8px}
+.ceItem .n{flex:1;min-width:0;font-size:16px;overflow-wrap:anywhere}
+.ceItem .v{font-weight:700;font-size:16px;white-space:nowrap}
+.ceDia{min-width:64px;text-align:center;font-size:12px;color:var(--muted);line-height:1.2}
+.ceDia b{display:block;font-size:18px;color:var(--text)}
+.ceItem.soon .ceDia b{color:var(--warn)}
+.ceItem.late .ceDia b{color:var(--expense)}
+.ceMais{width:100%;min-height:48px;font-size:16px;border-radius:16px}
+.ceDet{display:grid;gap:16px}
+.ceDet[hidden]{display:none}

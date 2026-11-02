@@ -1,7 +1,7 @@
 const CATS=["Alimentação","Moradia","Transporte","Lazer","Saúde","Contas","Educação","Outros"];
 const ICATS=["Salário","Freelance","Investimentos"];
 const KEY="financas_v2";
-const TITLES={inicio:"Início",subs:"Assinaturas",lanc:"Lançamentos",contas:"Contas",cal:"Calendário",rev:"Categorias",ins:"Insights",dicas:"Dicas",metas:"Metas",carteira:"Carteira"};
+const TITLES={inicio:"Início",subs:"Assinaturas",lanc:"Lançamentos",contas:"Contas",cal:"Calendário",rev:"Categorias",como:"Como estou",metas:"Metas",carteira:"Carteira"};
 const BRL=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,"0");
@@ -748,6 +748,54 @@ function renderHist(){
   $("hist").innerHTML=keys.map((k,i)=>`<div class="hcol ${k===sel?"cur":""}"><div class="hbar" style="height:${(vals[i]/max)*100}%" title="${money(vals[i])}"></div><span>${monthLabel(k).split(" ")[0].slice(0,3)}</span></div>`).join("");
 }
 
+/* ---------- Como estou: três respostas em frases, sem gráfico ----------
+   Usa sempre o mês de hoje. "Sobra" é o mesmo Saldo do mês da tela Início (receitas − despesas − contas do mês),
+   então o que ainda vai vencer já está descontado. */
+function renderComoEstou(){
+  const cm=mKey(today());
+  const t=totals(cm);
+  const resta=dim(cm)-parseInt(today().slice(8,10),10)+1;          // dias que faltam, contando hoje
+  // contas em aberto + faturas de cartão já fechadas e não pagas, da mais urgente para a mais distante
+  const lista=openBills().map(x=>({nome:x.b.name,valor:x.amount,d:x.st.d}));
+  (db.cards||[]).forEach(c=>{
+    const ym=shiftMonth(currentCloseYm(c),-1), f=faturaOf(c,ym);
+    if(!(c.paid||[]).includes(ym)&&f.total>0)lista.push({nome:"Fatura "+c.name,valor:f.total,d:daysBetween(today(),dueDateOfFatura(c,ym))});
+  });
+  lista.sort((a,b)=>a.d-b.d);
+  const proximas=lista.filter(x=>x.d<=30);              // "o que vem aí": atrasadas e o que vence nos próximos 30 dias
+  const atrasadas=lista.filter(x=>x.d<0).length;
+  const usado=t.inc>0?Math.round(t.exp/t.inc*100):null;
+
+  let cor="cinza",titulo="Sem dados ainda",frase="Cadastre uma receita e seus gastos para eu poder avaliar o mês.";
+  if(t.inc>0||t.exp>0){
+    if(t.inc<=0){cor="vermelho";titulo="Cuidado";frase="Você tem gastos neste mês, mas nenhuma receita cadastrada."}
+    else if(t.bal<0){cor="vermelho";titulo="Cuidado";frase="As contas e os gastos do mês já passam do que você ganhou."}
+    else if(usado>=80){cor="amarelo";titulo="Atenção";frase=`Você já comprometeu ${usado}% do que ganhou este mês.`}
+    else{cor="verde";titulo="Tudo certo";frase=`Você usou ${usado}% do que ganhou. Está dentro do planejado.`}
+    if(atrasadas&&cor!=="vermelho"){cor="amarelo";titulo="Atenção";frase=`Você tem ${atrasadas} ${atrasadas>1?"contas atrasadas":"conta atrasada"} para pagar.`}
+  }
+  $("ceSinal").innerHTML=`<div class="luz ${cor}"></div><div><b>${esc(titulo)}</b><span>${esc(frase)}</span></div>`;
+
+  let pode;
+  if(!(t.inc>0||t.exp>0))pode=`<div class="ceFrase">Cadastre a receita deste mês para eu calcular quanto você pode gastar.</div>`;
+  else if(t.bal<0)pode=`<div class="ceFrase">Neste mês já faltam<b class="ceGrande neg">${money(-t.bal)}</b>para cobrir tudo o que você tem a pagar.</div>`;
+  else if(t.bal===0)pode=`<div class="ceFrase">Não sobra nada neste mês: tudo o que você ganhou já está comprometido.</div>`;
+  else pode=`<div class="ceFrase">Você ainda pode gastar<b class="ceGrande">${money(t.bal)}</b>até o fim do mês</div>
+    <div class="ceBarra"><div style="width:${Math.min(100,usado||0)}%"></div></div>
+    <div class="ceNota">Dá cerca de ${money(t.bal/resta)} por dia · ${resta===1?"falta 1 dia":"faltam "+resta+" dias"}. As contas que ainda vão vencer já foram descontadas.</div>`;
+  $("cePode").innerHTML=pode;
+
+  $("ceVem").innerHTML=proximas.length?proximas.slice(0,3).map(x=>{
+    const [peq,gra]=x.d<0?["atrasada há",`${-x.d} ${x.d===-1?"dia":"dias"}`]:x.d===0?["vence","hoje"]:x.d===1?["vence","amanhã"]:["daqui a",`${x.d} dias`];
+    return `<div class="ceItem ${x.d<0?"late":x.d<=3?"soon":""}"><div class="ceDia">${peq}<b>${gra}</b></div><div class="n">${esc(x.nome)}</div><div class="v">${money(x.valor)}</div></div>`;
+  }).join(""):`<div class="ceFrase">Nenhuma conta em aberto. Tudo em dia.</div>`;
+}
+$("ceMaisBtn").onclick=()=>{
+  const d=$("ceDetalhes");d.hidden=!d.hidden;
+  $("ceMaisBtn").textContent=d.hidden?"Ver detalhes (gráficos)":"Esconder detalhes";
+  $("ceMaisBtn").setAttribute("aria-expanded",String(!d.hidden));
+};
+
 function renderIns(){
   const cur=totals(sel);
   const prevK=shiftMonth(sel,-1);
@@ -787,7 +835,7 @@ function renderIns(){
         <div class="row"><span class="t">Contas do mês</span><span class="amt">${money(occ(sel).reduce((s,o)=>s+o.amount,0))}</span></div>
       </div>
     </div>
-    <div class="card"><h2>Insights</h2>
+    <div class="card"><h2>Observações do mês</h2>
       ${tips.map(x=>`<div class="tip"><p>${esc(x)}</p></div>`).join("")}
     </div>`;
 }
@@ -812,6 +860,7 @@ function renderAll(){
   renderRev();
   renderHist();
   renderIns();
+  renderComoEstou();
   renderCards();
   populateCardSelects();
   renderCarteira();
@@ -941,14 +990,13 @@ $("cardForm").onsubmit=e=>{
 let currentView="inicio";
 function go(v){
   currentView=v;
-  const view=v==="metas"?"ins":v;   // Metas fica dentro de Insights (card "Metas e caixinhas")
-  document.querySelectorAll(".view").forEach(x=>x.classList.toggle("on",x.id==="v-"+view));
+  document.querySelectorAll(".view").forEach(x=>x.classList.toggle("on",x.id==="v-"+v));
   document.querySelectorAll("[data-nav]").forEach(x=>x.classList.toggle("on",x.dataset.nav===v&&!x.classList.contains("sideNew")));
   $("pageTitle").textContent=TITLES[v]||"Início";
+  $("month").hidden=v==="como"||v==="metas";   // essas duas telas não dependem do mês escolhido
   $("menu").hidden=true;
   window.scrollTo({top:0,behavior:"auto"});
   if(db)playEnter();
-  if(v==="metas")requestAnimationFrame(()=>$("goalCard").scrollIntoView({block:"start",behavior:"smooth"}));
 }
 document.querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>go(b.dataset.nav));
 document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>go(b.dataset.go));

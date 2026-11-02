@@ -1,31 +1,68 @@
 # Minhas Finanças
 
-App pessoal de finanças. Front estático (HTML, CSS e JavaScript puro) com Supabase como backend (banco, autenticação e Edge Functions).
+App pessoal de finanças. Front estático (HTML, CSS e JavaScript puro, sem etapa de build) + API em funções da Vercel + banco Postgres no Neon.
+
+## Como as peças se falam
+
+```
+Navegador (index.html + frontend/)  ──/api/*──▶  api/index.js (função da Vercel)  ──▶  Neon (Postgres)
+                                                       ▲
+                          cron diário da Vercel ──/api/lembretes──▶ avisos push
+```
+
+- Cada pessoa tem uma linha em `app_data` com todos os dados (JSON). Gravar usa controle de versão: se dois aparelhos salvam ao mesmo tempo, o segundo recebe "conflito" em vez de apagar o primeiro.
+- Login por e-mail e senha; a sessão é um cookie protegido (`sid`). Quem perde o acesso na lista de acessos perde a sessão na hora.
+- Contas novas entram por convite de uso único (`/definir-senha?token=...`).
 
 ## Onde fica cada coisa
 
 | Pasta / arquivo | O que tem |
 | --- | --- |
-| `index.html` | Casca da página: carrega o CSS, o Supabase e o `loader.js`. |
-| `frontend/styles/app.css` | Todo o visual (cores, layout, telas). |
-| `frontend/screens/shell/` | Barra lateral, barra inferior e cabeçalho do app. |
-| `frontend/screens/views/` | Uma tela por arquivo: início, lançamentos, contas, calendário, categorias, assinaturas, insights e dicas. |
-| `frontend/screens/dialogs/` | Janelas que abrem por cima: menu, editar conta, acessos, trocar senha e confirmação. |
+| `index.html` | Casca da página: carrega o CSS, o `loader.js` e o `api.js`. |
+| `definir-senha.html` | Tela onde a pessoa cria a senha a partir do convite. |
+| `frontend/js/loader.js` | Carrega as telas abaixo e depois inicia o app. |
+| `frontend/js/app.js` | Lógica do app: dados, cálculos, eventos e telas. |
+| `frontend/js/api.js` | Cliente da API (chamadas a `/api/*`). |
+| `frontend/js/login-globe.js` | Animação da tela de entrada. |
+| `frontend/styles/` | `app.css` (visual do app), `neon.css` (tema), `login.css` (entrada), `definir-senha.css`. |
+| `frontend/screens/shell/` | Barra lateral, barra inferior e cabeçalho. |
+| `frontend/screens/views/` | Uma tela por arquivo: início, **como estou**, **metas**, lançamentos, carteira, contas, calendário, categorias e assinaturas. |
+| `frontend/screens/dialogs/` | Janelas por cima: menu, editar conta, acessos, trocar senha, confirmação, pagar. |
 | `frontend/screens/overlays/` | Tela de entrada (`lock.html`) e aviso rápido (`toast.html`). |
-| `frontend/js/loader.js` | Carrega as telas acima e depois inicia o app. |
-| `frontend/js/app.js` | Lógica do app: dados, cálculos, eventos e comunicação com o Supabase. |
-| `frontend/assets/` | Logos e imagens. |
-| `supabase/` | Função de lembretes (`send-reminders`) e SQL. Não é publicado na Vercel. |
+| `api/index.js` | Porta de entrada da API (a Vercel manda tudo de `/api/*` para cá). |
+| `api/_lib/app.js` | Regras da API: login, dados, acessos, senha, push. |
+| `api/_lib/lembretes*.js` | Cálculo e envio dos avisos de contas e cartões. |
+| `api/_lib/db.js` | Conexão com o Neon. |
+| `db/` | `schema.sql` (tabelas), testes do backend e a ferramenta de migração (`gen-migracao.js`). Não é publicado. |
 | `sw.js` | Service worker das notificações push (precisa ficar na raiz). |
-| `vercel.json` | Cabeçalhos de segurança (CSP) e configuração da Vercel. |
+| `vercel.json` | Rotas da API, cron diário, região e cabeçalhos de segurança (CSP). |
+
+## Telas principais
+
+- **Início**: saldo do mês, gráfico de gastos, próxima conta.
+- **Como estou**: três respostas em frases (Estou bem? Posso gastar? O que vem aí?). Os gráficos e a renda variável ficam atrás do botão "Ver detalhes". Usa sempre o mês de hoje.
+- **Metas**: metas e caixinhas, numa tela própria.
 
 ## Como editar
 
 - Mudou uma tela? Abra o arquivo em `frontend/screens/views/` ou `dialogs/`.
 - Mudou o visual? `frontend/styles/app.css`.
-- Mudou uma regra ou a comunicação com o Supabase? `frontend/js/app.js`.
+- Mudou uma regra do app? `frontend/js/app.js`. Mudou uma regra da API? `api/_lib/app.js`.
+- Tela nova: crie o arquivo em `views/`, inclua-o na lista `SCREENS` de `frontend/js/loader.js` e o nome em `TITLES` no `app.js`.
+- Campos de dinheiro usam `data-money` e `parseValor()` (aceitam `1.626,76`).
 
-## Observações
+## Testes
 
-- Os arquivos de tela são carregados pelo navegador. Não há etapa de build: basta publicar a pasta.
-- Se você adicionar uma tela nova, inclua o arquivo na lista `SCREENS` de `frontend/js/loader.js`, na ordem em que deve aparecer.
+```
+npm test        # backend (precisa de um Postgres local, ver db/README.md)
+```
+
+O que mexe na tela é conferido no navegador (Playwright), fora do repositório.
+
+## Variáveis na Vercel
+
+`DATABASE_URL` (Neon), `CRON_SECRET`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`. Nenhum segredo fica no código.
+
+## Histórico
+
+O backend anterior (Supabase) foi removido do código. Ele continua guardado no histórico do Git e o projeto parado no Supabase serve de reserva dos dados antigos.
