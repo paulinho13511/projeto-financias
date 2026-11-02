@@ -1,7 +1,7 @@
 const CATS=["Alimentação","Moradia","Transporte","Lazer","Saúde","Contas","Educação","Outros"];
 const ICATS=["Salário","Freelance","Investimentos"];
 const KEY="financas_v2";
-const TITLES={inicio:"Início",subs:"Assinaturas",lanc:"Lançamentos",contas:"Contas",cal:"Calendário",rev:"Categorias",como:"Como estou",metas:"Metas",carteira:"Carteira"};
+const TITLES={inicio:"Início",subs:"Assinaturas",lanc:"Lançamentos",contas:"Contas",cal:"Calendário",rev:"Categorias",metas:"Metas",carteira:"Carteira"};
 const BRL=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,"0");
@@ -147,7 +147,7 @@ function enterApp(){
 }
 async function lockApp(reason){
   db=null;sessionUser=null;isAdmin=false;dbUpdatedAt=null;dbConflict=false;clearTimeout(idleTimer);
-  $("menu").hidden=true;$("modal").hidden=true;$("aclSheet").hidden=true;$("pwSheet").hidden=true;$("rendaSheet").hidden=true;
+  $("menu").hidden=true;$("modal").hidden=true;$("aclSheet").hidden=true;$("pwSheet").hidden=true;
   $("payModal").hidden=true;$("editSheet").hidden=true;   // nada de diálogo aberto por cima da tela de entrada
   $("payYes").onclick=null;$("payNo").onclick=null;$("mYes").onclick=null;$("mNo").onclick=null;
   document.body.classList.add("locked");
@@ -241,32 +241,6 @@ $("aclForm").onsubmit=async e=>{
     showToast("Acesso criado. Envie o e-mail e a senha para a pessoa.");
     loadAcl();
   }catch(err){showToast(err.message||"Não foi possível criar o acesso")}
-};
-
-/* ---------- minha renda: quanto cai por mês e em que dias (só para o "Como estou" saber o que ainda vai entrar) ---------- */
-function parseDias(s){
-  const n=(String(s).match(/\d+/g)||[]).map(Number);
-  if(!n.length||n.length>4||n.some(x=>x<1||x>31))return null;
-  return [...new Set(n)].sort((a,b)=>a-b);
-}
-function abrirRenda(){
-  $("menu").hidden=true;
-  const r=db.income;
-  $("rendaValor").value=r?fmtValor(r.valor):"";
-  $("rendaDias").value=r?r.dias.join(" e "):"";
-  $("rendaLimpar").hidden=!r;
-  $("rendaSheet").hidden=false;
-}
-$("rendaBtn").onclick=abrirRenda;
-$("rendaClose").onclick=()=>{$("rendaSheet").hidden=true};
-$("rendaLimpar").onclick=()=>{delete db.income;save();$("rendaSheet").hidden=true;renderAll();showToast("Renda removida")};
-$("rendaForm").onsubmit=e=>{
-  e.preventDefault();
-  const valor=parseValor($("rendaValor").value), dias=parseDias($("rendaDias").value);
-  if(!(valor>0)){showToast(MSG_VALOR);return}
-  if(!dias){showToast("Digite o dia do mês em que cai, por exemplo 5 e 20");return}
-  db.income={valor:Math.round(valor*100)/100,dias};
-  save();$("rendaSheet").hidden=true;renderAll();showToast("Renda salva");
 };
 
 /* ---------- troca de senha pelo próprio usuário ---------- */
@@ -562,7 +536,9 @@ function populateMonths(){
   const set=new Set([now,shiftMonth(now,1),shiftMonth(now,2),sel]);
   db.tx.forEach(t=>set.add(mKey(t.date)));
   const list=[...set].sort().reverse();
-  $("month").innerHTML=list.map(k=>`<option value="${k}" ${k===sel?"selected":""}>${monthLabel(k)}</option>`).join("");
+  const curto=window.matchMedia("(max-width:480px)").matches;      // no celular o nome inteiro do mês não cabe no seletor
+  const nome=k=>curto?(([y,m])=>new Date(y,m-1,1).toLocaleDateString("pt-BR",{month:"short",year:"numeric"}))(parts(k)):monthLabel(k);
+  $("month").innerHTML=list.map(k=>`<option value="${k}" ${k===sel?"selected":""}>${nome(k)}</option>`).join("");
 }
 
 function renderInicio(){
@@ -574,19 +550,6 @@ function renderInicio(){
 
   const rem=openBills().filter(x=>x.st.d<=7);
   const cards=cardAlerts();
-  const billRows=rem.map(({b,st,amount,label,ym})=>`
-    <div class="row">
-      <div class="rmain"><div class="t">${esc(b.name)}<span class="tag">${label}</span><span class="tag ${st.cls}">${st.label}</span></div>
-      <div class="s">Vence em ${fmtDate(st.due,true)} · ${money(amount)}</div></div>
-      <button class="ghost" data-act="togglePaid" data-id="${b.id}" data-ym="${ym}">Marcar paga</button>
-    </div>`).join("");
-  const cardRows=cards.map(c=>`
-    <div class="row">
-      <div class="rmain"><div class="t">${esc(c.title)}</div><div class="s">${esc(c.body)}</div></div>
-      ${c.paidable?`<button class="ghost" data-act="markFaturaPaid" data-id="${c.cardId}" data-ym="${c.closeYm}">Marcar paga</button>`:""}
-    </div>`).join("");
-  $("reminders").innerHTML=(billRows+cardRows)||`<div class="empty">Nenhum lembrete nos próximos dias</div>`;
-
   const msgs=rem.filter(x=>x.st.d<=2).map(({b,st,amount})=>({
     title:st.d<0?"Conta atrasada":st.d===0?"Conta vence hoje":`Conta vence em ${st.d} dia(s)`,
     body:`${b.name}: ${money(amount)}`
@@ -668,19 +631,6 @@ function openBills(){
     .flatMap(ym=>occ(ym).map(o=>({...o,ym,st:billStatus(o.b,ym)})))
     .filter(x=>x.st.key!=="paid"&&x.st.key!=="card")
     .sort((a,b)=>a.st.d-b.st.d);
-}
-function renderNext(){
-  const list=openBills();
-  const el=$("nextBill");
-  if(!list.length){
-    el.innerHTML=`<div class="muted">Próxima conta</div><div class="nx-empty">Nenhuma conta em aberto</div>`;
-    return;
-  }
-  const {b,st,amount,label}=list[0];
-  el.innerHTML=`<div class="muted">Próxima conta</div>
-    <div class="nx-title">${esc(b.name)} <span class="tag">${label}</span></div>
-    <div class="nx-row"><span class="nx-amt">${money(amount)}</span><span class="tag ${st.cls}">${st.label}</span></div>
-    <div class="muted">Vence em ${fmtDate(st.due,true)}</div>`;
 }
 
 
@@ -777,26 +727,31 @@ function renderHist(){
 /* ---------- Como estou: três respostas em frases, sem gráfico ----------
    Usa sempre o mês de hoje. "Sobra" é o mesmo Saldo do mês da tela Início (receitas − despesas − contas do mês),
    então o que ainda vai vencer já está descontado. */
-// Quanto ainda vai cair neste mês pelo que a pessoa informou em "Minha renda". Receita lançada na categoria
-// "Salário" conta como esse salário (assim não é contada duas vezes); as outras (Freelance, Investimentos)
-// são extras e entram só quando lançadas, sem reduzir o que ainda está previsto. Só olha datas de hoje em diante.
+// Quanto ainda vai cair neste mês, sem a pessoa precisar informar nada: o app olha o último mês (dos 3 anteriores)
+// que teve receita na categoria "Salário" e repete os mesmos dias e valores. O que já entrou como Salário neste mês
+// abate o previsto (nada é contado em dobro); extras (Freelance, Investimentos) só entram quando lançados.
+// Só conta parcelas de hoje em diante: se o dia já passou e o salário não foi lançado, o app não inventa esse dinheiro.
 function rendaPrevista(cm){
-  const r=db.income;
-  if(!r||!(r.valor>0)||!Array.isArray(r.dias)||!r.dias.length)return 0;
-  const salario=txOf(cm).filter(t=>t.type==="income"&&t.category==="Salário").reduce((s,t)=>s+t.amount,0);
-  const parcela=r.valor/r.dias.length;
-  const ainda=r.dias.filter(d=>`${cm}-${pad(Math.min(d,dim(cm)))}`>=today()).length;
-  return r2(Math.min(parcela*ainda,Math.max(0,r.valor-salario)));
+  const salarios=ym=>txOf(ym).filter(t=>t.type==="income"&&t.category==="Salário");
+  const base=[1,2,3].map(k=>shiftMonth(cm,-k)).find(ym=>salarios(ym).length);
+  if(!base)return 0;
+  const modelo=salarios(base);
+  const esperado=modelo.reduce((s,t)=>s+t.amount,0);
+  const jaEntrou=salarios(cm).reduce((s,t)=>s+t.amount,0);
+  const faltam=modelo.filter(t=>`${cm}-${pad(Math.min(parseInt(t.date.slice(8),10),dim(cm)))}`>=today()).reduce((s,t)=>s+t.amount,0);
+  return r2(Math.min(faltam,Math.max(0,esperado-jaEntrou)));
 }
 function renderComoEstou(){
   const cm=mKey(today());
+  $("ceBloco").hidden=sel!==cm;                      // o sinal vale para o mês de hoje; em outro mês, só o resumo e os gráficos
+  if(sel!==cm)return;
   const t=totals(cm);
   const resta=dim(cm)-parseInt(today().slice(8,10),10)+1;          // dias que faltam, contando hoje
   // contas em aberto + faturas de cartão já fechadas e não pagas, da mais urgente para a mais distante
-  const lista=openBills().map(x=>({nome:x.b.name,valor:x.amount,d:x.st.d}));
+  const lista=openBills().map(x=>({nome:x.b.name,valor:x.amount,d:x.st.d,act:"togglePaid",id:x.b.id,ym:x.ym}));
   (db.cards||[]).forEach(c=>{
     const ym=shiftMonth(currentCloseYm(c),-1), f=faturaOf(c,ym);
-    if(!(c.paid||[]).includes(ym)&&f.total>0)lista.push({nome:"Fatura "+c.name,valor:f.total,d:daysBetween(today(),dueDateOfFatura(c,ym))});
+    if(!(c.paid||[]).includes(ym)&&f.total>0)lista.push({nome:"Fatura "+c.name,valor:f.total,d:daysBetween(today(),dueDateOfFatura(c,ym)),act:"markFaturaPaid",id:c.id,ym});
   });
   lista.sort((a,b)=>a.d-b.d);
   const proximas=lista.filter(x=>x.d<=30);              // "o que vem aí": atrasadas e o que vence nos próximos 30 dias
@@ -822,12 +777,11 @@ function renderComoEstou(){
   else pode=`<div class="ceFrase">Você ainda pode gastar<b class="ceGrande">${money(sobra)}</b>até o fim do mês</div>
     <div class="ceBarra"><div style="width:${Math.min(100,usado||0)}%"></div></div>
     <div class="ceNota">Dá cerca de ${money(sobra/resta)} por dia · ${resta===1?"falta 1 dia":"faltam "+resta+" dias"}. As contas que ainda vão vencer já foram descontadas.${prev>0?` Já contei ${money(prev)} que ainda vai cair este mês.`:""}</div>`;
-  if(!db.income)pode+=`<button class="ghost ceMais" type="button" data-act="abrirRenda" style="margin-top:12px">Informar minha renda</button>`;   // para o app saber o que ainda vai entrar
   $("cePode").innerHTML=pode;
 
   $("ceVem").innerHTML=proximas.length?proximas.slice(0,3).map(x=>{
     const [peq,gra]=x.d<0?["atrasada há",`${-x.d} ${x.d===-1?"dia":"dias"}`]:x.d===0?["vence","hoje"]:x.d===1?["vence","amanhã"]:["daqui a",`${x.d} dias`];
-    return `<div class="ceItem ${x.d<0?"late":x.d<=3?"soon":""}"><div class="ceDia">${peq}<b>${gra}</b></div><div class="n">${esc(x.nome)}</div><div class="v">${money(x.valor)}</div></div>`;
+    return `<div class="ceItem ${x.d<0?"late":x.d<=3?"soon":""}"><div class="ceDia">${peq}<b>${gra}</b></div><div class="ceMid"><div class="n">${esc(x.nome)}</div><div class="v">${money(x.valor)}</div></div><button class="ghost" type="button" data-act="${x.act}" data-id="${esc(x.id)}" data-ym="${esc(x.ym)}">Paguei</button></div>`;
   }).join(""):`<div class="ceFrase">Nenhuma conta em aberto. Tudo em dia.</div>`;
 }
 $("ceMaisBtn").onclick=()=>{
@@ -880,7 +834,7 @@ function renderIns(){
     </div>`;
 }
 
-const STAGGERS=[["reminders"],["notifs"],["recent"],["billsList"],["accList"],["catList"],["top"],["insBody",80],["calGrid",10]];
+const STAGGERS=[["notifs"],["recent"],["billsList"],["accList"],["catList"],["top"],["insBody",80],["calGrid",10]];
 function playEnter(){
   animNow=true;
   STAGGERS.forEach(([id,step])=>stagger($(id),step));
@@ -893,7 +847,6 @@ function renderAll(){
   renderCardChips();
   renderInicio();
   renderChart();
-  renderNext();
   renderFeed();
   renderContas();
   renderCal();
@@ -1033,7 +986,7 @@ function go(v){
   document.querySelectorAll(".view").forEach(x=>x.classList.toggle("on",x.id==="v-"+v));
   document.querySelectorAll("[data-nav]").forEach(x=>x.classList.toggle("on",x.dataset.nav===v&&!x.classList.contains("sideNew")));
   $("pageTitle").textContent=TITLES[v]||"Início";
-  $("month").hidden=v==="como"||v==="metas";   // essas duas telas não dependem do mês escolhido
+  $("month").hidden=v==="metas";   // Metas não depende do mês escolhido
   $("menu").hidden=true;
   window.scrollTo({top:0,behavior:"auto"});
   if(db)playEnter();
@@ -1601,7 +1554,6 @@ const ACTIONS={
   delAcc:d=>delAcc(d.id),
   togglePaid:d=>togglePaid(d.id,d.ym),
   markFaturaPaid:d=>markFaturaPaid(d.id,d.ym),
-  abrirRenda:()=>abrirRenda(),
 };
 document.addEventListener("focusout",e=>{            // ao sair do campo de valor, deixa no formato 1.626,76
   const el=e.target;

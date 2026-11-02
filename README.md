@@ -26,8 +26,8 @@ Navegador (index.html + frontend/)  ──/api/*──▶  api/index.js (funçã
 | `frontend/js/login-globe.js` | Animação da tela de entrada. |
 | `frontend/styles/` | `app.css` (visual do app), `neon.css` (tema), `login.css` (entrada), `definir-senha.css`. |
 | `frontend/screens/shell/` | Barra lateral, barra inferior e cabeçalho. |
-| `frontend/screens/views/` | Uma tela por arquivo: início, **como estou**, **metas**, lançamentos, carteira, contas, calendário, categorias e assinaturas. |
-| `frontend/screens/dialogs/` | Janelas por cima: menu, editar conta, acessos, trocar senha, **minha renda**, confirmação, pagar. |
+| `frontend/screens/views/` | Uma tela por arquivo: início (com o **como estou**), **metas**, lançamentos, carteira, contas, calendário, categorias e assinaturas. |
+| `frontend/screens/dialogs/` | Janelas por cima: menu, editar conta, acessos, trocar senha, confirmação, pagar. |
 | `frontend/screens/overlays/` | Tela de entrada (`lock.html`) e aviso rápido (`toast.html`). |
 | `api/index.js` | Porta de entrada da API (a Vercel manda tudo de `/api/*` para cá). |
 | `api/_lib/app.js` | Regras da API: login, dados, acessos, senha, push. |
@@ -39,10 +39,9 @@ Navegador (index.html + frontend/)  ──/api/*──▶  api/index.js (funçã
 
 ## Telas principais
 
-- **Início**: saldo do mês, gráfico de gastos, próxima conta.
-- **Como estou**: três respostas em frases (Estou bem? Posso gastar? O que vem aí?). Os gráficos e a renda variável ficam atrás do botão "Ver detalhes". Usa sempre o mês de hoje.
+- **Início**: saldo do mês, receitas e despesas no topo e, logo abaixo, três respostas em frases: *Estou bem?* (sinal verde, amarelo ou vermelho), *Posso gastar?* e *O que vem aí?* (as próximas contas, com botão "Paguei"). Esse bloco só aparece no mês de hoje. Depois vêm o gráfico de gastos, as notificações, os últimos lançamentos e o botão "Ver detalhes (gráficos)".
+- **Previsão de renda** (sem cadastro): o app olha o último mês (dos 3 anteriores) com receita na categoria "Salário" e repete os mesmos dias e valores; o que já entrou como Salário neste mês abate o previsto, e extras (Freelance, Investimentos) só contam quando lançados. Parcelas de dias que já passaram sem lançamento não são inventadas.
 - **Metas**: metas e caixinhas, numa tela própria.
-- **Minha renda** (menu "Mais"): a pessoa diz quanto recebe por mês e em que dias cai. O "Como estou" usa isso para contar o que ainda vai entrar no mês (fica em `db.income`, dentro dos dados da pessoa). Receita lançada como "Salário" conta como esse salário; as outras (Freelance, Investimentos) são extras e só entram quando lançadas.
 
 ## Como editar
 
