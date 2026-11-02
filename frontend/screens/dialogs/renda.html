@@ -1,0 +1,15 @@
+<div class="sheet" id="rendaSheet" hidden>
+  <div class="sheetbox">
+    <h2 style="font-size:17px;color:var(--text);text-transform:none;letter-spacing:0;margin:0">Minha renda</h2>
+    <form id="rendaForm" style="display:grid;gap:8px">
+      <label for="rendaValor" class="muted" style="font-size:14px">Quanto você recebe por mês? (o que cai na conta)</label>
+      <input id="rendaValor" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="Ex.: 2.000,00" required>
+      <label for="rendaDias" class="muted" style="font-size:14px">Em que dia(s) do mês cai?</label>
+      <input id="rendaDias" type="text" inputmode="numeric" autocomplete="off" placeholder="Ex.: 5 e 20, ou só 30" required>
+      <small class="muted" style="font-size:13px;line-height:1.4">Receita lançada como "Salário" conta como este salário. Extras (Freelance, Investimentos) entram só quando você lança.</small>
+      <button type="submit" style="background:var(--accent);color:#fff;border:0;border-radius:12px;padding:0 16px;font-weight:600;min-height:46px">Salvar</button>
+    </form>
+    <button class="close" id="rendaLimpar" type="button">Remover minha renda</button>
+    <button class="close" id="rendaClose" type="button">Cancelar</button>
+  </div>
+</div>

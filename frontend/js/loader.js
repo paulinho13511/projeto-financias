@@ -18,6 +18,7 @@ const SCREENS = [
   "dialogs/editar-conta.html",
   "dialogs/acessos.html",
   "dialogs/trocar-senha.html",
+  "dialogs/renda.html",
   "dialogs/modal.html",
   "dialogs/pagar.html",
   "overlays/toast.html",

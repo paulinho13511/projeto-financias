@@ -147,7 +147,7 @@ function enterApp(){
 }
 async function lockApp(reason){
   db=null;sessionUser=null;isAdmin=false;dbUpdatedAt=null;dbConflict=false;clearTimeout(idleTimer);
-  $("menu").hidden=true;$("modal").hidden=true;$("aclSheet").hidden=true;$("pwSheet").hidden=true;
+  $("menu").hidden=true;$("modal").hidden=true;$("aclSheet").hidden=true;$("pwSheet").hidden=true;$("rendaSheet").hidden=true;
   $("payModal").hidden=true;$("editSheet").hidden=true;   // nada de diálogo aberto por cima da tela de entrada
   $("payYes").onclick=null;$("payNo").onclick=null;$("mYes").onclick=null;$("mNo").onclick=null;
   document.body.classList.add("locked");
@@ -241,6 +241,32 @@ $("aclForm").onsubmit=async e=>{
     showToast("Acesso criado. Envie o e-mail e a senha para a pessoa.");
     loadAcl();
   }catch(err){showToast(err.message||"Não foi possível criar o acesso")}
+};
+
+/* ---------- minha renda: quanto cai por mês e em que dias (só para o "Como estou" saber o que ainda vai entrar) ---------- */
+function parseDias(s){
+  const n=(String(s).match(/\d+/g)||[]).map(Number);
+  if(!n.length||n.length>4||n.some(x=>x<1||x>31))return null;
+  return [...new Set(n)].sort((a,b)=>a-b);
+}
+function abrirRenda(){
+  $("menu").hidden=true;
+  const r=db.income;
+  $("rendaValor").value=r?fmtValor(r.valor):"";
+  $("rendaDias").value=r?r.dias.join(" e "):"";
+  $("rendaLimpar").hidden=!r;
+  $("rendaSheet").hidden=false;
+}
+$("rendaBtn").onclick=abrirRenda;
+$("rendaClose").onclick=()=>{$("rendaSheet").hidden=true};
+$("rendaLimpar").onclick=()=>{delete db.income;save();$("rendaSheet").hidden=true;renderAll();showToast("Renda removida")};
+$("rendaForm").onsubmit=e=>{
+  e.preventDefault();
+  const valor=parseValor($("rendaValor").value), dias=parseDias($("rendaDias").value);
+  if(!(valor>0)){showToast(MSG_VALOR);return}
+  if(!dias){showToast("Digite o dia do mês em que cai, por exemplo 5 e 20");return}
+  db.income={valor:Math.round(valor*100)/100,dias};
+  save();$("rendaSheet").hidden=true;renderAll();showToast("Renda salva");
 };
 
 /* ---------- troca de senha pelo próprio usuário ---------- */
@@ -751,6 +777,17 @@ function renderHist(){
 /* ---------- Como estou: três respostas em frases, sem gráfico ----------
    Usa sempre o mês de hoje. "Sobra" é o mesmo Saldo do mês da tela Início (receitas − despesas − contas do mês),
    então o que ainda vai vencer já está descontado. */
+// Quanto ainda vai cair neste mês pelo que a pessoa informou em "Minha renda". Receita lançada na categoria
+// "Salário" conta como esse salário (assim não é contada duas vezes); as outras (Freelance, Investimentos)
+// são extras e entram só quando lançadas, sem reduzir o que ainda está previsto. Só olha datas de hoje em diante.
+function rendaPrevista(cm){
+  const r=db.income;
+  if(!r||!(r.valor>0)||!Array.isArray(r.dias)||!r.dias.length)return 0;
+  const salario=txOf(cm).filter(t=>t.type==="income"&&t.category==="Salário").reduce((s,t)=>s+t.amount,0);
+  const parcela=r.valor/r.dias.length;
+  const ainda=r.dias.filter(d=>`${cm}-${pad(Math.min(d,dim(cm)))}`>=today()).length;
+  return r2(Math.min(parcela*ainda,Math.max(0,r.valor-salario)));
+}
 function renderComoEstou(){
   const cm=mKey(today());
   const t=totals(cm);
@@ -764,25 +801,28 @@ function renderComoEstou(){
   lista.sort((a,b)=>a.d-b.d);
   const proximas=lista.filter(x=>x.d<=30);              // "o que vem aí": atrasadas e o que vence nos próximos 30 dias
   const atrasadas=lista.filter(x=>x.d<0).length;
-  const usado=t.inc>0?Math.round(t.exp/t.inc*100):null;
+  const prev=rendaPrevista(cm);
+  const renda=r2(t.inc+prev), sobra=r2(renda-t.exp);      // renda = o que já entrou + o que ainda vai cair
+  const usado=renda>0?Math.round(t.exp/renda*100):null;
 
   let cor="cinza",titulo="Sem dados ainda",frase="Cadastre uma receita e seus gastos para eu poder avaliar o mês.";
-  if(t.inc>0||t.exp>0){
-    if(t.inc<=0){cor="vermelho";titulo="Cuidado";frase="Você tem gastos neste mês, mas nenhuma receita cadastrada."}
-    else if(t.bal<0){cor="vermelho";titulo="Cuidado";frase="As contas e os gastos do mês já passam do que você ganhou."}
-    else if(usado>=80){cor="amarelo";titulo="Atenção";frase=`Você já comprometeu ${usado}% do que ganhou este mês.`}
-    else{cor="verde";titulo="Tudo certo";frase=`Você usou ${usado}% do que ganhou. Está dentro do planejado.`}
+  if(renda>0||t.exp>0){
+    if(renda<=0){cor="vermelho";titulo="Cuidado";frase="Você tem gastos neste mês, mas nenhuma receita cadastrada."}
+    else if(sobra<0){cor="vermelho";titulo="Cuidado";frase="As contas e os gastos do mês já passam do que você ganha."}
+    else if(usado>=80){cor="amarelo";titulo="Atenção";frase=`Você já comprometeu ${usado}% do que ganha este mês.`}
+    else{cor="verde";titulo="Tudo certo";frase=`Você usou ${usado}% do que ganha este mês. Está dentro do planejado.`}
     if(atrasadas&&cor!=="vermelho"){cor="amarelo";titulo="Atenção";frase=`Você tem ${atrasadas} ${atrasadas>1?"contas atrasadas":"conta atrasada"} para pagar.`}
   }
   $("ceSinal").innerHTML=`<div class="luz ${cor}"></div><div><b>${esc(titulo)}</b><span>${esc(frase)}</span></div>`;
 
   let pode;
-  if(!(t.inc>0||t.exp>0))pode=`<div class="ceFrase">Cadastre a receita deste mês para eu calcular quanto você pode gastar.</div>`;
-  else if(t.bal<0)pode=`<div class="ceFrase">Neste mês já faltam<b class="ceGrande neg">${money(-t.bal)}</b>para cobrir tudo o que você tem a pagar.</div>`;
-  else if(t.bal===0)pode=`<div class="ceFrase">Não sobra nada neste mês: tudo o que você ganhou já está comprometido.</div>`;
-  else pode=`<div class="ceFrase">Você ainda pode gastar<b class="ceGrande">${money(t.bal)}</b>até o fim do mês</div>
+  if(!(renda>0||t.exp>0))pode=`<div class="ceFrase">Cadastre a receita deste mês para eu calcular quanto você pode gastar.</div>`;
+  else if(sobra<0)pode=`<div class="ceFrase">Neste mês já faltam<b class="ceGrande neg">${money(-sobra)}</b>para cobrir tudo o que você tem a pagar.</div>`;
+  else if(sobra===0)pode=`<div class="ceFrase">Não sobra nada neste mês: tudo o que você ganhou já está comprometido.</div>`;
+  else pode=`<div class="ceFrase">Você ainda pode gastar<b class="ceGrande">${money(sobra)}</b>até o fim do mês</div>
     <div class="ceBarra"><div style="width:${Math.min(100,usado||0)}%"></div></div>
-    <div class="ceNota">Dá cerca de ${money(t.bal/resta)} por dia · ${resta===1?"falta 1 dia":"faltam "+resta+" dias"}. As contas que ainda vão vencer já foram descontadas.</div>`;
+    <div class="ceNota">Dá cerca de ${money(sobra/resta)} por dia · ${resta===1?"falta 1 dia":"faltam "+resta+" dias"}. As contas que ainda vão vencer já foram descontadas.${prev>0?` Já contei ${money(prev)} que ainda vai cair este mês.`:""}</div>`;
+  if(!db.income)pode+=`<button class="ghost ceMais" type="button" data-act="abrirRenda" style="margin-top:12px">Informar minha renda</button>`;   // para o app saber o que ainda vai entrar
   $("cePode").innerHTML=pode;
 
   $("ceVem").innerHTML=proximas.length?proximas.slice(0,3).map(x=>{
@@ -1561,6 +1601,7 @@ const ACTIONS={
   delAcc:d=>delAcc(d.id),
   togglePaid:d=>togglePaid(d.id,d.ym),
   markFaturaPaid:d=>markFaturaPaid(d.id,d.ym),
+  abrirRenda:()=>abrirRenda(),
 };
 document.addEventListener("focusout",e=>{            // ao sair do campo de valor, deixa no formato 1.626,76
   const el=e.target;

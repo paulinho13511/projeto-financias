@@ -27,7 +27,7 @@ Navegador (index.html + frontend/)  ──/api/*──▶  api/index.js (funçã
 | `frontend/styles/` | `app.css` (visual do app), `neon.css` (tema), `login.css` (entrada), `definir-senha.css`. |
 | `frontend/screens/shell/` | Barra lateral, barra inferior e cabeçalho. |
 | `frontend/screens/views/` | Uma tela por arquivo: início, **como estou**, **metas**, lançamentos, carteira, contas, calendário, categorias e assinaturas. |
-| `frontend/screens/dialogs/` | Janelas por cima: menu, editar conta, acessos, trocar senha, confirmação, pagar. |
+| `frontend/screens/dialogs/` | Janelas por cima: menu, editar conta, acessos, trocar senha, **minha renda**, confirmação, pagar. |
 | `frontend/screens/overlays/` | Tela de entrada (`lock.html`) e aviso rápido (`toast.html`). |
 | `api/index.js` | Porta de entrada da API (a Vercel manda tudo de `/api/*` para cá). |
 | `api/_lib/app.js` | Regras da API: login, dados, acessos, senha, push. |
@@ -42,6 +42,7 @@ Navegador (index.html + frontend/)  ──/api/*──▶  api/index.js (funçã
 - **Início**: saldo do mês, gráfico de gastos, próxima conta.
 - **Como estou**: três respostas em frases (Estou bem? Posso gastar? O que vem aí?). Os gráficos e a renda variável ficam atrás do botão "Ver detalhes". Usa sempre o mês de hoje.
 - **Metas**: metas e caixinhas, numa tela própria.
+- **Minha renda** (menu "Mais"): a pessoa diz quanto recebe por mês e em que dias cai. O "Como estou" usa isso para contar o que ainda vai entrar no mês (fica em `db.income`, dentro dos dados da pessoa). Receita lançada como "Salário" conta como esse salário; as outras (Freelance, Investimentos) são extras e só entram quando lançadas.
 
 ## Como editar
 
