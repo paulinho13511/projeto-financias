@@ -1,5 +1,4 @@
-// Testes da API contra um Postgres local de verdade (o psql faz o papel do Neon). Rodar: node --test db/test/api.test.js
-// Pré-requisito: Postgres local em PGSOCK/PGPORT/PGDB (padrão /tmp/pgsock, 54329, "proto").
+// Testes da API contra um Postgres de verdade dentro do Node (PGlite faz o papel do Neon). Rodar: npm test
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs'), os = require('os'), path = require('path');
@@ -9,12 +8,6 @@ const dbt = require('./db-psql.js');
 const { query } = dbt;
 const { handle } = criarApp(dbt);
 
-const psql = (args, input) => spawnSync('psql', [...dbt.CONN.filter(a => a !== '-A' && a !== '-t'), '-v', 'ON_ERROR_STOP=1', ...args], { input, encoding: 'utf8' });
-function reset() {
-  const r1 = psql(['-c', 'drop schema public cascade; create schema public;']);
-  const r2 = psql(['-f', __dirname + '/../schema.sql']);
-  assert.equal(r1.status + r2.status, 0, r1.stderr + r2.stderr);
-}
 const call = (method, path, body, cookie, ip) => handle({ method, path, body, cookie, ip: ip || '1.1.1.1' });
 const sid = r => { const m = /sid=([0-9a-f]{64})/.exec(r.setCookie || ''); return m ? 'sid=' + m[1] : null; };
 async function novoUsuario(email, senha, { admin = false, acesso = true } = {}) {
@@ -24,7 +17,7 @@ async function novoUsuario(email, senha, { admin = false, acesso = true } = {}) 
 }
 async function logar(email, senha, ip) { const r = (await call('POST', '/api/login', { email, senha }, null, ip)); return { r, c: sid(r) }; }
 
-test.beforeEach(reset);
+test.beforeEach(() => dbt.reset());
 
 test('login: sucesso grava só o hash do token e usa cookie seguro', async () => {
   (await novoUsuario('a@x.com', 'senha-boa-123'));
@@ -127,7 +120,8 @@ test('dados: versão a cada gravação muda; formato inválido e grande demais s
   (await novoUsuario('a@x.com', 'senha-boa-123'));
   const c = (await logar('a@x.com', 'senha-boa-123')).c;
   let v = (await call('GET', '/api/dados', null, c)).body.versao; const vistas = new Set([v]);
-  for (let i = 0; i < 3; i++) { const r = (await call('PUT', '/api/dados', { data: { i }, versao: v }, c)); assert.equal(r.status, 200); v = r.body.versao; vistas.add(v); }
+  for (let i = 0; i < 3; i++) { await new Promise(ok => setTimeout(ok, 5));   // o relógio do PGlite (WASM) tem resolução de ms; o Postgres real tem µs
+    const r = (await call('PUT', '/api/dados', { data: { i }, versao: v }, c)); assert.equal(r.status, 200); v = r.body.versao; vistas.add(v); }
   assert.equal(vistas.size, 4);
   assert.equal((await call('PUT', '/api/dados', { data: [1, 2], versao: v }, c)).status, 400);
   assert.equal((await call('PUT', '/api/dados', { data: 'texto', versao: v }, c)).status, 400);
@@ -216,7 +210,7 @@ test('migração: dados reais do backup entram idênticos e os convites funciona
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mig-'));
   const g = spawnSync('node', [path.join(__dirname, '../gen-migracao.js'), BACKUP, path.join(tmp, 'migracao.sql')], { cwd: tmp, encoding: 'utf8' });
   assert.equal(g.status, 0, g.stderr);
-  const r = psql(['-f', path.join(tmp, 'migracao.sql')]); assert.equal(r.status, 0, r.stderr);
+  await dbt.exec(fs.readFileSync(path.join(tmp, 'migracao.sql'), 'utf8'));
   const bk = JSON.parse(fs.readFileSync(BACKUP, 'utf8')).dados;
   const paulo = bk.app_data.find(x => x.updated_by.startsWith('paulovictor'));
   const row = (await query(`select data, to_char(updated_at at time zone 'utc','YYYY-MM-DD"T"HH24:MI:SS.MS') v from app_data where user_id = $1::uuid`, [paulo.user_id]))[0];
@@ -247,4 +241,16 @@ test('código: nenhuma consulta monta SQL concatenando valores', () => {
     for (const x of sqls) assert.equal(/\$\{/.test(x), false, `interpolação em SQL (${f}): ` + x.slice(0, 80));
   }
   assert.ok(total > 20);
+});
+
+test('administração: criação de acesso é tudo-ou-nada (falha no último passo não deixa usuário nem dados)', async () => {
+  await novoUsuario('adm@x.com', 'senha-admin-123', { admin: true });
+  // mesmo banco, mas o 3º comando (liberar o acesso) quebra de propósito
+  const quebrado = { query, transaction: lista => dbt.transaction(lista.map(([sql, p], i) => i === 2 ? ['select * from tabela_que_nao_existe', []] : [sql, p])) };
+  const app2 = criarApp(quebrado);
+  const ADM = (await logar('adm@x.com', 'senha-admin-123')).c;
+  const r = await app2.handle({ method: 'POST', path: '/api/acessos', body: { email: 'novo@x.com', senha: 'senha-nova-123' }, cookie: ADM, ip: '1.1.1.1' });
+  assert.equal(r.status, 500);
+  assert.equal((await query(`select count(*)::int n from usuarios where email='novo@x.com'`))[0].n, 0, 'nada ficou pela metade');
+  assert.equal((await query(`select count(*)::int n from app_data`))[0].n, 0);
 });

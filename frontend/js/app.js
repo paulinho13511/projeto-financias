@@ -380,7 +380,7 @@ function askPayAccount(msg){
   if(!accs.length)return Promise.resolve("");
   return new Promise(resolve=>{
     $("payMsg").textContent=msg;
-    $("payAcc").innerHTML=`<option value="">Não descontar de nenhuma conta</option>`+accs.map(a=>`<option value="${a.id}">${esc(a.name)} · ${money(accBalance(a))}</option>`).join("");
+    $("payAcc").innerHTML=`<option value="">Não descontar de nenhuma conta</option>`+accs.map(a=>`<option value="${esc(a.id)}">${esc(a.name)} · ${money(accBalance(a))}</option>`).join("");
     $("payAcc").value=accs.some(a=>a.id===lastPayAcc)?lastPayAcc:accs[0].id;
     $("payModal").hidden=false;
     const done=v=>{$("payModal").hidden=true;$("payYes").onclick=null;$("payNo").onclick=null;resolve(v)};
@@ -414,10 +414,10 @@ window.markFaturaPaid=markFaturaPaid;window.delCard=delCard;
 function txRow(t){
   if(t.type==="transfer"){
     const de=accName(t.from)||"Conta removida", para=accName(t.to)||"Conta removida";
-    return `<div class="row"><div class="ic xfer">⇄</div><div class="rmain"><div class="t">${esc(t.desc)}</div><div class="s">${esc(de)} → ${esc(para)} · ${fmtDate(t.date)}</div></div><div class="actions"><span class="amt neutral">${money(t.amount)}</span><button class="ico" title="Remover" data-act="delTx" data-id="${t.id}">×</button></div></div>`;
+    return `<div class="row"><div class="ic xfer">⇄</div><div class="rmain"><div class="t">${esc(t.desc)}</div><div class="s">${esc(de)} → ${esc(para)} · ${fmtDate(t.date)}</div></div><div class="actions"><span class="amt neutral">${money(t.amount)}</span><button class="ico" title="Remover" data-act="delTx" data-id="${esc(t.id)}">×</button></div></div>`;
   }
   const inc=t.type==="income";
-  return `<div class="row"><div class="ic ${inc?"":"out"}">${esc(t.category.charAt(0))}</div><div class="rmain"><div class="t">${esc(t.desc)}</div><div class="s">${esc(t.category)} · ${fmtDate(t.date)}${t.account&&accName(t.account)?" · "+esc(accName(t.account)):""}</div></div><div class="actions"><span class="amt ${inc?"income":"expense"}">${inc?"+":"−"} ${money(t.amount)}</span><button class="ico" title="Remover" data-act="delTx" data-id="${t.id}">×</button></div></div>`;
+  return `<div class="row"><div class="ic ${inc?"":"out"}">${esc(t.category.charAt(0))}</div><div class="rmain"><div class="t">${esc(t.desc)}</div><div class="s">${esc(t.category)} · ${fmtDate(t.date)}${t.account&&accName(t.account)?" · "+esc(accName(t.account)):""}</div></div><div class="actions"><span class="amt ${inc?"income":"expense"}">${inc?"+":"−"} ${money(t.amount)}</span><button class="ico" title="Remover" data-act="delTx" data-id="${esc(t.id)}">×</button></div></div>`;
 }
 
 /* ---------- confirmação própria (o visualizador bloqueia a caixa padrão) ---------- */
@@ -538,7 +538,7 @@ function populateMonths(){
   const list=[...set].sort().reverse();
   const curto=window.matchMedia("(max-width:480px)").matches;      // no celular o nome inteiro do mês não cabe no seletor
   const nome=k=>curto?(([y,m])=>new Date(y,m-1,1).toLocaleDateString("pt-BR",{month:"short",year:"numeric"}))(parts(k)):monthLabel(k);
-  $("month").innerHTML=list.map(k=>`<option value="${k}" ${k===sel?"selected":""}>${nome(k)}</option>`).join("");
+  $("month").innerHTML=list.map(k=>`<option value="${esc(k)}" ${k===sel?"selected":""}>${nome(k)}</option>`).join("");
 }
 
 function renderInicio(){
@@ -645,9 +645,9 @@ function renderContas(){
       <div class="rmain"><div class="t">${esc(b.name)}<span class="tag">${label}</span><span class="tag ${st.cls}">${st.label}</span></div>
       <div class="s">${money(amount)} · vence ${fmtDate(st.due)}${compra} · ${esc(b.category)}</div></div>
       <div class="actions">
-        <button class="ghost" data-act="togglePaid" data-id="${b.id}" data-ym="${sel}">${st.key==="paid"?"Desfazer":"Marcar paga"}</button>
+        <button class="ghost" data-act="togglePaid" data-id="${esc(b.id)}" data-ym="${sel}">${st.key==="paid"?"Desfazer":"Marcar paga"}</button>
         <button class="ico" title="Editar" data-edit="${esc(b.id)}" aria-label="Editar conta">✎</button>
-        <button class="ico" title="Excluir" data-act="delBill" data-id="${b.id}">×</button>
+        <button class="ico" title="Excluir" data-act="delBill" data-id="${esc(b.id)}">×</button>
       </div></div>`;
   }).join("");
   const debt=db.bills.reduce((s,b)=>s+remainingValue(b,sel),0);
@@ -873,8 +873,8 @@ function renderCards(){
       <div class="s">Fatura aberta: ${money(open.total)} · fecha ${fmtDate(open.close)} · vence ${fmtDate(open.due)}</div>
       ${pendingOpen?`<div class="s warn">Fatura fechada: ${money(pend.total)} · vence ${fmtDate(pend.due)}</div>`:""}
       </div><div class="actions">
-      ${pendingOpen?`<button class="ghost" data-act="markFaturaPaid" data-id="${c.id}" data-ym="${pendingYm}">Marcar paga</button>`:""}
-      <button class="ico" title="Excluir cartão" data-act="delCard" data-id="${c.id}">×</button></div></div>`;
+      ${pendingOpen?`<button class="ghost" data-act="markFaturaPaid" data-id="${esc(c.id)}" data-ym="${esc(pendingYm)}">Marcar paga</button>`:""}
+      <button class="ico" title="Excluir cartão" data-act="delCard" data-id="${esc(c.id)}">×</button></div></div>`;
   }).join(""):`<div class="empty">Cadastre seus cartões para acompanhar as faturas</div>`;
 }
 function renderCarteira(){
@@ -886,15 +886,15 @@ function renderCarteira(){
   $("heroAccVal").textContent=money(total);
   $("accList").innerHTML=accs.length?accs.map(a=>{
     const b=accBalance(a);
-    return `<div class="row"><div class="ic">${esc(a.name.charAt(0).toUpperCase())}</div><div class="rmain"><div class="t">${esc(a.name)}</div><div class="s">${ACC_TYPES[a.type]||"Conta"} · saldo inicial ${money(a.initial||0)}</div></div><div class="actions"><span class="amt ${b<0?"expense":"income"}">${money(b)}</span><button class="ico" title="Excluir conta" data-act="delAcc" data-id="${a.id}">×</button></div></div>`;
+    return `<div class="row"><div class="ic">${esc(a.name.charAt(0).toUpperCase())}</div><div class="rmain"><div class="t">${esc(a.name)}</div><div class="s">${ACC_TYPES[a.type]||"Conta"} · saldo inicial ${money(a.initial||0)}</div></div><div class="actions"><span class="amt ${b<0?"expense":"income"}">${money(b)}</span><button class="ico" title="Excluir conta" data-act="delAcc" data-id="${esc(a.id)}">×</button></div></div>`;
   }).join(""):`<div class="empty">Cadastre suas contas para acompanhar o saldo de cada uma</div>`;
-  $("txAcc").innerHTML=`<option value="">Sem conta</option>`+accs.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("");
+  $("txAcc").innerHTML=`<option value="">Sem conta</option>`+accs.map(a=>`<option value="${esc(a.id)}">${esc(a.name)}</option>`).join("");
   $("txAcc").hidden=!accs.length;
   renderTransfer(accs);
   renderStatement(accs);
 }
 function renderTransfer(accs){
-  const opts=accs.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("");
+  const opts=accs.map(a=>`<option value="${esc(a.id)}">${esc(a.name)}</option>`).join("");
   const keep={from:$("trFrom").value,to:$("trTo").value};
   $("trFrom").innerHTML=opts;$("trTo").innerHTML=opts;
   if(accs.some(a=>a.id===keep.from))$("trFrom").value=keep.from;
@@ -907,7 +907,7 @@ function renderStatement(accs){
   $("stmtCard").hidden=!accs.length;
   if(!accs.length)return;
   const keep=$("stmtAcc").value;
-  $("stmtAcc").innerHTML=accs.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("");
+  $("stmtAcc").innerHTML=accs.map(a=>`<option value="${esc(a.id)}">${esc(a.name)}</option>`).join("");
   if(accs.some(a=>a.id===keep))$("stmtAcc").value=keep;
   const a=accs.find(x=>x.id===$("stmtAcc").value)||accs[0];
   const moves=accMoves(a).sort((x,y)=>x.t.date.localeCompare(y.t.date)||(x.t.created||0)-(y.t.created||0));
@@ -959,7 +959,7 @@ async function delAcc(id){
   save();renderAll();
 }
 function populateCardSelects(){
-  const opts=`<option value="">Sem cartão</option>`+(db.cards||[]).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
+  const opts=`<option value="">Sem cartão</option>`+(db.cards||[]).map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
   $("txCard").innerHTML=opts;
   $("bCard").innerHTML=opts;
 }
@@ -1309,7 +1309,7 @@ function renderImport(){
   box.hidden=false;
   box.innerHTML=`<p class="muted" style="font-size:13px;margin:12px 0 8px">${impRows.length} lançamentos encontrados${impIgnored?` (${impIgnored} linha(s) ignorada(s): data ou valor inválido)`:""}. Desmarque o que não quer importar.</p>
     <div class="list">${impRows.map((r,i)=>`<label class="row imp"><input type="checkbox" data-i="${i}" ${r.on?"checked":""}><div class="rmain"><div class="t">${esc(r.desc)}</div><div class="s">${brDate(r.date)} · ${r.type==="income"?"Receita":"Despesa"}</div></div><div class="amt ${r.type==="income"?"income":"expense"}">${money(r.amount)}</div></label>`).join("")}</div>
-    ${(db.accounts||[]).length?`<select id="impAcc" aria-label="Conta do extrato" style="width:100%;margin-top:12px"><option value="">Sem conta</option>${db.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select>`:""}
+    ${(db.accounts||[]).length?`<select id="impAcc" aria-label="Conta do extrato" style="width:100%;margin-top:12px"><option value="">Sem conta</option>${db.accounts.map(a=>`<option value="${esc(a.id)}">${esc(a.name)}</option>`).join("")}</select>`:""}
     <div class="btnrow" style="margin-top:12px"><button class="ghost" id="impCancel" type="button">Cancelar</button><button class="primary" id="impOk" type="button">Importar selecionados</button></div>`;
   box.querySelectorAll("[data-i]").forEach(c=>c.onchange=()=>{impRows[+c.dataset.i].on=c.checked});
   $("impCancel").onclick=()=>{box.hidden=true;impRows=[];$("impFile").value=""};

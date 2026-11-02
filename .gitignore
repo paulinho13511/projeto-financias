@@ -1,0 +1,12 @@
+node_modules/
+.claude-flow/
+.vercel/
+.env
+.env.*
+# gerados pela migração (têm dados e códigos de convite)
+db/migracao.sql
+db/convites.json
+migracao.sql
+convites.json
+*.log
+.swarm/

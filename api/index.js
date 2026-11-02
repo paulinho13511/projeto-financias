@@ -12,7 +12,8 @@ function caminho(req) {
   if (u.pathname.startsWith('/api/') && u.pathname !== '/api/index') return u.pathname.replace(/\/+$/, '');
   return '/api/' + (u.searchParams.get('p') || '');   // quando o rewrite entrega só /api/index?p=...
 }
-const ip = req => String(req.headers['x-real-ip'] || (req.headers['x-forwarded-for'] || '').split(',')[0] || 'desconhecido').trim();
+// Na Vercel esses cabeçalhos são reescritos pela borda (o cliente não consegue forjar); x-vercel-forwarded-for é o mais confiável.
+const ip = req => String(req.headers['x-vercel-forwarded-for'] || req.headers['x-real-ip'] || (req.headers['x-forwarded-for'] || '').split(',')[0] || 'desconhecido').split(',')[0].trim();
 
 function responder(res, status, corpo, cookie) {
   res.status(status);

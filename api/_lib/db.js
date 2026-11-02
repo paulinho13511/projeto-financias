@@ -10,4 +10,9 @@ async function query(texto, params = []) {
   }
   return sql.query(texto, params);   // sempre devolve a lista de linhas
 }
-module.exports = { query };
+// Vários comandos numa transação só (tudo ou nada). lista = [[sql, params], ...]
+async function transaction(lista) {
+  if (!sql) await query('select 1');   // garante o cliente criado
+  return sql.transaction(lista.map(([texto, params]) => sql.query(texto, params || [])));
+}
+module.exports = { query, transaction };

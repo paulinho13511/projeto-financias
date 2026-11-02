@@ -1,6 +1,6 @@
 // Regras da API (login, dados, acessos, senha, avisos push). Função pura: handle({method,path,body,cookie,ip}) -> {status,body,setCookie}
 // O banco entra de fora (criarApp({query})): em produção é o Neon (db.js), nos testes é um Postgres local.
-// Sem transações: cada operação é uma sequência de comandos que pode ser repetida sem estragar nada.
+// Operações de vários passos (criar/remover acesso) rodam numa transação: ou entra tudo ou nada. Login, sessão e gravação de dados são um comando só.
 'use strict';
 const crypto = require('crypto');
 const { promisify } = require('util');
@@ -36,7 +36,10 @@ const senhaValida = s => typeof s === 'string' && s.length >= 10 && s.length <= 
 const endpointValido = e => typeof e === 'string' && e.length <= 1000 && /^https:\/\/[^\s]+$/.test(e);
 const b64urlValido = s => typeof s === 'string' && s.length >= 8 && s.length <= 200 && /^[A-Za-z0-9_-]+$/.test(s);
 
-function criarApp({ query }) {
+function criarApp({ query, transaction }) {
+  // transaction([[sql, params], ...]) é tudo-ou-nada; sem ela (outro adaptador), roda em sequência.
+  const atomico = lista => transaction ? transaction(lista) : lista.reduce((p, [sql, ps]) => p.then(() => query(sql, ps)), Promise.resolve());
+
   async function autenticar(req) {
     const tok = lerSid(req.cookie);
     if (!tok) return null;
@@ -141,10 +144,11 @@ function criarApp({ query }) {
           if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(alvo)) return R(400, { erro: 'E-mail inválido.' });
           if (!senhaValida(body.senha)) return R(400, { erro: 'A senha precisa ter pelo menos 10 caracteres.' });
           if ((await query(`select 1 from acessos where email = $1`, [alvo])).length) return R(409, { erro: 'Esse e-mail já tem acesso.' });
-          // ordem importa: o acesso só é liberado depois que usuário e dados existem. Se algo falhar no meio, repetir resolve.
-          await query(`insert into usuarios(email,senha_hash) values($1,$2) on conflict (email) do update set senha_hash = excluded.senha_hash returning 1`, [alvo, await hashSenha(body.senha)]);
-          await query(`insert into app_data(user_id,updated_by) select id,$2 from usuarios where email = $1 on conflict (user_id) do nothing returning 1`, [alvo, eu.email]);
-          await query(`insert into acessos(email) values($1) on conflict (email) do nothing returning 1`, [alvo]);
+          await atomico([
+            [`insert into usuarios(email,senha_hash) values($1,$2) on conflict (email) do update set senha_hash = excluded.senha_hash returning 1`, [alvo, await hashSenha(body.senha)]],
+            [`insert into app_data(user_id,updated_by) select id,$2 from usuarios where email = $1 on conflict (user_id) do nothing returning 1`, [alvo, eu.email]],
+            [`insert into acessos(email) values($1) on conflict (email) do nothing returning 1`, [alvo]],
+          ]);
           return R(201, { ok: true });
         }
         if (method === 'PATCH') {
@@ -156,9 +160,11 @@ function criarApp({ query }) {
           const a = (await query(`select a.is_admin from usuarios u left join acessos a on a.email = u.email where u.email = $1`, [alvo]))[0];
           if (!a) return R(404, { erro: 'Não encontrado.' });
           if (a.is_admin) return R(400, { erro: 'Tire a permissão de administrador antes de remover.' });
-          if (body.guardar_backup) await query(`insert into app_data_removidos(email,user_id,data,removed_by) select u.email,u.id,d.data,$2 from usuarios u left join app_data d on d.user_id=u.id where u.email=$1 returning 1`, [alvo, eu.email]);
-          await query(`delete from acessos where email = $1 returning 1`, [alvo]);     // o acesso cai primeiro
-          await query(`delete from usuarios where email = $1 returning 1`, [alvo]);     // apaga sessões, dados e avisos junto (cascade)
+          await atomico([
+            ...(body.guardar_backup ? [[`insert into app_data_removidos(email,user_id,data,removed_by) select u.email,u.id,d.data,$2 from usuarios u left join app_data d on d.user_id=u.id where u.email=$1 returning 1`, [alvo, eu.email]]] : []),
+            [`delete from acessos where email = $1 returning 1`, [alvo]],
+            [`delete from usuarios where email = $1 returning 1`, [alvo]],     // apaga sessões, dados e avisos junto (cascade)
+          ]);
           return R(200, { ok: true });
         }
       }

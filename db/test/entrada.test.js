@@ -6,7 +6,6 @@ const Module = require('module');
 const path = require('path');
 const dbt = require('./db-psql.js');
 const { hashSenha } = require('../../api/_lib/app.js');
-const { spawnSync } = require('child_process');
 
 const orig = Module._load;
 Module._load = function (req, ...r) {
@@ -19,12 +18,7 @@ const entrada = require('../../api/index.js');
 const { executar } = require('../../api/_lib/lembretes-job.js');
 const { query } = dbt;
 
-function reset() {
-  const psql = a => spawnSync('psql', [...dbt.CONN.filter(x => x !== '-A' && x !== '-t'), '-v', 'ON_ERROR_STOP=1', ...a], { encoding: 'utf8' });
-  const r1 = psql(['-c', 'drop schema public cascade; create schema public;']), r2 = psql(['-f', path.join(__dirname, '../schema.sql')]);
-  assert.equal(r1.status + r2.status, 0, r1.stderr + r2.stderr);
-}
-test.beforeEach(reset);
+test.beforeEach(() => dbt.reset());
 
 async function http(method, url, { body, headers = {} } = {}) {
   const req = { method, url, headers: { host: 'app.exemplo', 'content-type': 'application/json', ...headers }, body };
