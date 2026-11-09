@@ -1,10 +1,10 @@
 // Testes da entrada HTTP (api/index.js), do adaptador de produção (db.js) e do envio de avisos (lembretes-job.js).
-// O driver do Neon é trocado por um falso que consulta o Postgres local, mas com a mesma forma: neon(url).query(texto, params).
+// O driver do Neon é trocado por um falso que consulta o PGlite, mas com a mesma forma: neon(url).query(texto, params).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const Module = require('module');
 const path = require('path');
-const dbt = require('./db-psql.js');
+const dbt = require('./db-pglite.js');
 const { hashSenha } = require('../../api/_lib/app.js');
 
 const orig = Module._load;
@@ -58,6 +58,8 @@ test('entrada: outro site (Origin diferente) e corpo que não é JSON são recus
   await usuario('a@x.com', 'senha-boa-123');
   const o = await http('POST', '/api/login', { body: { email: 'a@x.com', senha: 'senha-boa-123' }, headers: { origin: 'https://malvado.exemplo' } });
   assert.equal(o.status, 403);
+  const nulo = await http('POST', '/api/login', { body: { email: 'a@x.com', senha: 'senha-boa-123' }, headers: { origin: 'null' } });
+  assert.equal(nulo.status, 403, 'Origin: null é recusado, não dá erro 500');
   const ok = await http('POST', '/api/login', { body: { email: 'a@x.com', senha: 'senha-boa-123' }, headers: { origin: 'https://app.exemplo' } });
   assert.equal(ok.status, 200);
   const t = await http('POST', '/api/login', { body: 'email=a', headers: { 'content-type': 'text/plain' } });

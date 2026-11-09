@@ -38,7 +38,9 @@ module.exports = async (req, res) => {
     // Defesa extra contra requisições vindas de outro site (o cookie já é SameSite=Strict)
     if (metodo !== 'GET') {
       const origem = req.headers.origin;
-      if (origem && new URL(origem).host !== req.headers.host) return responder(res, 403, { erro: 'origem não permitida' });
+      let hostOrigem = null;
+      try { hostOrigem = origem ? new URL(origem).host : null; } catch { /* "null" ou lixo: tratado como outro site */ }
+      if (origem && hostOrigem !== req.headers.host) return responder(res, 403, { erro: 'origem não permitida' });
       if (!/^application\/json/i.test(req.headers['content-type'] || '')) return responder(res, 415, { erro: 'use JSON' });
     }
 

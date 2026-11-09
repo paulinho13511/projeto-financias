@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs'), os = require('os'), path = require('path');
 const { spawnSync } = require('child_process');
 const { criarApp, hashSenha, sha } = require('../../api/_lib/app.js');
-const dbt = require('./db-psql.js');
+const dbt = require('./db-pglite.js');
 const { query } = dbt;
 const { handle } = criarApp(dbt);
 
@@ -184,12 +184,29 @@ test('administração: se a remoção parar depois de tirar o acesso, repetir te
 test('senha: troca exige 10+ caracteres, derruba os outros aparelhos e invalida a antiga', async () => {
   (await novoUsuario('a@x.com', 'senha-boa-123'));
   const c1 = (await logar('a@x.com', 'senha-boa-123')).c, c2 = (await logar('a@x.com', 'senha-boa-123')).c;
-  assert.equal((await call('POST', '/api/senha', { nova: 'curta' }, c1)).status, 400);
-  assert.equal((await call('POST', '/api/senha', { nova: 'senha-novissima-9' }, c1)).status, 200);
+  assert.equal((await call('POST', '/api/senha', { atual: 'senha-boa-123', nova: 'curta' }, c1)).status, 400);
+  assert.equal((await call('POST', '/api/senha', { nova: 'senha-novissima-9' }, c1)).status, 403, 'sem a senha atual não troca');
+  assert.equal((await call('POST', '/api/senha', { atual: 'errada-errada', nova: 'senha-novissima-9' }, c1)).status, 403);
+  assert.equal((await call('POST', '/api/senha', { atual: 'senha-boa-123', nova: 'senha-novissima-9' }, c1)).status, 200);
   assert.equal((await call('GET', '/api/me', null, c1)).status, 200);
   assert.equal((await call('GET', '/api/me', null, c2)).status, 401);
   assert.equal((await logar('a@x.com', 'senha-boa-123')).r.status, 401);
   assert.equal((await logar('a@x.com', 'senha-novissima-9')).r.status, 200);
+});
+
+test('senha: senha atual errada conta no limite de tentativas', async () => {
+  (await novoUsuario('a@x.com', 'senha-boa-123'));
+  const c = (await logar('a@x.com', 'senha-boa-123')).c;
+  for (let i = 0; i < 5; i++) assert.equal((await call('POST', '/api/senha', { atual: 'errada-' + i + 'xxxx', nova: 'senha-novissima-9' }, c)).status, 403);
+  assert.equal((await call('POST', '/api/senha', { atual: 'senha-boa-123', nova: 'senha-novissima-9' }, c)).status, 429);
+});
+
+test('dados: versão vazia ou inválida vira conflito (409), não erro 500', async () => {
+  (await novoUsuario('a@x.com', 'senha-boa-123'));
+  const c = (await logar('a@x.com', 'senha-boa-123')).c;
+  const v = (await call('GET', '/api/dados', null, c)).body.versao;
+  for (const versao of [undefined, '', 'lixo', "2026-01-01'; drop table x"]) assert.equal((await call('PUT', '/api/dados', { data: { a: 1 }, versao }, c)).status, 409);
+  assert.equal((await call('PUT', '/api/dados', { data: { a: 1 }, versao: v }, c)).status, 200, 'a versão de verdade ainda passa');
 });
 
 test('convite: uso único, expira, guarda só o hash e libera o primeiro login', async () => {

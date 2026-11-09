@@ -246,17 +246,22 @@ $("aclForm").onsubmit=async e=>{
 /* ---------- troca de senha pelo próprio usuário ---------- */
 $("pwBtn").onclick=()=>{
   $("menu").hidden=true;
-  $("newPw").value="";$("newPw2").value="";
+  $("curPw").value="";$("newPw").value="";$("newPw2").value="";
   $("pwSheet").hidden=false;
 };
 $("pwClose").onclick=()=>{$("pwSheet").hidden=true};
 $("pwForm").onsubmit=async e=>{
   e.preventDefault();
-  const a=$("newPw").value,b=$("newPw2").value;
+  const cur=$("curPw").value,a=$("newPw").value,b=$("newPw2").value;
+  if(!cur){showToast("Digite a senha atual");return}
   if(a.length<10){showToast("A senha precisa ter pelo menos 10 caracteres");return}
   if(a!==b){showToast("As senhas não conferem");return}
-  try{await API.post("/api/senha",{nova:a})}
-  catch(err){showToast("Não foi possível trocar a senha");return}
+  try{await API.post("/api/senha",{atual:cur,nova:a})}
+  catch(err){
+    if(err&&err.status===401){lockApp("Sessão expirada. Entre de novo.");return}
+    showToast(err&&(err.status===403||err.status===429)?err.message:"Não foi possível trocar a senha");return
+  }
+  $("curPw").value="";
   $("pwSheet").hidden=true;
   showToast("Senha trocada com sucesso");
 };

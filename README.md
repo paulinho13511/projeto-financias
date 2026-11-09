@@ -54,7 +54,7 @@ Navegador (index.html + frontend/)  ──/api/*──▶  api/index.js (funçã
 ## Testes
 
 ```
-npm test        # backend (precisa de um Postgres local, ver db/README.md)
+npm test        # backend; usa o PGlite (Postgres dentro do Node), não precisa instalar nada (ver db/README.md)
 ```
 
 O que mexe na tela é conferido no navegador (Playwright), fora do repositório.

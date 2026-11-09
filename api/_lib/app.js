@@ -1,5 +1,5 @@
 // Regras da API (login, dados, acessos, senha, avisos push). Função pura: handle({method,path,body,cookie,ip}) -> {status,body,setCookie}
-// O banco entra de fora (criarApp({query})): em produção é o Neon (db.js), nos testes é um Postgres local.
+// O banco entra de fora (criarApp({query})): em produção é o Neon (db.js), nos testes é o PGlite (Postgres dentro do Node).
 // Operações de vários passos (criar/remover acesso) rodam numa transação: ou entra tudo ou nada. Login, sessão e gravação de dados são um comando só.
 'use strict';
 const crypto = require('crypto');
@@ -34,7 +34,8 @@ const lerSid = c => { const m = /(?:^|;\s*)sid=([0-9a-f]{64})/.exec(c || ''); re
 const R = (status, body, setCookie) => ({ status, body, setCookie });
 const senhaValida = s => typeof s === 'string' && s.length >= 10 && s.length <= 200;
 const endpointValido = e => typeof e === 'string' && e.length <= 1000 && /^https:\/\/[^\s]+$/.test(e);
-const b64urlValido = s => typeof s === 'string' && s.length >= 8 && s.length <= 200 && /^[A-Za-z0-9_-]+$/.test(s);
+const VERSAO_OK = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(\.\d{1,6})?([+-]\d{2}(:?\d{2})?|Z)?$/;
+const b64urlValido =s => typeof s === 'string' && s.length >= 8 && s.length <= 200 && /^[A-Za-z0-9_-]+$/.test(s);
 
 function criarApp({ query, transaction }) {
   // transaction([[sql, params], ...]) é tudo-ou-nada; sem ela (outro adaptador), roda em sequência.
@@ -69,7 +70,8 @@ function criarApp({ query, transaction }) {
                                   from tentativas_login where em > now() - ($3 || ' minutes')::interval`, [email, ip, String(JANELA_MIN)]))[0];
         if (+t.por_email >= MAX_TENT_EMAIL || +t.por_ip >= MAX_TENT_IP) return R(429, { erro: 'Muitas tentativas. Aguarde alguns minutos.' });
         const u = (await query(`select id, email, senha_hash from usuarios where email = $1`, [email]))[0];
-        const ok = (await confere(senha, u ? u.senha_hash : await DUMMY())) && !!u;
+        // Sem usuário ou sem senha definida (convite não usado): confere contra o hash falso para gastar o mesmo tempo.
+        const ok = (await confere(senha, u && u.senha_hash ? u.senha_hash : await DUMMY())) && !!(u && u.senha_hash);
         if (!ok) {
           await query(`insert into tentativas_login(email,ip) values($1,$2) returning 1`, [email, ip]);
           return R(401, { erro: 'E-mail ou senha incorretos.' });
@@ -108,6 +110,8 @@ function criarApp({ query, transaction }) {
         if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) return R(400, { erro: 'Dados inválidos.' });
         const txt = JSON.stringify(body.data);
         if (txt.length > MAX_DADOS) return R(413, { erro: 'Dados grandes demais.' });
+        // Versão que não parece um timestamp do Postgres nunca bate com a do banco: conflito, sem chegar a dar erro no SQL.
+        if (!VERSAO_OK.test(String(body.versao || ''))) return R(409, { erro: 'conflito' });
         const r = (await query(`update app_data set data = $1::jsonb, updated_at = clock_timestamp(), updated_by = $2
                                  where user_id = $3::uuid and updated_at = $4::timestamptz returning updated_at::text as versao`,
           [txt, eu.email, eu.id, String(body.versao || '')]))[0];
@@ -115,6 +119,15 @@ function criarApp({ query, transaction }) {
       }
       if (method === 'POST' && path === '/api/senha') {
         if (!senhaValida(body.nova)) return R(400, { erro: 'A senha precisa ter pelo menos 10 caracteres.' });
+        // Exige a senha atual (aparelho desbloqueado não basta) e conta os erros no mesmo limite do login.
+        const ip = String(req.ip || 'desconhecido');
+        const t = (await query(`select count(*) as n from tentativas_login where email = $1 and em > now() - ($2 || ' minutes')::interval`, [eu.email, String(JANELA_MIN)]))[0];
+        if (+t.n >= MAX_TENT_EMAIL) return R(429, { erro: 'Muitas tentativas. Aguarde alguns minutos.' });
+        const atual = (await query(`select senha_hash from usuarios where id = $1::uuid`, [eu.id]))[0];
+        if (!(await confere(String(body.atual || ''), atual && atual.senha_hash))) {
+          await query(`insert into tentativas_login(email,ip) values($1,$2) returning 1`, [eu.email, ip]);
+          return R(403, { erro: 'Senha atual incorreta.' });
+        }
         await query(`update usuarios set senha_hash = $1 where id = $2::uuid returning 1`, [await hashSenha(body.nova), eu.id]);
         await query(`delete from sessoes where user_id = $1::uuid and token_hash <> $2 returning 1`, [eu.id, sha(lerSid(req.cookie))]);  // derruba os outros aparelhos
         return R(200, { ok: true });
