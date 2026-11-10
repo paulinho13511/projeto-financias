@@ -10,3 +10,4 @@ migracao.sql
 convites.json
 *.log
 .swarm/
+web/dist/

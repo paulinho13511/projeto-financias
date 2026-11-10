@@ -1,0 +1,14 @@
+/* Ajustes só do front em React. O resto do visual vem de frontend/styles. */
+
+/* Janela "Mais": lista de todas as telas */
+.maisLista{display:grid;gap:6px}
+.maisLista button{background:var(--card2);border:0;color:var(--text);border-radius:14px;min-height:46px;font-weight:600;font-size:15px;text-align:left;padding:0 16px}
+.maisLista button.on{color:var(--accent)}
+.maisLista .sair{color:var(--muted);text-align:center;margin-top:6px}
+/* "Sair" na barra lateral: logo abaixo do "+ Novo lançamento", discreto */
+.side .sideSair{justify-content:center;font-size:13px;min-height:36px}
+.maisLista .close{text-align:center;background:none;color:var(--muted)}
+
+/* Marcador das telas ainda não migradas */
+.migrar{border:1px dashed var(--border)}
+.migrar p{color:var(--muted);font-size:14px;margin:6px 0 0}
