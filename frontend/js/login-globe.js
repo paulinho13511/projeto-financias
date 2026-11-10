@@ -206,26 +206,30 @@
   }
 
   // ---------------------------------------------------------------- matrizes 4x4 (coluna principal)
+  // As versões "...To(o, ...)" escrevem numa matriz já existente: o laço de animação não cria matrizes novas
+  // a cada quadro (antes eram ~180 por quadro, e o coletor de lixo causava engasgos periódicos).
   function ident() { var o = new Float32Array(16); o[0] = o[5] = o[10] = o[15] = 1; return o; }
-  function mul(a, b) {
-    var o = new Float32Array(16);
+  function mulTo(o, a, b) {   // o = a × b; o precisa ser uma matriz diferente de a e de b
     for (var c = 0; c < 4; c++) for (var r = 0; r < 4; r++) {
       var s = 0; for (var k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k];
       o[c * 4 + r] = s;
     }
     return o;
   }
-  function persp(fovy, asp, n, f, shiftX, shiftY) {
-    var t = 1 / Math.tan(fovy / 2), o = new Float32Array(16);
+  function mul(a, b) { return mulTo(new Float32Array(16), a, b); }
+  function perspTo(o, fovy, asp, n, f, shiftX, shiftY) {
+    var t = 1 / Math.tan(fovy / 2);
+    o.fill(0);
     o[0] = t / asp; o[5] = t; o[8] = -shiftX; o[9] = -shiftY; o[10] = (f + n) / (n - f); o[11] = -1; o[14] = 2 * f * n / (n - f);
     return o;
   }
   function trans(x, y, z) { var o = ident(); o[12] = x; o[13] = y; o[14] = z; return o; }
   function scale(s) { var o = ident(); o[0] = o[5] = o[10] = s; return o; }
   function rotX(a) { var o = ident(), c = Math.cos(a), s = Math.sin(a); o[5] = c; o[6] = s; o[9] = -s; o[10] = c; return o; }
-  function rotAxis(ax, ay, az, a) {   // rotação de ângulo a em torno de um eixo qualquer
+  function rotAxisTo(o, ax, ay, az, a) {   // rotação de ângulo a em torno de um eixo qualquer
     var l = Math.sqrt(ax * ax + ay * ay + az * az); ax /= l; ay /= l; az /= l;
-    var c = Math.cos(a), s = Math.sin(a), t = 1 - c, o = ident();
+    var c = Math.cos(a), s = Math.sin(a), t = 1 - c;
+    o.fill(0); o[15] = 1;
     o[0] = t * ax * ax + c;      o[4] = t * ax * ay - s * az; o[8] = t * ax * az + s * ay;
     o[1] = t * ax * ay + s * az; o[5] = t * ay * ay + c;      o[9] = t * ay * az - s * ax;
     o[2] = t * ax * az - s * ay; o[6] = t * ay * az + s * ax; o[10] = t * az * az + c;
@@ -297,31 +301,41 @@
   }
 
   // ---------------------------------------------------------------- desenho
+  // matrizes de trabalho, criadas uma vez e reaproveitadas em todo quadro
+  var M_MV = new Float32Array(16), M_MVP = new Float32Array(16), M_R = new Float32Array(16), M_RL = new Float32Array(16), M_MODEL = new Float32Array(16);
+  var M_IDENT = ident(), M_SHELL = scale(1.3);
   function drawMesh(prog, m, model, view, proj) {
-    var mv = mul(view, model);
-    gl.uniformMatrix4fv(prog.u("uMVP"), false, mul(proj, mv));
+    var mv = mulTo(M_MV, view, model);
+    gl.uniformMatrix4fv(prog.u("uMVP"), false, mulTo(M_MVP, proj, mv));
     gl.uniformMatrix4fv(prog.u("uMV"), false, mv);
     gl.bindVertexArray(m.vao);
     gl.drawElements(gl.TRIANGLES, m.count, gl.UNSIGNED_SHORT, 0);
   }
   var ang = [0, 0, 0], phase = 0;   // ângulo de cada grupo e deslocamento de cor ao longo dos anéis
+  // A parte fixa de cada fio (giro na tela × inclinação × raio, e o deslocamento vertical) é calculada uma vez só.
+  // A ordem das multiplicações é a mesma de antes: modelo = desloc. × giro do grupo × (giro × inclinação × raio).
+  GROUPS.forEach(function (g) {
+    g.strands.forEach(function (st) { st.local = mul(rotZ(st.roll), mul(rotX(st.tilt), scale(st.s))); st.lift = trans(0, st.dy, 0); });
+  });
   function drawStrands(view, proj, pass, P) {
     gl.useProgram(pRing.p);
     gl.uniform1f(pRing.u("uCenterZ"), -DIST); gl.uniform1f(pRing.u("uPass"), pass);
-    GROUPS.forEach(function (g, gi) {
-      var R = rotAxis(g.axis[0], g.axis[1], g.axis[2], ang[gi]);
+    for (var gi = 0; gi < GROUPS.length; gi++) {
+      var g = GROUPS[gi];
+      var R = rotAxisTo(M_R, g.axis[0], g.axis[1], g.axis[2], ang[gi]);
       gl.uniform1f(pRing.u("uLit"), P.lit[gi]);
-      g.strands.forEach(function (st) {
-        var model = mul(trans(0, st.dy, 0), mul(R, mul(rotZ(st.roll), mul(rotX(st.tilt), scale(st.s)))));
+      for (var si = 0; si < g.strands.length; si++) {
+        var st = g.strands[si];
+        var model = mulTo(M_MODEL, st.lift, mulTo(M_RL, R, st.local));
         gl.uniform3fv(pRing.u("uColA"), st.a); gl.uniform3fv(pRing.u("uColB"), st.b);
         gl.uniform1f(pRing.u("uPhase"), st.ph + phase); gl.uniform1f(pRing.u("uGain"), st.g);
         drawMesh(pRing, torus, model, view, proj);
-      });
-    });
+      }
+    }
   }
   function drawShell(view, proj, P) {
     gl.useProgram(pShell.p); gl.uniform1f(pShell.u("uFade"), P.fade);
-    drawMesh(pShell, sphere, scale(1.3), view, proj);
+    drawMesh(pShell, sphere, M_SHELL, view, proj);
   }
   function fsPass(prog, target) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, target ? target.fbo : null);
@@ -331,11 +345,12 @@
   function bindTex(unit, tex) { gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, tex); }
 
   var L = { w: 1, h: 1, fx: 0, fy: 0, ppuF: 1, sx: 0, sy: 0, ppu0: 1 };   // medidas da tela e dos dois pontos da animação
+  var M_PROJ = new Float32Array(16), M_PV = new Float32Array(16), M_VIEW = mul(trans(0, 0, -DIST), rotX(PITCH));
   function render(P) {   // P = { cx, cy (px do centro do globo), ppu (px por unidade do mundo) }
     if (!canvas.width || !canvas.height || !T) return;
     var fov = 2 * Math.atan(L.h / (2 * P.ppu * DIST));
-    var proj = persp(fov, L.w / L.h, 1, 60, P.cx / L.w * 2 - 1, 1 - P.cy / L.h * 2);
-    var view = mul(trans(0, 0, -DIST), rotX(PITCH));
+    var proj = perspTo(M_PROJ, fov, L.w / L.h, 1, 60, P.cx / L.w * 2 - 1, 1 - P.cy / L.h * 2);
+    var view = M_VIEW;   // câmera fixa: calculada uma vez
 
     // 1) cena em HDR: fios atrás da esfera, vidro, fios na frente, casca
     gl.bindFramebuffer(gl.FRAMEBUFFER, T.scene.fbo);
@@ -346,7 +361,7 @@
     drawStrands(view, proj, 0, P);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.useProgram(pGlass.p); gl.uniform1f(pGlass.u("uFade"), P.fade);
-    drawMesh(pGlass, sphere, ident(), view, proj);
+    drawMesh(pGlass, sphere, M_IDENT, view, proj);
     gl.blendFunc(gl.ONE, gl.ONE);
     drawStrands(view, proj, 1, P);
     drawShell(view, proj, P);
@@ -391,7 +406,7 @@
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
   function floorNdc(proj, view) {   // projeta o ponto do chão (0, FLOOR_Y, 0) e devolve o Y em NDC
-    var m = mul(proj, view);
+    var m = mulTo(M_PV, proj, view);
     var y = m[5] * FLOOR_Y + m[13], wv = m[7] * FLOOR_Y + m[15];   // x = z = 0
     return y / wv;
   }
@@ -441,13 +456,41 @@
 
   // ---------------------------------------------------------------- laço de animação (um só)
   var running = false, shown = false, readyOn = false, raf = 0, tStart = 0, last = 0, pausedAt = 0;
+  var layoutDirty = true, layoutTick = 0;
+  function markLayout() { layoutDirty = true; }
+
+  // Medidor de quadros, só para diagnóstico: abra a página com ?fps=1 no endereço.
+  // Mostra quadros por segundo, o tempo do quadro mais lento (p95) e a placa de vídeo usada.
+  var fpsMeter = null;
+  if (/[?&]fps=1\b/.test(location.search)) {
+    var fpsBox = document.createElement("div"), fpsT = [], fpsLast = 0, fpsShown = 0;
+    fpsBox.style.cssText = "position:fixed;left:8px;top:8px;z-index:9999;font:12px/1.4 monospace;color:#0f0;background:rgba(0,0,0,.75);padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre";
+    document.body.appendChild(fpsBox);
+    var dbg = gl.getExtension("WEBGL_debug_renderer_info");
+    var gpu = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : "?";
+    fpsMeter = function (now) {
+      if (fpsLast) fpsT.push(now - fpsLast);
+      fpsLast = now;
+      if (now - fpsShown < 1000) return;
+      fpsShown = now;
+      var s = fpsT.slice().sort(function (a, b) { return a - b; }), n = s.length;
+      if (!n) return;
+      var media = s.reduce(function (a, b) { return a + b; }, 0) / n;
+      fpsBox.textContent = (1000 / media).toFixed(0) + " fps   p95 " + s[Math.floor(n * 0.95)].toFixed(1) + " ms   máx " + s[n - 1].toFixed(1) + " ms\n" +
+        canvas.width + "×" + canvas.height + " · SS " + SS + " · " + (HDR ? "HDR" : "8 bits") + " · " + (LOW ? "LOW" : "normal") + "\n" + gpu;
+      fpsT.length = 0;
+    };
+  }
   function setReady() { readyOn = true; lock.classList.add("lk-ready"); }
   function frame(now) {
     raf = 0;
     if (!running) return;
     if (!canvas.isConnected) { dispose(); return; }
     var dt = clamp((now - last) / 1000, 0, 0.1); last = now;   // segundos reais: a velocidade não depende dos quadros por segundo
-    layout();
+    // medir a página força o navegador a recalcular o layout; só mede quando algo mudou (tamanho, rolagem)
+    // e, por segurança, a cada 30 quadros
+    if (layoutDirty || ++layoutTick >= 30) { layout(); layoutDirty = false; layoutTick = 0; }
+    if (fpsMeter) fpsMeter(now);
     var tl = (now - tStart) / 1000, P = poseAt(tl);
     var boost = 1 + 1.6 * (1 - P.e);                           // gira mais rápido na abertura e desacelera ao ir para o canto
     for (var i = 0; i < GROUPS.length; i++) ang[i] += GROUPS[i].w * boost * dt;
@@ -480,12 +523,13 @@
   function onMotion() { if (shown) begin(); }
 
   var rzT = 0;
-  function onSize() { clearTimeout(rzT); rzT = setTimeout(function () { rzT = 0; resize(); }, 120); }
+  function onSize() { markLayout(); clearTimeout(rzT); rzT = setTimeout(function () { rzT = 0; resize(); }, 120); }
   var ro = window.ResizeObserver ? new ResizeObserver(onSize) : null;
-  if (ro) ro.observe(canvas);
+  if (ro) { ro.observe(canvas); ro.observe(stageEl); }
   var mo = new MutationObserver(onLock);
   mo.observe(lock, { attributes: true, attributeFilter: ["hidden"] });
   window.addEventListener("resize", onSize);
+  lock.addEventListener("scroll", markLayout, { passive: true });   // no celular a tela de entrada rola e o globo acompanha
   document.addEventListener("visibilitychange", onVisibility);
   if (RM.addEventListener) RM.addEventListener("change", onMotion);
   canvas.addEventListener("webglcontextlost", function (e) { e.preventDefault(); halt(); giveUp(); });
@@ -495,6 +539,8 @@
     halt(); clearTimeout(rzT);
     mo.disconnect(); if (ro) ro.disconnect();
     window.removeEventListener("resize", onSize);
+    lock.removeEventListener("scroll", markLayout);
+    if (fpsMeter && fpsBox.parentNode) fpsBox.remove();
     document.removeEventListener("visibilitychange", onVisibility);
     if (RM.removeEventListener) RM.removeEventListener("change", onMotion);
     freeTargets();
