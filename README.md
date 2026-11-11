@@ -59,6 +59,8 @@ npm test        # backend; usa o PGlite (Postgres dentro do Node), não precisa 
 
 O que mexe na tela é conferido no navegador (Playwright), fora do repositório.
 
+Medidor de quadros da tela de entrada: abra o app com `?fps=1` no endereço (ex.: `/?fps=1`) para ver fps, p95, resolução e placa de vídeo do globo.
+
 ## Variáveis na Vercel
 
 `DATABASE_URL` (Neon), `CRON_SECRET`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`. Nenhum segredo fica no código.
