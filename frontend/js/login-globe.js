@@ -39,31 +39,31 @@
     "  float t = 0.5 + 0.5 * sin(vU + uPhase);\n" +
     "  vec3 col = mix(uColA, uColB, t);\n" +
     "  float body = smoothstep(0.0, 0.55, ndv);\n" +
-    "  vec3 c = col * (0.15 + 3.4 * pow(ndv, 8.0)) * body + vec3(1.0, 0.92, 1.0) * pow(ndv, 22.0) * 1.0;\n" +
+    "  vec3 c = col * (0.15 + 3.4 * pow(ndv, 8.0)) * body + vec3(1.0, 0.98, 0.96) * pow(ndv, 22.0) * 1.0;\n" +
     "  float f = fract(vU / 6.2831853); float r = uLit * 1.3;\n" +
     "  float m = 1.0 - smoothstep(r - 0.3, r, f);\n" +
     "  float q = (f - (r - 0.12)) / 0.04; float tip = exp(-q * q) * sin(clamp(uLit, 0.0, 1.0) * 3.14159);\n" +
-    "  c = c * m + vec3(0.9, 0.85, 1.0) * pow(ndv, 4.0) * tip * 2.5;\n" +
+    "  c = c * m + vec3(1.0, 0.95, 0.92) * pow(ndv, 4.0) * tip * 2.5;\n" +
     "  o = vec4(c * uGain, 1.0);\n" +
     "}";
 
-  // esfera de vidro escuro: miolo índigo, aro azul/violeta com fio rosa-claro no alto à esquerda, reflexos
+  // esfera de vidro escuro: miolo grafite, aro prateado com fio vermelho no alto à esquerda, reflexos (cores do TravaDin)
   var FS_GLASS = "#version 300 es\nprecision highp float;\n" +
     "in vec3 vN; in vec3 vP; in float vU; uniform float uFade; out vec4 o;\n" +
     "void main(){\n" +
     "  vec3 n = normalize(vN); vec3 v = normalize(-vP);\n" +
     "  float ndv = dot(n, v); if (ndv <= 0.0) discard;\n" +   // sem profundidade: só a metade voltada para a câmera
     "  float fr = 1.0 - ndv;\n" +
-    "  vec3 body = mix(vec3(0.004, 0.004, 0.030), vec3(0.04, 0.02, 0.16), pow(fr, 1.6));\n" +
-    "  body += vec3(0.02, 0.07, 0.45) * (1.0 - smoothstep(-0.9, 0.15, n.y)) * (0.35 + 0.65 * fr);\n" +
-    "  vec3 rimCol = mix(vec3(0.62, 0.22, 1.0), vec3(0.20, 0.45, 1.0), smoothstep(0.25, 0.95, abs(n.x)));\n" +
-    "  rimCol = mix(rimCol, vec3(1.0, 0.55, 1.0), smoothstep(0.1, 0.9, n.y) * smoothstep(0.0, 0.9, -n.x));\n" +
+    "  vec3 body = mix(vec3(0.004, 0.005, 0.007), vec3(0.05, 0.06, 0.075), pow(fr, 1.6));\n" +
+    "  body += vec3(0.10, 0.12, 0.15) * (1.0 - smoothstep(-0.9, 0.15, n.y)) * (0.35 + 0.65 * fr);\n" +
+    "  vec3 rimCol = mix(vec3(0.85, 0.88, 0.92), vec3(0.55, 0.62, 0.70), smoothstep(0.25, 0.95, abs(n.x)));\n" +
+    "  rimCol = mix(rimCol, vec3(1.0, 0.32, 0.30), smoothstep(0.1, 0.9, n.y) * smoothstep(0.0, 0.9, -n.x));\n" +
     "  float rim = pow(fr, 3.0) * 0.35 + pow(fr, 10.0) * 2.4;\n" +
     "  float q = (ndv - 0.42) / 0.035;\n" +
     "  float arc = exp(-q * q) * smoothstep(0.0, 0.7, n.y * 0.6 - n.x * 0.8);\n" +
-    "  vec3 emit = rimCol * rim + vec3(0.85, 0.80, 1.0) * arc * 0.55;\n" +
+    "  vec3 emit = rimCol * rim + vec3(0.92, 0.94, 0.97) * arc * 0.55;\n" +
     "  vec3 L = normalize(vec3(-0.45, 0.65, 0.6));\n" +
-    "  emit += vec3(0.8, 0.85, 1.0) * pow(max(dot(reflect(-v, n), L), 0.0), 80.0) * 0.35;\n" +
+    "  emit += vec3(0.9, 0.92, 0.95) * pow(max(dot(reflect(-v, n), L), 0.0), 80.0) * 0.35;\n" +
     "  float a = 0.72 + 0.20 * fr;\n" +
     "  float ef = smoothstep(0.0, 0.10, ndv);\n" +
     "  o = vec4((body * a + emit) * ef, a * ef) * uFade;\n" +
@@ -76,7 +76,7 @@
     "  vec3 n = normalize(vN); vec3 v = normalize(-vP);\n" +
     "  float ndv = dot(n, v); if (ndv <= 0.0) discard;\n" +
     "  float fr = 1.0 - ndv;\n" +
-    "  vec3 col = mix(vec3(0.62, 0.25, 1.0), vec3(0.22, 0.50, 1.0), smoothstep(-0.1, 0.8, -n.x));\n" +
+    "  vec3 col = mix(vec3(0.85, 0.88, 0.92), vec3(0.55, 0.62, 0.70), smoothstep(-0.1, 0.8, -n.x));\n" +
     "  float rim = pow(fr, 5.0) * 0.55 + pow(fr, 18.0) * 1.3;\n" +
     "  o = vec4(col * rim * smoothstep(0.0, 0.08, ndv), 1.0) * uFade;\n" +
     "}";
@@ -125,11 +125,11 @@
     "    for (int i = -3; i <= 3; i++) { b += texture(uB1, vec2(uv.x, my + float(i) * 0.012 * (0.6 + dS * 6.0) / K)).rgb; }\n" +
     "    b /= 7.0;\n" +
     "    vec3 w2 = texture(uB2, vec2(uv.x, my + d * 0.35)).rgb; vec3 w3 = texture(uB3, vec2(uv.x, my + d * 0.6)).rgb;\n" +
-    "    c = (s * 0.35 * exp(-dS * 12.0) + b * 0.9 + w2 * 0.9 + w3 * 0.8) * fade * uRefl * (1.0 + 0.8 * uPulse) * vec3(0.85, 0.72, 1.0);\n" +
+    "    c = (s * 0.35 * exp(-dS * 12.0) + b * 0.9 + w2 * 0.9 + w3 * 0.8) * fade * uRefl * (1.0 + 0.8 * uPulse) * vec3(0.88, 0.90, 0.94);\n" +
     "  }\n" +
     "  float gx = (uv.x - uCenter.x) * uRes.x / (1.63 * uPpu), gy = (uv.y - uFloor) * uRes.y / (0.29 * uPpu);\n" +
-    "  c += vec3(0.30, 0.12, 0.70) * exp(-gx * gx - gy * gy) * 0.30 * uRefl;\n" +
-    "  c += vec3(0.35, 0.18, 0.80) * exp(-dot(pu, pu) / 11.0) * 0.10 * uRefl * (1.0 + 1.5 * uPulse);\n" +
+    "  c += vec3(0.45, 0.10, 0.10) * exp(-gx * gx - gy * gy) * 0.30 * uRefl;\n" +
+    "  c += vec3(0.30, 0.34, 0.40) * exp(-dot(pu, pu) / 11.0) * 0.10 * uRefl * (1.0 + 1.5 * uPulse);\n" +
     "  vec3 t = tone(c); float lm = dot(t, vec3(0.299, 0.587, 0.114)); t = clamp(mix(vec3(lm), t, 1.35), 0.0, 1.0);\n" +
     "  t = max(t + (hash(gl_FragCoord.xy) - 0.5) / 255.0, 0.0);\n" +
     "  o = vec4(t, max(t.r, max(t.g, t.b)));\n" +
@@ -251,16 +251,16 @@
   // tilt = inclinação do plano, roll = giro na tela, dy = deslocamento vertical, s = raio, g = brilho
   var GROUPS = [
     { axis: [0.30, 1.0, 0.15], w: 0.50, strands: [   // anel diagonal: azul elétrico e ciano, com fios violeta
-      { s: 1.58, tilt: 1.20, roll: 0.42, dy: 0.02, a: [0.12, 0.38, 1.00], b: [0.20, 0.80, 1.00], ph: 0.0, g: 1.7 },
-      { s: 1.62, tilt: 1.26, roll: 0.40, dy: 0.00, a: [0.55, 0.20, 1.00], b: [0.95, 0.30, 0.95], ph: 1.6, g: 1.3 },
-      { s: 1.54, tilt: 1.14, roll: 0.44, dy: 0.04, a: [0.15, 0.35, 1.00], b: [0.45, 0.25, 1.00], ph: 3.1, g: 1.1 } ] },
+      { s: 1.58, tilt: 1.20, roll: 0.42, dy: 0.02, a: [0.55, 0.62, 0.72], b: [0.90, 0.93, 0.96], ph: 0.0, g: 1.7 },
+      { s: 1.62, tilt: 1.26, roll: 0.40, dy: 0.00, a: [0.85, 0.10, 0.12], b: [1.00, 0.30, 0.28], ph: 1.6, g: 1.3 },
+      { s: 1.54, tilt: 1.14, roll: 0.44, dy: 0.04, a: [0.50, 0.56, 0.64], b: [0.80, 0.84, 0.88], ph: 3.1, g: 1.1 } ] },
     { axis: [0.0, 1.0, 0.0], w: -0.60, strands: [    // anel inferior: violeta e magenta (gira na horizontal, sempre fora da esfera)
-      { s: 1.44, tilt: 1.33, roll: -0.05, dy: -0.74, a: [0.60, 0.20, 1.00], b: [0.95, 0.30, 0.95], ph: 0.5, g: 1.7 },
-      { s: 1.38, tilt: 1.36, roll: -0.03, dy: -0.72, a: [0.12, 0.32, 1.00], b: [0.40, 0.20, 1.00], ph: 2.2, g: 1.5 },
-      { s: 1.50, tilt: 1.26, roll: -0.07, dy: -0.76, a: [0.95, 0.30, 0.95], b: [0.70, 0.25, 1.00], ph: 4.0, g: 1.1 } ] },
+      { s: 1.44, tilt: 1.33, roll: -0.05, dy: -0.74, a: [0.90, 0.12, 0.14], b: [1.00, 0.35, 0.30], ph: 0.5, g: 1.7 },
+      { s: 1.38, tilt: 1.36, roll: -0.03, dy: -0.72, a: [0.55, 0.60, 0.68], b: [0.85, 0.88, 0.92], ph: 2.2, g: 1.5 },
+      { s: 1.50, tilt: 1.26, roll: -0.07, dy: -0.76, a: [0.95, 0.30, 0.28], b: [0.70, 0.10, 0.12], ph: 4.0, g: 1.1 } ] },
     { axis: [1.0, 0.15, 0.10], w: 0.42, strands: [   // anel colado na esfera: rosa-claro no alto, violeta e azul nas laterais
-      { s: 1.13, tilt: 0.30, roll: -0.35, dy: 0.0, a: [1.00, 0.50, 1.00], b: [0.45, 0.25, 1.00], ph: 2.4, g: 1.2 },
-      { s: 1.18, tilt: 0.42, roll: 0.25, dy: 0.0, a: [0.25, 0.45, 1.00], b: [0.60, 0.22, 1.00], ph: 0.8, g: 1.1 } ] }
+      { s: 1.13, tilt: 0.30, roll: -0.35, dy: 0.0, a: [1.00, 1.00, 1.00], b: [0.70, 0.76, 0.82], ph: 2.4, g: 1.2 },
+      { s: 1.18, tilt: 0.42, roll: 0.25, dy: 0.0, a: [0.60, 0.66, 0.74], b: [0.90, 0.14, 0.16], ph: 0.8, g: 1.1 } ] }
   ];
   var FLOOR_Y = -1.34, PITCH = 0.16, SHIFT = 0.06, DIST = 8.5, TAN15 = Math.tan(15 * Math.PI / 180);
   // tempos da abertura (s): globo grande no centro, vai para o canto, login aparece no meio do trajeto

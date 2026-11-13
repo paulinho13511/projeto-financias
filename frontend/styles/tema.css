@@ -1,0 +1,181 @@
+/* TravaDin — tema grafite, prata e vermelho (as cores da moeda do logo).
+   Camada de aparência por cima do app.css: não muda HTML nem scripts. A tela de entrada (#lock) tem estilo próprio (login.css).
+   Regra de cor: prata = ação e destaque; vermelho = trava (despesa, limite estourado, cuidado); verde = entrada de dinheiro.
+   Fontes: só as do sistema (a política de segurança da página não permite fontes externas). */
+
+body:not(.locked){
+  --tv-ink:#eef1f4;--tv-mut:#97a3af;--tv-prata:#d5dbe1;--tv-red:#e5484d;--tv-green:#3ecf8e;--tv-warn:#f5b33a;
+  --tv-metal:linear-gradient(180deg,#f4f6f8,#c9d0d6 55%,#aeb6be);
+  --tv-hair:rgba(213,219,225,.14);
+  --tv-panel:linear-gradient(165deg,rgba(43,52,62,.92),rgba(24,29,36,.94));
+  --bg:#12171d;--card:#1b2129;--card2:rgba(255,255,255,.045);--border:rgba(213,219,225,.14);
+  --accent:#d5dbe1;--ink:#151a20;--text:#eef1f4;--muted:#97a3af;--expense:#e5484d;--income:#3ecf8e;--warn:#f5b33a;
+  background:
+    radial-gradient(700px 520px at 50% -10%,rgba(84,100,116,.35),transparent 70%),
+    radial-gradient(520px 420px at 110% 60%,rgba(212,42,42,.07),transparent 70%),
+    #12171d;
+  background-attachment:fixed;
+  color:var(--tv-ink);
+}
+
+/* títulos */
+.app h1{letter-spacing:-.5px}
+.top .ttl small{color:var(--tv-mut);font-weight:600;letter-spacing:.6px}
+.app h2{color:var(--tv-mut);letter-spacing:1.2px}
+
+/* topo: mês e botões de ícone */
+#month,.iconbtn{background:#1b2129;border:1px solid rgba(213,219,225,.18);color:var(--tv-ink)}
+.iconbtn{color:var(--tv-prata)}
+.iconbtn[aria-pressed="true"]{background:var(--tv-prata);color:#151a20;border-color:transparent}
+#month option{background:#1b2129;color:#eef1f4}
+
+/* cartões: painel grafite com fio de luz prateado no topo */
+.app .card{position:relative;background:var(--tv-panel);border:1px solid var(--tv-hair);
+  box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 14px 34px rgba(0,0,0,.35)}
+
+/* saldo do mês: o cartão "moeda" */
+.hero{background:linear-gradient(160deg,#3a4652,#222a33 62%,#1a2028);color:var(--tv-ink);border:1px solid rgba(213,219,225,.22);
+  box-shadow:0 1px 0 rgba(255,255,255,.12) inset,0 18px 40px rgba(0,0,0,.45)}
+.hero::after{background:radial-gradient(circle,rgba(255,255,255,.14),transparent 70%)}
+.hero .lbl{color:var(--tv-mut);font-weight:600}
+.hero .big{background:linear-gradient(180deg,#ffffff,#dfe4e9 55%,#aeb6be);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.hero .big.expense{background:linear-gradient(180deg,#ffd9da,#f08b8e 55%,#e5484d);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.pill{background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.07)}
+.pill .lb{color:var(--tv-mut)}
+.pill .pic{background:rgba(62,207,142,.14);color:var(--tv-green)}
+.pill .pic.out{background:rgba(229,72,77,.14);color:var(--tv-red)}
+.hero .income,.hero .expense{color:var(--tv-ink)}
+
+/* gráfico */
+.axis{color:var(--tv-mut)}
+
+/* listas */
+.row,.card .row{background:rgba(255,255,255,.035);border:1px solid rgba(213,219,225,.09)}
+.row .s,.muted,.hcol span,.cmp .lb,.day{color:var(--tv-mut)}
+.ic{border-radius:14px;color:#151a20;background:var(--tv-metal);font-size:15px}
+.ic.out{background:rgba(229,72,77,.14);color:var(--tv-red);border:0}
+.income,.row .amt.income{color:var(--tv-green)}
+.expense,.row .amt.expense{color:var(--tv-red)}
+.warn{color:var(--tv-warn)}
+.tag{border:1px solid rgba(213,219,225,.25);background:rgba(213,219,225,.08);color:var(--tv-prata)}
+.tag.ok{color:var(--tv-green);border-color:rgba(62,207,142,.4);background:rgba(62,207,142,.1)}
+.tag.late{color:#ff9a9d;border-color:rgba(229,72,77,.5);background:rgba(229,72,77,.12)}
+.tag.soon{color:var(--tv-warn);border-color:rgba(245,179,58,.45);background:rgba(245,179,58,.1)}
+.ico{color:var(--tv-mut)}
+.ico:hover{color:var(--tv-red)}
+.empty{color:var(--tv-mut)}
+.notif{border:1px solid rgba(213,219,225,.12);background:rgba(255,255,255,.04)}
+.notif .app-n{color:var(--tv-mut)}
+
+/* botões: prata metálico com texto grafite; o vermelho fica reservado para "parar" */
+.primary,.app button.primary,.modal button.primary{background:var(--tv-metal);color:#151a20;border:0;
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 8px 22px rgba(0,0,0,.35)}
+.primary:hover{filter:brightness(1.05)}
+.ghost{background:rgba(213,219,225,.07);border:1px solid rgba(213,219,225,.28);color:var(--tv-prata);font-weight:600}
+.ghost:hover{border-color:rgba(213,219,225,.6);background:rgba(213,219,225,.12)}
+
+/* formulários */
+.app input:not([type=checkbox]):not([type=radio]),.app select,.modal input,.modal select,.sheet input,.sheet select{background:#151a20;border:1px solid rgba(213,219,225,.16);color:var(--tv-ink)}
+.app input::placeholder,.sheet input::placeholder{color:#6f7b87}
+.app input:focus,.app select:focus,.sheet input:focus,.modal input:focus{border-color:var(--tv-prata);box-shadow:0 0 0 3px rgba(213,219,225,.16)}
+.app select option{background:#1b2129;color:#eef1f4}
+.seg{padding:4px;gap:4px;border-radius:16px;background:#151a20;border:1px solid rgba(213,219,225,.14)}
+.seg label{background:transparent;color:var(--tv-mut);border-radius:12px}
+.seg label:has(input:checked){color:#151a20;background:var(--tv-metal);box-shadow:0 1px 0 rgba(255,255,255,.7) inset}
+.chip{background:rgba(213,219,225,.06);border:1px solid rgba(213,219,225,.2);color:var(--tv-prata)}
+.chip[aria-pressed="true"]{color:#151a20;border-color:transparent;background:var(--tv-metal)}
+.chk,.chk span{color:var(--tv-ink)}
+.chk input,.imp input{accent-color:#d5dbe1}
+
+/* linha de destaque (total do mês em Contas) */
+.row[style*="var(--accent)"]{background:var(--tv-metal)!important;color:#151a20!important;border:0}
+
+/* barras de progresso: prata normal, âmbar perto do limite, vermelho estourado */
+.bar,.goal .bar{background:rgba(255,255,255,.08)}
+.bar i,.goal .bar i{background:linear-gradient(90deg,#9aa4ae,#e3e8ec)}
+.bar i.near{background:linear-gradient(90deg,#d9921f,#f5b33a)}
+.bar i.over{background:linear-gradient(90deg,#b8262b,#e5484d)}
+.goal,.sbox{background:rgba(255,255,255,.04);border:1px solid rgba(213,219,225,.1)}
+.sbox small,.goal .s,.gh .s{color:var(--tv-mut)}
+
+/* histórico e comparativos */
+.hbar{background:rgba(255,255,255,.08)}
+.hcol.cur .hbar{background:linear-gradient(180deg,#eef1f4,#9aa4ae)}
+
+/* observações do mês */
+.tip{border-left:0;background:rgba(255,255,255,.04);border:1px solid rgba(213,219,225,.1)}
+.tip b{color:#fff}
+.tip p{color:#c9d1d8}
+
+/* calendário */
+.cal .dow{color:var(--tv-mut)}
+.cal .d{background:rgba(255,255,255,.03);border:1px solid rgba(213,219,225,.08)}
+.cal .d.today{border-color:var(--tv-prata);background:rgba(213,219,225,.12)}
+.cal .d.blank{background:none;border:none}
+.cal .n{color:var(--tv-mut)}
+.cal .d.today .n{color:#fff}
+.cal .b{background:rgba(229,72,77,.13);color:#ff9a9d;border:1px solid rgba(229,72,77,.3)}
+.cal .b.paid{background:rgba(62,207,142,.1);color:var(--tv-green);border-color:rgba(62,207,142,.3)}
+
+/* barra inferior flutuante */
+.bottom{background:rgba(22,27,34,.92)!important;border:1px solid rgba(213,219,225,.16)!important;
+  box-shadow:0 16px 40px rgba(0,0,0,.55)!important;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.bottom button{color:var(--tv-mut)}
+.bottom button.on{color:#fff;position:relative}
+.bottom button.on:not(.fab)::after{content:"";position:absolute;bottom:2px;width:20px;height:3px;border-radius:3px;background:var(--tv-red)}
+.bottom .fab,.bottom .fab.on{color:#151a20;background:radial-gradient(circle at 35% 28%,#ffffff,#d5dbe1 45%,#8f99a3 100%);
+  box-shadow:0 0 0 3px #12171d,0 0 0 5px rgba(229,72,77,.85),0 12px 26px rgba(0,0,0,.5);animation:tvPulse 3s infinite}
+@keyframes tvPulse{
+  0%,100%{box-shadow:0 0 0 3px #12171d,0 0 0 5px rgba(229,72,77,.85),0 12px 26px rgba(0,0,0,.5)}
+  50%{box-shadow:0 0 0 3px #12171d,0 0 0 9px rgba(229,72,77,.25),0 12px 26px rgba(0,0,0,.5)}
+}
+@media(prefers-reduced-motion:reduce){.bottom .fab{animation:none}}
+
+/* lateral no computador */
+.side{background:rgba(18,23,29,.9);border-right:1px solid var(--tv-hair);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.side .brand img{width:34px;height:34px;display:block}
+.side button{color:var(--tv-mut)}
+.side button:hover{background:rgba(213,219,225,.07);color:#fff}
+.side button.on{background:rgba(213,219,225,.1);color:#fff;box-shadow:inset 3px 0 0 var(--tv-red)}
+.side .sideNew,.side .sideNew:hover{background:var(--tv-metal);color:#151a20}
+
+/* menu "Mais", diálogos e aviso */
+.modal,.sheet{background:rgba(5,7,10,.62);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.sheetbox{background:linear-gradient(180deg,#252d36,#171c22);border-top:1px solid rgba(213,219,225,.35);
+  box-shadow:0 -10px 40px rgba(0,0,0,.55);color:var(--tv-ink)}
+.sheetbox button{background:rgba(255,255,255,.045);border:1px solid rgba(213,219,225,.14);color:var(--tv-ink)}
+.sheetbox button:hover{border-color:rgba(213,219,225,.5)}
+.sheetbox button.close{background:rgba(213,219,225,.1);color:var(--tv-prata);text-align:center;font-weight:600}
+.sheetbox #lockNow{color:#ff9a9d;border-color:rgba(229,72,77,.45)}
+.sheetbox h2{color:var(--tv-ink)}
+.box{background:linear-gradient(165deg,#2b343e,#181d24);border:1px solid rgba(213,219,225,.25);
+  box-shadow:0 20px 50px rgba(0,0,0,.6);color:var(--tv-ink)}
+.toast{background:var(--tv-metal);color:#151a20;box-shadow:0 12px 32px rgba(0,0,0,.45)}
+
+/* celular: o mês cabe inteiro */
+@media(max-width:480px){.top{gap:6px}#month{max-width:126px;min-width:0;font-size:12px;padding:10px 4px 10px 8px}.top .ttl h1{font-size:21px}}
+
+/* computador: cartões altos ficam com o conteúdo centralizado e os números não são cortados */
+@media(min-width:1000px){
+  #v-inicio .hero{display:flex;flex-direction:column;justify-content:center}
+  #v-inicio .pills{grid-template-columns:1fr}
+  .pill .v{overflow:visible;text-overflow:clip}
+}
+
+/* metas: a caixinha não pode ultrapassar a largura do cartão no celular */
+.goal{grid-template-columns:minmax(0,1fr);min-width:0}
+.goal .gr{min-width:0}
+.goal .gr button{flex:0 0 auto}
+
+/* botão do seletor de arquivo (importar extrato) */
+.app input[type=file]::file-selector-button{margin-right:10px;padding:8px 12px;border-radius:10px;border:1px solid rgba(213,219,225,.3);background:rgba(213,219,225,.08);color:var(--tv-prata);font-weight:600}
+
+/* saldo em contas (Início e Carteira) */
+.heroAcc{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;padding:11px 14px;border-radius:16px;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.07);font-size:13px;color:var(--tv-mut)}
+.heroAcc b{font-size:15px;color:var(--tv-ink);white-space:nowrap}
+.amt.neutral{color:var(--tv-prata)}
+.ic.xfer{font-size:19px;background:rgba(213,219,225,.12);color:var(--tv-prata)}
+
+/* Como estou: barra prata, sinal com as cores de sempre */
+.ceBarra>div{background:linear-gradient(90deg,#9aa4ae,#e3e8ec)}
+.luz.vermelho{background:var(--tv-red)}

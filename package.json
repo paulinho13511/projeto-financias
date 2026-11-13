@@ -2,7 +2,7 @@
   "name": "minhas-financas",
   "private": true,
   "version": "2.0.0",
-  "description": "Minhas Finanças: front estático + API em funções da Vercel + banco Neon",
+  "description": "TravaDin: front estático + API em funções da Vercel + banco Neon",
   "engines": {
     "node": "22.x"
   },

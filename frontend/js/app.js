@@ -566,7 +566,7 @@ function renderInicio(){
     if((bySel[c]||0)>=lim)msgs.push({title:"Limite atingido",body:`${c}: ${money(bySel[c]||0)} de ${money(lim)}`});
   });
   $("notifs").innerHTML=msgs.length?msgs.map(m=>`
-    <div class="notif"><div class="app-n">Minhas Finanças · agora</div>
+    <div class="notif"><div class="app-n">TravaDin · agora</div>
     <div class="msg"><b>${esc(m.title)}</b><br>${esc(m.body)}</div></div>`).join(""):`<div class="empty">Nenhuma notificação pendente</div>`;
 
   $("recent").innerHTML=sortedTx().slice(0,5).map(txRow).join("")||`<div class="empty">Nenhum lançamento ainda</div>`;
@@ -589,11 +589,11 @@ function renderChart(){
   cum.forEach((v,i)=>{line+=(i?"L":"M")+xs(i).toFixed(1)+" "+ys(v).toFixed(1)});
   const area=line+` L${xs(n-1).toFixed(1)} ${H-P} L${xs(0).toFixed(1)} ${H-P} Z`;
   const idx=chartDay!==null?chartDay:(sel===mKey(today())?Math.min(parseInt(today().slice(8,10),10)-1,n-1):n-1);
-  const dot=`<line x1="${xs(idx).toFixed(1)}" y1="${P}" x2="${xs(idx).toFixed(1)}" y2="${H-P}" stroke="#ffffff40" stroke-dasharray="3 3"/><circle cx="${xs(idx).toFixed(1)}" cy="${ys(cum[idx]).toFixed(1)}" r="6" fill="#8b5cf6" stroke="#13151c" stroke-width="3"/>`;
+  const dot=`<line x1="${xs(idx).toFixed(1)}" y1="${P}" x2="${xs(idx).toFixed(1)}" y2="${H-P}" stroke="#ffffff40" stroke-dasharray="3 3"/><circle cx="${xs(idx).toFixed(1)}" cy="${ys(cum[idx]).toFixed(1)}" r="6" fill="#e5484d" stroke="#12171d" stroke-width="3"/>`;
   $("spendChart").innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gastos acumulados no mês">
-    <defs><linearGradient id="gArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8b5cf6" stop-opacity=".42"/><stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/></linearGradient></defs>
+    <defs><linearGradient id="gArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d5dbe1" stop-opacity=".28"/><stop offset="1" stop-color="#d5dbe1" stop-opacity="0"/></linearGradient></defs>
     <path d="${area}" fill="url(#gArea)"/>
-    <path d="${line}" fill="none" stroke="#8b5cf6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="${line}" fill="none" stroke="#e3e8ec" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
     ${dot}</svg>`;
   $("chartTotal").textContent=money(cum[idx]||0);
   $("chartLabel").textContent=`Gastos acumulados até o dia ${idx+1}`;
@@ -1152,7 +1152,7 @@ document.querySelectorAll('input[name="type"]').forEach(r=>r.addEventListener("c
 $("txParcels").addEventListener("input",updateTxParc);
 $("txAmt").addEventListener("input",updateTxParc);
 /* ---------- v13: privacidade, atalhos, filtros, exportação/importação, metas, renda variável, assinaturas, gráficos ---------- */
-const PAL=["#8b5cf6","#a78bfa","#ffb86b","#f87171","#b58cff","#7bd389","#fbbf24","#8a8fa3"];
+const PAL=["#d5dbe1","#e5484d","#f5b33a","#3ecf8e","#5aa9e6","#a98bd9","#f08b8e","#8f99a3"];
 const fCards=new Set();
 function cardName(id){const c=(db.cards||[]).find(x=>x.id===id);return c?c.name:""}
 function brDate(s){const[y,m,d]=parts(s);return `${pad(d)}/${pad(m)}/${y}`}
@@ -1452,7 +1452,7 @@ function renderCmp(){
   const data=[5,4,3,2,1,0].map(k=>{const ym=shiftMonth(sel,-k);const t=totals(ym);return {ym,inc:t.inc,exp:t.exp}});
   const max=Math.max(1,...data.map(d=>Math.max(d.inc,d.exp)));
   $("cmp").innerHTML=data.map(d=>`<div class="col" title="${esc(monthLabel(d.ym))}: receitas ${esc(money(d.inc))}, despesas ${esc(money(d.exp))}">
-    <div class="pair"><i style="height:${(d.inc/max*100).toFixed(1)}%;background:#8b5cf6"></i><i style="height:${(d.exp/max*100).toFixed(1)}%;background:#f87171"></i></div>
+    <div class="pair"><i style="height:${(d.inc/max*100).toFixed(1)}%;background:#3ecf8e"></i><i style="height:${(d.exp/max*100).toFixed(1)}%;background:#e5484d"></i></div>
     <span class="lb">${esc(monthLabel(d.ym).slice(0,3))}</span></div>`).join("");
 }
 
