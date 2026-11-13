@@ -1,4 +1,4 @@
-# Minhas Finanças
+# TravaDin
 
 App pessoal de finanças. Front estático (HTML, CSS e JavaScript puro, sem etapa de build) + API em funções da Vercel + banco Postgres no Neon.
 
@@ -24,7 +24,7 @@ Navegador (index.html + frontend/)  ──/api/*──▶  api/index.js (funçã
 | `frontend/js/app.js` | Lógica do app: dados, cálculos, eventos e telas. |
 | `frontend/js/api.js` | Cliente da API (chamadas a `/api/*`). |
 | `frontend/js/login-globe.js` | Animação da tela de entrada. |
-| `frontend/styles/` | `app.css` (visual do app), `neon.css` (tema), `login.css` (entrada), `definir-senha.css`. |
+| `frontend/styles/` | `app.css` (visual do app), `tema.css` (cores do TravaDin: grafite, prata e vermelho), `login.css` (entrada), `definir-senha.css`. |
 | `frontend/screens/shell/` | Barra lateral, barra inferior e cabeçalho. |
 | `frontend/screens/views/` | Uma tela por arquivo: início (com o **como estou**), **metas**, lançamentos, carteira, contas, calendário, categorias e assinaturas. |
 | `frontend/screens/dialogs/` | Janelas por cima: menu, editar conta, acessos, trocar senha, confirmação, pagar. |

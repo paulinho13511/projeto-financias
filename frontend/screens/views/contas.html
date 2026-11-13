@@ -8,9 +8,9 @@
           <label><input type="radio" name="kind" value="parcelada"><span>Parcelada</span></label>
           <label><input type="radio" name="kind" value="unica"><span>Única</span></label>
         </div>
-        <input class="full" id="bName" placeholder="Nome (ex.: Aluguel, Notebook, Internet)" required>
+        <input class="full" id="bName" placeholder="Nome (ex.: Aluguel, Internet)" required>
         <input id="bAmt" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="Valor (R$)" required>
-        <input id="bDay" type="number" min="1" max="31" placeholder="Dia do vencimento" required>
+        <input id="bDay" type="number" min="1" max="31" placeholder="Vence dia" required>
         <input id="bDate" type="date" hidden>
         <div class="full" id="endBox" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <select id="bEndType"><option value="forever">Para sempre</option><option value="until">Até um mês</option></select>
@@ -37,8 +37,8 @@
     <h2>Cartões de crédito</h2>
     <form class="f" id="cardForm">
       <input class="full" id="cName" placeholder="Nome do cartão (ex.: Nubank, Itaú)" required>
-      <input id="cClose" type="number" min="1" max="31" placeholder="Dia que fecha a fatura" required>
-      <input id="cDue" type="number" min="1" max="31" placeholder="Dia do vencimento" required>
+      <input id="cClose" type="number" min="1" max="31" placeholder="Fecha dia" required>
+      <input id="cDue" type="number" min="1" max="31" placeholder="Vence dia" required>
       <button class="primary full" type="submit">Cadastrar cartão</button>
     </form>
     <div class="list" id="cardList" style="margin-top:14px"></div>

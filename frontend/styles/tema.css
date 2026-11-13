@@ -157,8 +157,6 @@ body:not(.locked){
 
 /* computador: cartões altos ficam com o conteúdo centralizado e os números não são cortados */
 @media(min-width:1000px){
-  #v-inicio .hero{display:flex;flex-direction:column;justify-content:center}
-  #v-inicio .pills{grid-template-columns:1fr}
   .pill .v{overflow:visible;text-overflow:clip}
 }
 
@@ -179,3 +177,23 @@ body:not(.locked){
 /* Como estou: barra prata, sinal com as cores de sempre */
 .ceBarra>div{background:linear-gradient(90deg,#9aa4ae,#e3e8ec)}
 .luz.vermelho{background:var(--tv-red)}
+
+/* ---------- Etapa 1: interações e telas ---------- */
+/* foco visível para quem usa teclado (acessibilidade) */
+.app :focus-visible,.sheet :focus-visible,.modal :focus-visible,.bottom :focus-visible,.side :focus-visible{outline:2px solid var(--tv-prata);outline-offset:2px}
+/* linhas: resposta ao passar o mouse e ao tocar */
+.row{transition:background .2s ease,border-color .2s ease,transform .15s ease}
+@media(hover:hover){.app .row:hover{background:rgba(255,255,255,.06);border-color:rgba(213,219,225,.16)}}
+.ic svg{width:20px;height:20px;display:block}
+.ic.in{background:rgba(62,207,142,.14);color:var(--tv-green)}
+/* atalhos de lançamento: a fileira rola de lado e some suave na borda, mostrando que há mais */
+#quick{-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}
+/* contas do mês no celular e no tablet: nome e dados ocupam a linha toda; os botões descem para a linha de baixo */
+@media(max-width:1099px){
+  #billsList .row{flex-wrap:wrap}
+  #billsList .row .rmain{flex:1 1 100%}
+  #billsList .row .actions{margin-left:auto}
+  #billsList .row .t .tag{margin-left:6px}
+}
+/* números de dinheiro sempre alinhados */
+.amt,.big,.v{font-variant-numeric:tabular-nums}

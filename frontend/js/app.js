@@ -416,13 +416,28 @@ async function delCard(id){
 }
 window.markFaturaPaid=markFaturaPaid;window.delCard=delCard;
 
+/* ícone de cada categoria (desenho de linha, na cor do texto); categoria desconhecida mostra a inicial */
+const CAT_SVG={
+  "Alimentação":'<circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h3l2.6 12.5h11.2l2.2-8.5H6.3"/>',
+  "Moradia":'<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
+  "Transporte":'<path d="M5 15l1.6-5a2 2 0 0 1 1.9-1.4h7a2 2 0 0 1 1.9 1.4L19 15"/><rect x="3" y="15" width="18" height="4.5" rx="1.6"/><path d="M6.5 19.5V21M17.5 19.5V21"/>',
+  "Lazer":'<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 6v12M16 6v12M3 12h5M16 12h5"/>',
+  "Saúde":'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+  "Contas":'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+  "Educação":'<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/>',
+  "Outros":'<circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/>',
+  "Salário":'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 14.5h2"/>',
+  "Freelance":'<rect x="3" y="7" width="18" height="12" rx="2"/><path d="M9 7V5h6v2"/>',
+  "Investimentos":'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>'
+};
+const catIcon=c=>CAT_SVG[c]?`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${CAT_SVG[c]}</svg>`:esc(String(c||"?").charAt(0));
 function txRow(t){
   if(t.type==="transfer"){
     const de=accName(t.from)||"Conta removida", para=accName(t.to)||"Conta removida";
     return `<div class="row"><div class="ic xfer">⇄</div><div class="rmain"><div class="t">${esc(t.desc)}</div><div class="s">${esc(de)} → ${esc(para)} · ${fmtDate(t.date)}</div></div><div class="actions"><span class="amt neutral">${money(t.amount)}</span><button class="ico" title="Remover" data-act="delTx" data-id="${esc(t.id)}">×</button></div></div>`;
   }
   const inc=t.type==="income";
-  return `<div class="row"><div class="ic ${inc?"":"out"}">${esc(t.category.charAt(0))}</div><div class="rmain"><div class="t">${esc(t.desc)}</div><div class="s">${esc(t.category)} · ${fmtDate(t.date)}${t.account&&accName(t.account)?" · "+esc(accName(t.account)):""}</div></div><div class="actions"><span class="amt ${inc?"income":"expense"}">${inc?"+":"−"} ${money(t.amount)}</span><button class="ico" title="Remover" data-act="delTx" data-id="${esc(t.id)}">×</button></div></div>`;
+  return `<div class="row"><div class="ic ${inc?"in":"out"}" title="${esc(t.category)}">${catIcon(t.category)}</div><div class="rmain"><div class="t">${esc(t.desc)}</div><div class="s">${esc(t.category)} · ${fmtDate(t.date)}${t.account&&accName(t.account)?" · "+esc(accName(t.account)):""}</div></div><div class="actions"><span class="amt ${inc?"income":"expense"}">${inc?"+":"−"} ${money(t.amount)}</span><button class="ico" title="Remover" data-act="delTx" data-id="${esc(t.id)}">×</button></div></div>`;
 }
 
 /* ---------- confirmação própria (o visualizador bloqueia a caixa padrão) ---------- */

@@ -302,11 +302,12 @@ body.locked .side{display:none!important}
   .bottom{display:none!important}
   .app{max-width:1180px;margin:0 auto;padding-left:264px;padding-right:32px;padding-bottom:40px}
   #v-inicio.on{grid-template-columns:repeat(12,minmax(0,1fr));gap:20px}
-  #v-inicio.on>:nth-child(1){grid-column:span 5}
-  #v-inicio.on>:nth-child(2){grid-column:span 7}
-  #v-inicio.on>:nth-child(3){grid-column:span 5}
-  #v-inicio.on>:nth-child(4){grid-column:span 7}
-  #v-inicio.on>:nth-child(5){grid-column:span 12}
+  /* Início no computador: à esquerda o saldo e o gráfico; à direita o "Como estou"; embaixo avisos e lançamentos */
+  #v-inicio.on{align-items:start}
+  #v-inicio.on>:nth-child(1){grid-column:1/span 5;grid-row:1}
+  #v-inicio.on>:nth-child(2){grid-column:6/span 7;grid-row:1/span 2}
+  #v-inicio.on>:nth-child(3){grid-column:1/span 5;grid-row:2}
+  #v-inicio.on>:nth-child(n+4){grid-column:1/-1}
 }
 
 /* v24: base escura (o tema.css por cima define as cores do TravaDin) */
