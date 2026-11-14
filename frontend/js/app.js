@@ -153,7 +153,7 @@ function enterApp(){
 async function lockApp(reason){
   db=null;sessionUser=null;isAdmin=false;dbUpdatedAt=null;dbConflict=false;clearTimeout(idleTimer);
   $("menu").hidden=true;$("modal").hidden=true;$("aclSheet").hidden=true;$("pwSheet").hidden=true;
-  $("payModal").hidden=true;$("editSheet").hidden=true;$("rlSheet").hidden=true;$("eiSheet").hidden=true;   // nada de diálogo aberto por cima da tela de entrada
+  $("payModal").hidden=true;$("editSheet").hidden=true;$("rlSheet").hidden=true;$("eiSheet").hidden=true;$("scSheet").hidden=true;   // nada de diálogo aberto por cima da tela de entrada
   $("payYes").onclick=null;$("payNo").onclick=null;$("mYes").onclick=null;$("mNo").onclick=null;
   document.body.classList.add("locked");
   try{localStorage.removeItem("mf_sessao")}catch(_){}
@@ -367,6 +367,9 @@ function cardAlerts(){
     const cy=currentCloseYm(c);
     const openF=faturaOf(c,cy);
     const dClose=daysBetween(today(),openF.close);
+    const L=limiteCartao(c);
+    if(L&&L.pct>=100)out.push({title:`${c.name}: limite estourado`,body:`Usou ${money(L.usado)} de ${money(L.limite)}. Novas compras podem ser recusadas.`,level:"late"});
+    else if(L&&L.pct>=80)out.push({title:`${c.name}: limite quase no fim`,body:`Usou ${L.pct}% do limite. Sobra ${money(L.sobra)}.`,level:"soon"});
     if(dClose===0)out.push({title:`${c.name}: fatura fecha hoje`,body:`Valor até agora: ${money(openF.total)}`,level:"info"});
     else if(dClose>0&&dClose<=3)out.push({title:`${c.name}: fatura fecha em ${dClose} dia(s)`,body:`Valor até agora: ${money(openF.total)}`,level:"info"});
     [shiftMonth(cy,-1),cy].forEach(ym=>{
@@ -393,12 +396,33 @@ function devidoFatura(c,ym){
   if(!pago&&(c.paid||[]).includes(ym))return 0;
   return Math.max(0,r2(faturaOf(c,ym).total-pago));
 }
+/* Limite do cartão: usa o que falta pagar da fatura fechada e da aberta + as parcelas que ainda vão cair
+   nas próximas faturas (compra parcelada prende o limite inteiro). Assinaturas futuras não prendem limite. */
+function limiteCartao(c){
+  const limite=Number(c.limit)>0?r2(Number(c.limit)):0;
+  if(!limite)return null;
+  const cy=currentCloseYm(c);
+  let usado=devidoFatura(c,shiftMonth(cy,-1))+devidoFatura(c,cy);
+  const parcs=db.bills.filter(b=>b.card===c.id&&b.kind==="parcelada");
+  if(parcs.length){
+    const fim=parcs.reduce((m,b)=>{const e=shiftMonth(b.start,(b.parcels||1)-1);return e>m?e:m},cy);
+    for(let ym=shiftMonth(cy,1),n=0;ym<=shiftMonth(fim,2)&&n<130;ym=shiftMonth(ym,1),n++){
+      faturaOf(c,ym).items.forEach(i=>{const b=i.bill&&db.bills.find(x=>x.id===i.bill);if(b&&b.kind==="parcelada")usado+=i.amount});
+    }
+  }
+  usado=r2(usado);
+  return {limite,usado,sobra:r2(limite-usado),pct:Math.round(usado/limite*100)};
+}
 /* Ao pagar, o usuário escolhe de qual conta o dinheiro sai. O pagamento vira um movimento da conta
    (tipo "payment"), que não conta como despesa de novo: a despesa já está no mês. Sem contas cadastradas, nada pergunta. */
 let lastPayAcc="";
 function askPayAccount(msg,obrigatoria){
   const accs=db.accounts||[];
-  if(!accs.length)return Promise.resolve("");
+  if(!accs.length){
+    if(obrigatoria){showToast("Cadastre uma conta em Carteira para registrar de onde sai o dinheiro");return Promise.resolve(null)}
+    return Promise.resolve("");
+  }
+  $("payYes").textContent="Pagar";
   return new Promise(resolve=>{
     $("payMsg").textContent=msg;
     $("payAcc").innerHTML=(obrigatoria?"":`<option value="">Não descontar de nenhuma conta</option>`)+accs.map(a=>`<option value="${esc(a.id)}">${esc(a.name)} · ${money(accBalance(a))}</option>`).join("");
@@ -406,6 +430,18 @@ function askPayAccount(msg,obrigatoria){
     $("payModal").hidden=false;
     const done=v=>{$("payModal").hidden=true;$("payYes").onclick=null;$("payNo").onclick=null;resolve(v)};
     $("payYes").onclick=()=>{lastPayAcc=$("payAcc").value||lastPayAcc;done($("payAcc").value)};
+    $("payNo").onclick=()=>done(null);
+  });
+}
+/* Escolher uma opção numa lista (usa a mesma janela do pagamento). Devolve o valor escolhido ou null se cancelar. */
+function escolher(msg,opcoes,ok){
+  return new Promise(resolve=>{
+    $("payMsg").textContent=msg;
+    $("payAcc").innerHTML=opcoes.map(o=>`<option value="${esc(o.v)}">${esc(o.t)}</option>`).join("");
+    $("payYes").textContent=ok||"Confirmar";
+    $("payModal").hidden=false;
+    const done=v=>{$("payModal").hidden=true;$("payYes").onclick=null;$("payNo").onclick=null;$("payYes").textContent="Pagar";resolve(v)};
+    $("payYes").onclick=()=>done($("payAcc").value);
     $("payNo").onclick=()=>done(null);
   });
 }
@@ -429,8 +465,19 @@ async function markFaturaPaid(cardId,closeYm){
   save();renderAll();showToast(`Fatura ${c.name} paga: ${money(valor)}`);
 }
 async function delCard(id){
-  if(!(await ask("Excluir este cartão? As compras já lançadas continuam no histórico.")))return;
-  db.cards=(db.cards||[]).filter(c=>c.id!==id);save();renderAll();
+  const c=(db.cards||[]).find(x=>x.id===id);if(!c)return;
+  const usa=db.tx.some(t=>t.card===id||(t.ref&&t.ref.card===id))||db.bills.some(b=>b.card===id);
+  if(!usa){
+    if(!(await ask(`Excluir o cartão ${c.name}?`)))return;
+  }else{
+    const outros=(db.cards||[]).filter(x=>x.id!==id);
+    if(!outros.length){showToast("Este cartão tem compras. Cadastre outro cartão para onde elas possam ir antes de excluir.");return}
+    const dest=await escolher(`O cartão ${c.name} tem compras e contas. Para qual cartão elas vão?`,outros.map(x=>({v:x.id,t:x.name})),"Mover e excluir");
+    if(!dest)return;
+    db.tx.forEach(t=>{if(t.card===id)t.card=dest;if(t.ref&&t.ref.card===id)t.ref.card=dest});
+    db.bills.forEach(b=>{if(b.card===id)b.card=dest});
+  }
+  db.cards=(db.cards||[]).filter(x=>x.id!==id);save();renderAll();showToast("Cartão excluído");
 }
 window.markFaturaPaid=markFaturaPaid;window.delCard=delCard;
 
@@ -530,7 +577,7 @@ async function togglePaid(id,ym){
     if(!b.card){
       const o=occ(ym).find(x=>x.b.id===id);
       const amount=o?o.amount:b.amount;
-      const acc=await askPayAccount(`Pagar ${b.name} (${money(amount)}). De qual conta sai o dinheiro?`);
+      const acc=await askPayAccount(`Pagar ${b.name} (${money(amount)}). De qual conta sai o dinheiro?`,true);
       if(acc===null)return;
       if(acc)db.tx.push({id:uid(),type:"payment",desc:`Pagamento: ${b.name}`,amount,date:today(),category:b.category||"Contas",account:acc,ref:{kind:"bill",id,ym},created:Date.now()});
     }
@@ -947,6 +994,7 @@ function renderAll(){
   renderInicio();
   renderChart();
   renderFeed();
+  renderSemConta();
   renderContas();
   renderCal();
   renderRev();
@@ -971,6 +1019,7 @@ function renderCards(){
       <div class="t">${esc(c.name)}</div>
       <div class="s">Fatura aberta: ${money(devA)}${devA<open.total?` (de ${money(open.total)}, parte já paga)`:""} · fecha ${fmtDate(open.close)} · vence ${fmtDate(open.due)}</div>
       <div class="s">Fecha todo dia ${c.closeDay} · vence todo dia ${c.dueDay}</div>
+      ${(L=>L?`<div class="s ${L.pct>=80?"warn":""}">${L.sobra<0?`Limite estourado: passou ${money(-L.sobra)} de ${money(L.limite)}`:`Limite: sobra ${money(L.sobra)} de ${money(L.limite)} (${L.pct}% usado)`}</div>`:"")(limiteCartao(c))}
       ${devF>0?`<div class="s warn">Fatura fechada${vencida?" e vencida":""}: falta pagar ${money(devF)} · vence ${fmtDate(pend.due)}</div>`:""}
       </div><div class="actions">
       ${devF>0?`<button class="ghost" data-act="markFaturaPaid" data-id="${esc(c.id)}" data-ym="${esc(pendingYm)}">Paguei</button>`
@@ -1049,14 +1098,21 @@ $("accForm").onsubmit=e=>{
   showToast("Conta cadastrada");
 };
 async function delAcc(id){
-  if(!(await ask("Excluir esta conta? Os lançamentos continuam no histórico, só que sem conta, e as transferências dela ficam com a outra ponta só.")))return;
-  db.accounts=(db.accounts||[]).filter(a=>a.id!==id);
-  db.tx.forEach(t=>{
-    if(t.account===id)delete t.account;
-    if(t.from===id)t.from=null;
-    if(t.to===id)t.to=null;
-  });
-  save();renderAll();
+  const a=(db.accounts||[]).find(x=>x.id===id);if(!a)return;
+  const usa=db.tx.some(t=>t.account===id||t.from===id||t.to===id);
+  if(!usa){
+    if(!(await ask(`Excluir a conta ${a.name}?`)))return;
+  }else{
+    const outras=(db.accounts||[]).filter(x=>x.id!==id);
+    if(!outras.length){showToast("Esta conta tem lançamentos. Cadastre outra conta para onde eles possam ir antes de excluir.");return}
+    const dest=await escolher(`A conta ${a.name} tem lançamentos. Para qual conta eles vão? O saldo inicial dela também vai junto.`,outras.map(x=>({v:x.id,t:x.name})),"Mover e excluir");
+    if(!dest)return;
+    db.tx.forEach(t=>{if(t.account===id)t.account=dest;if(t.from===id)t.from=dest;if(t.to===id)t.to=dest});
+    db.tx=db.tx.filter(t=>!(t.type==="transfer"&&t.from===t.to));   // transferência entre as duas contas virou "da conta para ela mesma": some
+    const d=db.accounts.find(x=>x.id===dest);d.initial=r2((Number(d.initial)||0)+(Number(a.initial)||0));
+  }
+  db.accounts=(db.accounts||[]).filter(x=>x.id!==id);
+  save();renderAll();showToast("Conta excluída");
 }
 function populateCardSelects(){
   const opts=`<option value="">Sem cartão</option>`+(db.cards||[]).map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
@@ -1072,6 +1128,8 @@ $("cardForm").onsubmit=e=>{
     dueDay:Math.min(31,Math.max(1,parseInt($("cDue").value,10))),
     paid:[]
   });
+  const lim=$("cLimit").value.trim()?parseValor($("cLimit").value):0;
+  if(lim>0)db.cards[db.cards.length-1].limit=r2(lim);
   save();
   e.target.reset();
   renderAll();
@@ -1189,6 +1247,40 @@ $("notifBtn").onclick=async()=>{
   }
 };
 
+/* ---------- lançamentos sem conta nem cartão (feitos antes da regra): o usuário escolhe a origem de cada um ---------- */
+const semConta=()=>db.tx.filter(t=>(t.type==="expense"||t.type==="income")&&!t.account&&!t.card);
+function renderSemConta(){
+  const n=semConta().length;
+  $("scAviso").hidden=!n;
+  if(n)$("scTexto").textContent=n===1?"1 lançamento está sem conta ou cartão.":`${n} lançamentos estão sem conta ou cartão.`;
+}
+function abrirSemConta(){
+  const lista=semConta().sort((a,b)=>b.date.localeCompare(a.date));
+  if(!lista.length)return;
+  const accs=db.accounts||[], cards=db.cards||[];
+  if(!accs.length&&!cards.length){showToast("Cadastre uma conta ou um cartão em Carteira primeiro");return}
+  $("scLista").innerHTML=lista.map(t=>{
+    const ops=`<option value="">Escolher…</option>`+(accs.length?`<optgroup label="Conta (saiu ou entrou na hora)">${accs.map(a=>`<option value="a:${esc(a.id)}">${esc(a.name)}</option>`).join("")}</optgroup>`:"")
+      +(t.type==="expense"&&cards.length?`<optgroup label="Cartão (foi para a fatura)">${cards.map(c=>`<option value="c:${esc(c.id)}">${esc(c.name)}</option>`).join("")}</optgroup>`:"");
+    return `<div class="sc-item"><div class="sc-info"><b>${esc(t.desc)}</b><span>${fmtDate(t.date)} · <i class="${t.type==="income"?"income":"expense"}">${t.type==="income"?"+":"−"} ${money(t.amount)}</i></span></div><select data-sc="${esc(t.id)}" aria-label="Conta de ${esc(t.desc)}">${ops}</select></div>`;
+  }).join("");
+  $("scSheet").hidden=false;
+}
+$("scFechar").onclick=()=>{$("scSheet").hidden=true};
+$("scSheet").addEventListener("click",e=>{if(e.target===$("scSheet"))$("scSheet").hidden=true});
+$("scSalvar").onclick=()=>{
+  let n=0;
+  document.querySelectorAll("#scLista select[data-sc]").forEach(sl=>{
+    if(!sl.value)return;
+    const t=db.tx.find(x=>x.id===sl.dataset.sc);if(!t)return;
+    const [k,id]=sl.value.split(":");
+    if(k==="a")t.account=id;else t.card=id;
+    n++;
+  });
+  if(!n){showToast("Escolha a conta de pelo menos um lançamento");return}
+  save();$("scSheet").hidden=true;renderAll();showToast(n===1?"1 lançamento arrumado":`${n} lançamentos arrumados`);
+};
+
 /* ---------- editar conta ou cartão: nome; no cartão, também os dias de fechamento e vencimento ---------- */
 let eiAlvo=null;
 function abrirEditar(tipo,id){
@@ -1197,7 +1289,7 @@ function abrirEditar(tipo,id){
   $("eiTitulo").textContent=tipo==="card"?"Editar cartão":"Editar conta";
   $("eiNome").value=it.name;
   $("eiDias").hidden=tipo!=="card";
-  if(tipo==="card"){$("eiFecha").value=it.closeDay;$("eiVence").value=it.dueDay}
+  if(tipo==="card"){$("eiFecha").value=it.closeDay;$("eiVence").value=it.dueDay;$("eiLimite").value=it.limit?fmtValor(it.limit):""}
   $("eiErro").textContent="";
   $("eiSheet").hidden=false;$("eiNome").focus();
 }
@@ -1212,7 +1304,10 @@ $("eiForm").onsubmit=e=>{
   if(eiAlvo.tipo==="card"){
     const f=parseInt($("eiFecha").value,10),v=parseInt($("eiVence").value,10);
     if(!(f>=1&&f<=31&&v>=1&&v<=31)){$("eiErro").textContent="Os dias precisam ficar entre 1 e 31.";return}
+    const lt=$("eiLimite").value.trim(), lim=lt?parseValor(lt):0;
+    if(lt&&!(lim>0)){$("eiErro").textContent=MSG_VALOR;return}
     it.closeDay=f;it.dueDay=v;
+    if(lim>0)it.limit=r2(lim);else delete it.limit;
   }
   it.name=nome;
   save();$("eiSheet").hidden=true;renderAll();showToast("Salvo");
@@ -1266,7 +1361,7 @@ function rlRender(){
   const accs=db.accounts||[], cards=t==="expense"?(db.cards||[]):[];
   let html="";
   if(accs.length)html+=`<div class="rl-grupo"><div class="rl-sub">${t==="income"?"Conta onde o dinheiro entrou":"Pix, débito ou dinheiro · sai da conta agora"}</div><div class="chips rl-meios">${accs.map(a=>rlChip("meio","a:"+a.id,a.name,"",RL.meio==="a:"+a.id,ICO_CONTA)).join("")}</div></div>`;
-  if(cards.length)html+=`<div class="rl-grupo"><div class="rl-sub">Cartão de crédito · vai para a fatura</div><div class="chips rl-meios">${cards.map(c=>rlChip("meio","c:"+c.id,c.name,"fecha dia "+c.closeDay,RL.meio==="c:"+c.id,ICO_CARTAO)).join("")}</div></div>`;
+  if(cards.length)html+=`<div class="rl-grupo"><div class="rl-sub">Cartão de crédito · vai para a fatura</div><div class="chips rl-meios">${cards.map(c=>rlChip("meio","c:"+c.id,c.name,"fecha dia "+c.closeDay+((L=>!L?"":L.sobra<0?" · limite estourado":" · sobra "+money(L.sobra))(limiteCartao(c))),RL.meio==="c:"+c.id,ICO_CARTAO)).join("")}</div></div>`;
   $("rlMeios").innerHTML=html||`<div class="rl-vazio">${t==="income"?"Cadastre a conta onde o dinheiro entra.":"Cadastre uma conta ou um cartão para lançar."} <button type="button" class="ghost" data-act="rlIrCarteira">Ir para Carteira</button></div>`;
   const cats=t==="income"?ICATS:CATS;
   if(RL.cat&&!cats.includes(RL.cat))RL.cat="";
@@ -1348,6 +1443,9 @@ $("rlSalvar").onclick=()=>{
   $("rlSheet").hidden=true;
   sel=mKey(data);
   renderAll();
+  if(item.obj.card){const c=db.cards.find(x=>x.id===item.obj.card),L=c&&limiteCartao(c);
+    if(L&&L.pct>=100)resumo+=` · Atenção: limite do ${c.name} estourado`;
+    else if(L&&L.pct>=80)resumo+=` · ${c.name}: ${L.pct}% do limite usado`;}
   showToast(resumo);
 };
 
@@ -1624,6 +1722,7 @@ const ACTIONS={
   delAcc:d=>delAcc(d.id),
   togglePaid:d=>togglePaid(d.id,d.ym),
   abrirRelampago:()=>abrirRelampago(),
+  abrirSemConta:()=>abrirSemConta(),
   editAcc:d=>abrirEditar("acc",d.id),
   editCard:d=>abrirEditar("card",d.id),
   rlIrCarteira:()=>{$("rlSheet").hidden=true;go("carteira")},
