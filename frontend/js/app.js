@@ -174,6 +174,7 @@ $("lockForm").onsubmit=async e=>{
   try{
     await API.post("/api/login",{email,senha:pw});
     entrou=true;
+    entrouComSenha=true;   // acabou de digitar a senha: não pede digital logo em seguida
     await startSession();
   }catch(err){
     if(err&&err.status===403){
@@ -1653,18 +1654,19 @@ async function desafioParar(){
   delete db.settings.desafio52;save();renderAll();
 }
 
-/* ---------- Bloqueio ao abrir: digital/rosto (WebAuthn) com PIN de reserva ----------
-   Fica só neste aparelho (localStorage), por pessoa. É uma trava local de tela: os dados continuam
-   protegidos no servidor pela senha. Esqueceu o PIN: sai da conta e entra de novo com a senha. */
+/* ---------- Bloqueio ao abrir: digital ou rosto do aparelho (WebAuthn) ----------
+   Só aparece em aparelho com digital/Face ID. Fica só neste aparelho (localStorage), por pessoa.
+   É uma trava local de tela: os dados continuam protegidos no servidor pela senha.
+   Se a digital/rosto não der, a saída é "Entrar com a senha" (sai da conta e entra de novo). */
 const TRAVA_KEY=()=>"tv_trava:"+(sessionUser?sessionUser.email:"");
-function travaCfg(){try{return JSON.parse(localStorage.getItem(TRAVA_KEY())||"null")}catch(_){return null}}
+function travaCfg(){try{const c=JSON.parse(localStorage.getItem(TRAVA_KEY())||"null");return c&&c.cred?c:null}catch(_){return null}}
 function travaSalva(c){try{c?localStorage.setItem(TRAVA_KEY(),JSON.stringify(c)):localStorage.removeItem(TRAVA_KEY())}catch(_){}}
 const b64=buf=>btoa(String.fromCharCode(...new Uint8Array(buf)));
 const deB64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
-async function hashPin(pin,sal){const d=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(sal+":"+pin));return b64(d)}
-const temDigital=()=>!!(window.PublicKeyCredential&&navigator.credentials&&PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable);
+async function temDigital(){
+  try{return !!(window.PublicKeyCredential&&navigator.credentials&&await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable())}catch(_){return false}
+}
 async function criaDigital(){
-  if(!temDigital()||!(await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()))return null;
   const cred=await navigator.credentials.create({publicKey:{
     challenge:crypto.getRandomValues(new Uint8Array(32)),rp:{name:"TravaDin"},
     user:{id:crypto.getRandomValues(new Uint8Array(16)),name:sessionUser.email,displayName:sessionUser.email},
@@ -1677,46 +1679,39 @@ async function usaDigital(id){
     allowCredentials:[{type:"public-key",id:deB64(id)}],userVerification:"required",timeout:60000}});
   return !!r;
 }
+// o item do menu só aparece onde existe digital ou rosto
+temDigital().then(sim=>{$("travaBtn").hidden=!sim});
 function abrirBloqueioCfg(){
   const c=travaCfg();
-  $("btEstado").textContent=c?`Ativo neste aparelho${c.cred?" (digital + PIN)":" (PIN)"}. Para trocar o PIN, preencha de novo.`:"Ao abrir o TravaDin neste aparelho, ele pede sua digital (ou rosto). Se não der, pede o PIN.";
-  $("btDesligar").hidden=!c;$("btPin").value="";$("btPin2").value="";$("btErro").textContent="";
-  $("btSalvar").textContent=c?"Salvar":"Ativar bloqueio";
+  $("btEstado").textContent=c?"Ativo neste aparelho: ao abrir, o TravaDin pede sua digital ou rosto.":"Ao abrir o TravaDin neste aparelho, ele pede sua digital ou rosto. Se não der, você entra com a senha.";
+  $("btAtivar").hidden=!!c;$("btDesligar").hidden=!c;$("btErro").textContent="";
   $("menu").hidden=true;$("btSheet").hidden=false;
 }
 $("travaBtn").onclick=abrirBloqueioCfg;
 $("btFechar").onclick=()=>{$("btSheet").hidden=true};
 $("btDesligar").onclick=()=>{travaSalva(null);$("btSheet").hidden=true;showToast("Bloqueio desligado neste aparelho")};
-$("btForm").onsubmit=async e=>{
-  e.preventDefault();
-  const p=$("btPin").value.trim(),p2=$("btPin2").value.trim();
-  if(!/^\d{4,6}$/.test(p)){$("btErro").textContent="O PIN precisa ter de 4 a 6 números.";return}
-  if(p!==p2){$("btErro").textContent="Os dois PINs não são iguais.";return}
-  const sal=b64(crypto.getRandomValues(new Uint8Array(16)));
-  const cfg={sal,pin:await hashPin(p,sal),cred:null};
-  if($("btDigital").checked){
-    try{cfg.cred=await criaDigital()}catch(_){cfg.cred=null}
-    if(!cfg.cred)showToast("Digital indisponível aqui: o bloqueio vai usar só o PIN");
-  }
-  travaSalva(cfg);$("btSheet").hidden=true;showToast(cfg.cred?"Bloqueio ativo: digital + PIN":"Bloqueio ativo com PIN");
+$("btAtivar").onclick=async()=>{
+  $("btErro").textContent="";
+  let cred=null;
+  try{cred=await criaDigital()}catch(_){cred=null}
+  if(!cred){$("btErro").textContent="Não foi possível usar a digital ou o rosto agora. Tente de novo.";return}
+  travaSalva({cred});$("btSheet").hidden=true;showToast("Bloqueio ativo: digital ou rosto");
 };
-let travaTentativas=0, travaSaiu=0;
-async function travar(){
-  const c=travaCfg();if(!c)return;
-  $("trava").hidden=false;$("tvPin").value="";$("tvErro").textContent="";
-  $("tvDigital").hidden=!c.cred;
-  if(c.cred)setTimeout(()=>$("tvDigital").click(),150); else $("tvPin").focus();
+let travaSaiu=0;
+let entrouComSenha=false;
+function travar(){
+  if(entrouComSenha){entrouComSenha=false;return}
+  if(!travaCfg())return;
+  $("trava").hidden=false;$("tvErro").textContent="";
+  setTimeout(()=>$("tvDigital").click(),150);
 }
-function destravar(){$("trava").hidden=true;travaTentativas=0}
-$("tvDigital").onclick=async()=>{const c=travaCfg();if(!c||!c.cred)return;try{if(await usaDigital(c.cred))destravar()}catch(_){$("tvErro").textContent="Não deu com a digital. Use o PIN.";$("tvPin").focus()}};
-$("tvForm").onsubmit=async e=>{
-  e.preventDefault();const c=travaCfg();if(!c){destravar();return}
-  if(await hashPin($("tvPin").value.trim(),c.sal)===c.pin){destravar();return}
-  travaTentativas++;$("tvPin").value="";
-  if(travaTentativas>=5){travaSalva(null);$("trava").hidden=true;lockApp("PIN errado 5 vezes. Entre de novo com sua senha.");return}
-  $("tvErro").textContent=`PIN errado. Restam ${5-travaTentativas} tentativa(s).`;
+function destravar(){$("trava").hidden=true}
+$("tvDigital").onclick=async()=>{
+  const c=travaCfg();if(!c){destravar();return}
+  try{if(await usaDigital(c.cred)){destravar();return}}catch(_){}
+  $("tvErro").textContent="Não deu com a digital ou o rosto. Tente de novo ou entre com a senha.";
 };
-$("tvEsqueci").onclick=()=>{travaSalva(null);$("trava").hidden=true;lockApp("Entre com sua senha. Depois, ative o bloqueio de novo em Mais → Bloqueio ao abrir.")};
+$("tvSenha").onclick=()=>{$("trava").hidden=true;lockApp()};
 // voltar ao app depois de 5 minutos fora também pede o desbloqueio
 document.addEventListener("visibilitychange",()=>{
   if(document.hidden){travaSaiu=Date.now();return}

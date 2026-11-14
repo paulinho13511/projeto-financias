@@ -1,4 +1,4 @@
-<!-- Bloqueio ao abrir: digital/rosto do aparelho com PIN de reserva (vale só neste aparelho) -->
+<!-- Bloqueio ao abrir: digital ou rosto do aparelho (vale só neste aparelho) -->
 <div class="sheet" id="btSheet" hidden>
   <div class="sheetbox ei" role="dialog" aria-modal="true" aria-labelledby="btTitulo">
     <div class="rl-topo">
@@ -6,13 +6,8 @@
       <button type="button" class="rl-x" id="btFechar" aria-label="Fechar">×</button>
     </div>
     <p class="muted" id="btEstado"></p>
-    <form id="btForm" class="ei-form" novalidate>
-      <label class="fld">PIN de reserva (4 a 6 números)<input id="btPin" type="password" inputmode="numeric" autocomplete="new-password" maxlength="6"></label>
-      <label class="fld">Repita o PIN<input id="btPin2" type="password" inputmode="numeric" autocomplete="new-password" maxlength="6"></label>
-      <label class="chk"><input type="checkbox" id="btDigital" checked><span>Usar digital ou rosto deste aparelho</span></label>
-      <div class="rl-erro" id="btErro" role="alert"></div>
-      <button type="submit" class="primary rl-ok" id="btSalvar">Ativar bloqueio</button>
-    </form>
+    <div class="rl-erro" id="btErro" role="alert"></div>
+    <button type="button" class="primary rl-ok" id="btAtivar">Ativar com digital ou rosto</button>
     <button type="button" class="ghost" id="btDesligar" hidden>Desligar bloqueio neste aparelho</button>
   </div>
 </div>
