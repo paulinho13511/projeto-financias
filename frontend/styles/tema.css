@@ -126,11 +126,13 @@ body:not(.locked){
 .bottom button{color:var(--tv-mut)}
 .bottom button.on{color:#fff;position:relative}
 .bottom button.on:not(.fab)::after{content:"";position:absolute;bottom:2px;width:20px;height:3px;border-radius:3px;background:var(--tv-red)}
-.bottom .fab,.bottom .fab.on{color:#fff;background:radial-gradient(circle at 35% 28%,#ff6b6b,#d81e1e 50%,#a01212 100%);
-  box-shadow:0 0 0 3px #000,0 8px 24px rgba(216,30,30,.6);animation:tvPulse 3s infinite}
+/* botão "+": branco, com o "+" preto e um anel vermelho fino pulsando */
+.bottom .fab,.bottom .fab.on{color:#0a0a0a;background:radial-gradient(circle at 35% 28%,#ffffff,#f1f1f1 55%,#cfcfcf 100%);
+  box-shadow:0 0 0 3px #000,0 0 0 5px #d81e1e,0 10px 26px rgba(0,0,0,.6);animation:tvPulse 3s infinite}
+.bottom .fab svg{stroke-width:2.6}
 @keyframes tvPulse{
-  0%,100%{box-shadow:0 0 0 3px #000,0 8px 24px rgba(216,30,30,.6)}
-  50%{box-shadow:0 0 0 3px #000,0 0 0 8px rgba(216,30,30,.18),0 8px 30px rgba(216,30,30,.8)}
+  0%,100%{box-shadow:0 0 0 3px #000,0 0 0 5px #d81e1e,0 10px 26px rgba(0,0,0,.6)}
+  50%{box-shadow:0 0 0 3px #000,0 0 0 8px rgba(216,30,30,.35),0 10px 30px rgba(0,0,0,.6)}
 }
 @media(prefers-reduced-motion:reduce){.bottom .fab{animation:none}}
 
