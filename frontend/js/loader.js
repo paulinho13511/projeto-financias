@@ -36,7 +36,7 @@ async function loadScreens() {
 loadScreens()
   .then(() => {
     const stage = document.createElement("script");
-    stage.src = "frontend/js/login-globe.js";
+    stage.src = "frontend/js/login-moeda.js";
     document.body.appendChild(stage);
     const app = document.createElement("script");
     app.src = "frontend/js/app.js";

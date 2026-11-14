@@ -1,53 +1,95 @@
-/* Tela de entrada. Animação no lado esquerdo (computador) ou em faixa compacta (celular). */
-#lock{display:flex;padding:0;background:#0e1217;overflow:hidden}
-#lock .lk-shell{width:100%;min-height:100vh;min-height:100dvh;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:24px;padding:24px;max-width:1200px;margin:0 auto;box-sizing:border-box}
-#lock .lk-stage{position:relative;width:100%;height:min(560px,72vh);min-width:0}
-#lock .lk-globe{position:fixed;inset:0;display:block;width:100%;height:100%;pointer-events:none}
-#lock .lk-shell{position:relative;z-index:1}
-#lock .lk-panel{width:100%;max-width:400px;min-width:0;justify-self:center;display:grid;gap:14px;justify-items:center;animation:lkPanelIn .8s cubic-bezier(.22,1,.36,1) .4s both}
-#lock .lk-logo{width:112px;height:112px;animation:lkGlow 3.2s ease-in-out infinite}
-#lock .lk-logo img{display:block;width:100%;height:100%;position:relative}
-#lock .lk-brand{font-size:26px;font-weight:800;margin-top:4px}
-#lock .lk-tag{margin:0;color:#d8dbe6;font-size:14px}
-#lock .lk-form{width:100%;display:grid;gap:12px;margin-top:8px}
-#lock .lk-fld{display:grid;gap:6px;font-size:13px;color:#8a8fa3}
-#lock .lk-fld input{width:100%;padding:14px;border-radius:14px;border:1px solid #2f3843;background:#151a20;color:#fff;font-size:16px;box-sizing:border-box}
-#lock .lk-fld input::placeholder{color:#4c5163}
-#lock .lk-fld input:focus{outline:none;border-color:#d5dbe1;box-shadow:0 0 0 3px rgba(213,219,225,.18)}
+/* Tela de entrada do TravaDin.
+   1º: tela preta com a moeda 3D girando e "Toque na moeda". Só o toque na moeda abre a fenda.
+   2º: a moeda para de frente, a fenda aparece, a moeda entra; o fundo vira pedra e o login sobe centralizado.
+   Estados no #lock (colocados por login-moeda.js): .lk-parou (tocou), .lk-entra (moeda deslizando), .lk-ok (fenda acesa), .lk-aberto (login).
+   Se o script não rodar, a regra de segurança no fim mostra o login depois de 6 s. */
+
+#lock{display:block;padding:0;background:#000;overflow:hidden;color:#eef1f4}
+#lock .lk-fundo{position:fixed;inset:0;opacity:0;transition:opacity 1s ease;pointer-events:none;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5  0 0 0 0 .55  0 0 0 0 .6  0 0 0 .8 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600'><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='.012' numOctaves='4'/><feColorMatrix values='0 0 0 0 .3  0 0 0 0 .35  0 0 0 0 .4  0 0 0 .5 0'/></filter><rect width='100%' height='100%' filter='url(%23m)'/></svg>"),
+    radial-gradient(120% 80% at 50% 20%,#4a5764,#26303a 55%,#151b21);
+  background-blend-mode:overlay,soft-light,normal}
+
+/* ---- cena da moeda ---- */
+#lock .lk-cena{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;transition:opacity .5s ease}
+#lock .lk-palco{--m:clamp(180px,52vw,250px);position:relative;width:calc(var(--m)*1.2);height:calc(var(--m) + 24px)}
+@media(min-width:700px){#lock .lk-palco{--m:clamp(230px,32vw,280px)}}
+@media(max-height:560px){#lock .lk-palco{--m:min(42vh,200px)}}
+#lock .lk-trilho{position:absolute;left:0;top:0;bottom:0;width:calc(var(--m)*1.087 + 9px);overflow:hidden;display:flex;align-items:center}
+#lock .lk-trilho>*{width:var(--m);height:var(--m);margin-left:calc(var(--m)*.087);flex:0 0 auto;display:block}
+#lock .lk-trilho>[hidden]{display:none}
+#lock.lk-entra .lk-trilho>*{transition:transform .9s cubic-bezier(.55,0,.75,.2);transform:translateX(calc(var(--m)*1.2))}
+#lock .lk-moeda-img{animation:lkGira 4.5s linear infinite}
+@keyframes lkGira{from{transform:rotateY(0)}to{transform:rotateY(360deg)}}
+#lock.lk-parou .lk-moeda-img{animation:none}
+
+/* brilho atrás da moeda: mostra que dá para tocar */
+#lock .lk-brilho{position:absolute;left:calc(var(--m)*.012);top:50%;width:calc(var(--m)*1.15);height:calc(var(--m)*1.15);margin-top:calc(var(--m)*-.575);border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,rgba(229,72,77,.75) 0%,rgba(229,72,77,.35) 38%,rgba(213,219,225,.12) 55%,transparent 72%);filter:blur(6px);animation:lkPulso 2.4s ease-in-out infinite;transition:opacity .4s}
+@keyframes lkPulso{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.28);opacity:1}}
+#lock.lk-parou .lk-brilho{opacity:0;animation:none}
+
+/* fenda de caça-níquel: só aparece depois do toque */
+#lock .lk-fenda{position:absolute;left:calc(var(--m)*1.087);top:50%;width:clamp(14px,calc(var(--m)*.075),20px);height:calc(var(--m)*.87);margin-top:calc(var(--m)*-.435);border-radius:12px;
+  transform:scaleY(0);opacity:0;background:linear-gradient(90deg,#000,#151a20 45%,#000);
+  box-shadow:inset 0 0 0 2px #050607,0 0 0 3px #aeb6be,0 0 0 4px #4d555e;transition:transform .45s cubic-bezier(.22,1,.36,1),opacity .3s,box-shadow .3s}
+#lock.lk-parou .lk-fenda{transform:scaleY(1);opacity:1}
+#lock.lk-ok .lk-fenda{box-shadow:inset 0 0 0 2px #050607,0 0 0 3px #e5484d,0 0 22px rgba(229,72,77,.9)}
+
+/* área de toque: só o disco da moeda */
+#lock .lk-toque{position:absolute;left:calc(var(--m)*.172);top:50%;width:calc(var(--m)*.83);height:calc(var(--m)*.83);margin-top:calc(var(--m)*-.415);
+  border-radius:50%;border:0;padding:0;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#lock .lk-toque:focus-visible{outline:2px solid #d5dbe1;outline-offset:6px}
+#lock.lk-parou .lk-toque{pointer-events:none}
+
+#lock .lk-dica{margin:0;color:#c9d1d8;font-size:15px;letter-spacing:.6px;animation:lkDica 2.4s ease-in-out infinite;transition:opacity .3s}
+@keyframes lkDica{0%,100%{opacity:.55}50%{opacity:1}}
+#lock.lk-parou .lk-dica{opacity:0;animation:none}
+#lock .lk-pular{position:absolute;bottom:max(20px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:none;border:0;color:#6f7b87;font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:10px}
+#lock.lk-parou .lk-pular{opacity:0;pointer-events:none}
+
+/* ---- login (depois da moeda) ---- */
+#lock .lk-panel{position:relative;z-index:1;min-height:100vh;min-height:100dvh;width:100%;max-width:400px;margin:0 auto;box-sizing:border-box;
+  padding:max(28px,env(safe-area-inset-top)) 20px max(28px,env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  opacity:0;visibility:hidden;transform:translateY(26px);transition:opacity .7s ease,transform .8s cubic-bezier(.22,1,.36,1),visibility 0s .8s}
+#lock.lk-aberto{overflow-y:auto}
+#lock.lk-aberto .lk-fundo{opacity:1}
+#lock.lk-aberto .lk-cena{opacity:0;pointer-events:none;visibility:hidden;transition:opacity .5s ease,visibility 0s .5s}
+#lock.lk-aberto .lk-panel{opacity:1;visibility:visible;transform:none;transition:opacity .7s ease .15s,transform .8s cubic-bezier(.22,1,.36,1) .15s}
+#lock .lk-logo{width:112px;height:112px}
+#lock .lk-logo>*{width:100%;height:100%;display:block;filter:drop-shadow(0 10px 22px rgba(0,0,0,.6))}
+#lock .lk-logo>[hidden]{display:none}
+#lock .lk-brand{font-size:40px;font-weight:900;letter-spacing:1.5px;line-height:1.1;margin-top:4px;
+  background:linear-gradient(180deg,#ffffff,#c9d0d6 45%,#8a939c 52%,#e3e8ec);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 2px 0 rgba(0,0,0,.6))}
+#lock .lk-tag{margin:0 0 8px;color:#b4bec8;font-size:14px}
+#lock .lk-form{width:100%;display:grid;gap:12px}
+#lock .lk-fld{display:grid;gap:6px;font-size:13px;color:#a7b2bc}
+#lock .lk-fld input{width:100%;padding:14px;border-radius:12px;border:1px solid rgba(0,0,0,.55);background:rgba(10,14,18,.6);color:#fff;font-size:16px;box-sizing:border-box;
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.08)}
+#lock .lk-fld input::placeholder{color:#6f7b87}
+#lock .lk-fld input:focus{outline:none;border-color:#d5dbe1;box-shadow:inset 0 2px 6px rgba(0,0,0,.6),0 0 0 3px rgba(213,219,225,.18)}
 #lock .lk-err{color:#ff8a8d;font-size:13px;min-height:18px}
-#lock .lk-btn{width:100%;min-height:52px;border:0;border-radius:16px;background:linear-gradient(180deg,#f4f6f8,#c9d0d6 55%,#aeb6be);color:#151a20;font-weight:700;font-size:16px;cursor:pointer;transition:box-shadow .3s,filter .3s}
-#lock .lk-btn:hover{box-shadow:0 0 0 3px rgba(229,72,77,.55),0 10px 28px rgba(0,0,0,.45);filter:brightness(1.04)}
+#lock .lk-btn{width:100%;min-height:52px;border-radius:12px;border:2px solid #c9302c;background:linear-gradient(180deg,#f4f6f8,#c9d0d6 55%,#9ea7b0);color:#151a20;font-weight:800;font-size:17px;cursor:pointer;
+  box-shadow:0 0 0 1px #6b1514,0 0 14px rgba(229,72,77,.45),inset 0 1px 0 #fff;transition:filter .2s,box-shadow .2s}
+#lock .lk-btn:hover{filter:brightness(1.05);box-shadow:0 0 0 1px #6b1514,0 0 22px rgba(229,72,77,.65),inset 0 1px 0 #fff}
 #lock .lk-btn:disabled{opacity:.6;cursor:default}
-#lock .lk-foot{margin:4px 0 0;color:#8a8fa3;font-size:12.5px;text-align:center}
-@media(max-width:1100px){#lock .lk-stage{height:min(440px,62vh)}}
-@media(max-width:820px){
-  #lock{align-items:flex-start;overflow-y:auto;overflow-x:hidden}
-  #lock .lk-shell{display:flex;flex-direction:column;justify-content:flex-start;align-items:center;min-height:100dvh;height:auto;box-sizing:border-box;padding:20px 16px;gap:6px}
-  #lock .lk-stage{width:min(100%,520px);height:clamp(190px,32vh,300px);flex:none}
-  #lock .lk-panel{margin:auto 0}
-  #lock .lk-panel{width:100%;max-width:400px}
-  #lock .lk-logo{width:88px;height:88px}
-  #lock .lk-brand{font-size:22px}
-}
-@media(min-width:600px) and (max-width:820px){#lock .lk-stage{height:clamp(280px,36vh,400px)}}
-@media(max-width:380px){#lock .lk-logo{width:76px;height:76px}#lock .lk-stage{height:clamp(170px,30vh,260px)}}
-@keyframes lkStageIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
-@keyframes lkPanelIn{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
-@keyframes lkGlow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.18)}}
-@media(prefers-reduced-motion:reduce){#lock .lk-stage,#lock .lk-panel{animation:none}}
+#lock .lk-foot{margin:4px 0 0;color:#8995a1;font-size:12.5px;text-align:center}
 
-#lock .lk-shell{position:relative;z-index:1}
-#lock .lk-logo{position:relative;border-radius:50%;overflow:hidden;filter:drop-shadow(0 10px 24px rgba(0,0,0,.55));animation:logoIn .9s cubic-bezier(.22,1,.36,1) both,lkGlow 3.2s ease-in-out .9s infinite}
-#lock .lk-panel{position:relative}
-@keyframes logoIn{from{opacity:0;transform:scale(.7) rotate(-6deg)}to{opacity:1;transform:none}}
-@media(prefers-reduced-motion:reduce){#lock .lk-logo{animation:none}}
+/* celular */
+@media(max-width:480px){#lock .lk-logo{width:92px;height:92px}#lock .lk-brand{font-size:34px}}
+/* computador: um pouco maior e mais respiro */
+@media(min-width:1000px){#lock .lk-panel{max-width:420px;gap:12px}#lock .lk-logo{width:128px;height:128px}#lock .lk-brand{font-size:46px}}
 
-/* Abertura: o globo fica no centro, depois vai para o canto e só então o login aparece (classes colocadas por login-globe.js).
-   Se o script falhar, a regra de segurança abaixo mostra o login depois de 9 s. */
-#lock.lk-intro .lk-panel{opacity:0;visibility:hidden;transform:translateX(32px);animation:lkSafety 0s 9s forwards}
-#lock.lk-intro.lk-ready .lk-panel{opacity:1;visibility:visible;transform:none;animation:none;transition:opacity .9s ease,transform 1s cubic-bezier(.22,1,.36,1)}
-#lock.lk-intro:not(.lk-ready) .lk-logo{animation:none}
-@media(max-width:820px){#lock.lk-intro .lk-panel{transform:translateY(24px)}}
-@keyframes lkSafety{to{opacity:1;visibility:visible;transform:none}}
-@media(prefers-reduced-motion:reduce){#lock.lk-intro .lk-panel,#lock.lk-intro.lk-ready .lk-panel{opacity:1;visibility:visible;transform:none;animation:none;transition:none}}
+/* quem pede menos movimento: nada de pulsar */
+@media(prefers-reduced-motion:reduce){#lock .lk-brilho,#lock .lk-dica,#lock .lk-moeda-img{animation:none}}
 
+/* segurança: se o script da moeda não carregar, o login aparece sozinho */
+#lock:not(.lk-pronto) .lk-panel{animation:lkSeguro 0s 6s forwards}
+@keyframes lkSeguro{to{opacity:1;visibility:visible;transform:none}}
+
+/* entrada direta (sem animação): tudo aparece na hora */
+#lock.lk-sem-anim .lk-panel,#lock.lk-sem-anim .lk-cena,#lock.lk-sem-anim .lk-fundo{transition:none!important}
