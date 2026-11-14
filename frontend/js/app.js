@@ -844,7 +844,8 @@ function rendaPrevista(cm){
      do fim do ciclo). Fatura do cartão não entra: as compras dela já entraram uma a uma;
    - estourou mas pagou todas as contas: o ciclo novo começa zerado; sobrou: a pessoa decide (meta, somar ao teto ou deixar). */
 const salarios=()=>db.tx.filter(t=>t.type==="income"&&t.category==="Salário").sort((a,b)=>a.date.localeCompare(b.date)||(a.created||0)-(b.created||0));
-const noCiclo=(t,c)=>t.date>c.inicio||(t.date===c.inicio&&(t.created||0)>=(c.ts||0));
+// só conta o que já aconteceu: lançamento com data futura entra no ciclo quando a data chegar
+const noCiclo=(t,c)=>t.date<=today()&&(t.date>c.inicio||(t.date===c.inicio&&(t.created||0)>=(c.ts||0)));
 function fimDoCiclo(c){
   // dia do próximo salário (pelo dia do último salário); sem salário, 30 dias depois do início
   const ult=salarios().pop();
@@ -865,7 +866,8 @@ function cicloAtual(){
   if(!db.settings.ciclo){
     // primeira vez: começa no último salário dos últimos 40 dias (ou no dia 1º do mês)
     const ult=salarios().filter(t=>daysBetween(t.date,today())<=40).pop();
-    db.settings.ciclo={inicio:ult?ult.date:mKey(today())+"-01",ts:0,ajuste:0,sobra:0,hist:[]};
+    // o salário que marca o começo não pode virar o ciclo de novo na hora (ts depois dele)
+    db.settings.ciclo={inicio:ult?ult.date:mKey(today())+"-01",ts:ult?(ult.created||0)+1:0,ajuste:0,sobra:0,hist:[]};
     save();
   }
   return db.settings.ciclo;
