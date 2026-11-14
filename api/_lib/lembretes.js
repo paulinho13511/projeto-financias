@@ -21,6 +21,7 @@ __export(logic_exports, {
   closeDateOf: () => closeDateOf,
   currentCloseYm: () => currentCloseYm,
   daysBetween: () => daysBetween,
+  devidoFatura: () => devidoFatura,
   dueDateOfFatura: () => dueDateOfFatura,
   dueOf: () => dueOf,
   faturaOf: () => faturaOf,
@@ -108,6 +109,14 @@ function faturaOf(data, card, closeYm) {
   });
   return { close, closeYm, due: dueDateOfFatura(card, closeYm), total: round2(total) };
 }
+function pagoFatura(data, card, ym) {
+  return round2((data.tx || []).filter((t) => t.type === "payment" && t.ref && t.ref.kind === "fatura" && t.ref.card === card.id && t.ref.ym === ym).reduce((s, t) => s + (Number(t.amount) || 0), 0));
+}
+function devidoFatura(data, card, ym) {
+  const pago = pagoFatura(data, card, ym);
+  if (!pago && (card.paid || []).includes(ym)) return 0;
+  return Math.max(0, round2(faturaOf(data, card, ym).total - pago));
+}
 function currentCloseYm(card, today) {
   const cm = mKey(today);
   return closeDateOf(card, cm) >= today ? cm : shiftMonth(cm, 1);
@@ -121,8 +130,7 @@ function owedInMonth(data, today) {
   });
   (data.cards || []).forEach((c) => {
     const closeYm = c.dueDay > c.closeDay ? cur : shiftMonth(cur, -1);
-    if ((c.paid || []).includes(closeYm)) return;
-    total += faturaOf(data, c, closeYm).total;
+    total += devidoFatura(data, c, closeYm);
   });
   return round2(total);
 }
@@ -154,9 +162,9 @@ function buildReminders(data, today) {
     if (dClose === 0) out.push({ key: `close:${c.id}:${cy}:0`, title: `${c.name}: fatura fecha hoje`, body: `Valor até agora: ${money(open.total)}${tail}` });
     else if (dClose > 0 && dClose <= 3) out.push({ key: `close:${c.id}:${cy}:${dClose}`, title: `${c.name}: fatura fecha em ${dClose} dia(s)`, body: `Valor até agora: ${money(open.total)}${tail}` });
     [shiftMonth(cy, -1), cy].forEach((ym) => {
-      if ((c.paid || []).includes(ym)) return;
-      const f = faturaOf(data, c, ym);
-      if (f.total <= 0) return;
+      const dev = devidoFatura(data, c, ym);
+      if (dev <= 0) return;
+      const f = { ...faturaOf(data, c, ym), total: dev };
       const d = daysBetween(today, f.due);
       if (d > 3 || d < -MAX_LATE_DAYS) return;
       if (d < 0) out.push({ key: `due:${c.id}:${ym}:late${-d}`, title: `${c.name}: fatura vencida há ${-d} dia(s)`, body: `${money(f.total)} venceu em ${f.due.split("-").reverse().join("/")}. Pague logo para evitar juros e multa.${tail}` });

@@ -4,6 +4,7 @@
 'use strict';
 const crypto = require('crypto');
 const { buildReminders, todaySP } = require('./lembretes.js');
+const { lerSemConverter } = require('./dados.js');
 
 const curto = s => crypto.createHash('sha256').update(s).digest('hex').slice(0, 12);   // identifica o aparelho sem guardar o endpoint inteiro
 const host = e => { try { return new URL(e).host; } catch { return '?'; } };
@@ -36,10 +37,9 @@ async function executar({ query, modo = 'real', agora = new Date(), enviar }) {
 
   const hoje = todaySP(agora);
   const ids = [...new Set(subs.map(s => s.user_id))];
-  const linhas = ids.length
-    ? await query(`select user_id::text as user_id, data from app_data where user_id::text in (select jsonb_array_elements_text($1::jsonb))`, [JSON.stringify(ids)])
-    : [];
-  const dados = new Map(linhas.map(r => [r.user_id, r.data]));
+  // dados de cada pessoa: das tabelas (ou do JSON antigo, se ainda não foi convertida); só leitura
+  const dados = new Map();
+  for (const id of ids) dados.set(id, await lerSemConverter(query, id));
 
   const avisos = new Map(ids.map(id => [id, buildReminders({ tx: [], bills: [], cards: [], ...(dados.get(id) || {}) }, hoje)]));
   const tarefas = [];

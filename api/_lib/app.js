@@ -5,6 +5,7 @@
 const crypto = require('crypto');
 const { promisify } = require('util');
 const scrypt = promisify(crypto.scrypt);
+const dados = require('./dados.js');
 
 const SESSAO_DIAS = 30, MAX_TENT_EMAIL = 5, MAX_TENT_IP = 20, JANELA_MIN = 15, MAX_DADOS = 1024 * 1024;
 const norm = e => String(e || '').trim().toLowerCase();
@@ -37,9 +38,13 @@ const endpointValido = e => typeof e === 'string' && e.length <= 1000 && /^https
 const VERSAO_OK = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(\.\d{1,6})?([+-]\d{2}(:?\d{2})?|Z)?$/;
 const b64urlValido =s => typeof s === 'string' && s.length >= 8 && s.length <= 200 && /^[A-Za-z0-9_-]+$/.test(s);
 
-function criarApp({ query, transaction }) {
+// opcoes.tabelas: true = dados nas tabelas (dados.js); false = JSON único antigo (app_data).
+// Na Vercel quem decide é a variável DADOS_TABELAS=1 (api/index.js): a troca só acontece onde ela estiver ligada.
+function criarApp({ query, transaction }, opcoes = {}) {
+  const tabelas = opcoes.tabelas !== false;
   // transaction([[sql, params], ...]) é tudo-ou-nada; sem ela (outro adaptador), roda em sequência.
   const atomico = lista => transaction ? transaction(lista) : lista.reduce((p, [sql, ps]) => p.then(() => query(sql, ps)), Promise.resolve());
+  const banco = { query, transaction: atomico };
 
   async function autenticar(req) {
     const tok = lerSid(req.cookie);
@@ -101,7 +106,10 @@ function criarApp({ query, transaction }) {
       }
       if (method === 'GET' && path === '/api/me') return R(200, { email: eu.email, is_admin: eu.is_admin });
 
+      // Dados em tabelas (dados.js). Na primeira leitura depois da mudança, o JSON antigo da app_data é convertido
+      // (a app_data fica intacta, como cópia de segurança).
       if (method === 'GET' && path === '/api/dados') {
+        if (tabelas) return R(200, await dados.carregar(banco, eu.id, eu.email));
         let r = (await query(`select data, updated_at::text as versao from app_data where user_id = $1::uuid`, [eu.id]))[0];
         if (!r) r = (await query(`insert into app_data(user_id,updated_by) values($1::uuid,$2) on conflict (user_id) do update set user_id = excluded.user_id returning data, updated_at::text as versao`, [eu.id, eu.email]))[0];
         return R(200, r);
@@ -112,6 +120,10 @@ function criarApp({ query, transaction }) {
         if (txt.length > MAX_DADOS) return R(413, { erro: 'Dados grandes demais.' });
         // Versão que não parece um timestamp do Postgres nunca bate com a do banco: conflito, sem chegar a dar erro no SQL.
         if (!VERSAO_OK.test(String(body.versao || ''))) return R(409, { erro: 'conflito' });
+        if (tabelas) {
+          const versao = await dados.gravar(banco, eu.id, String(body.versao), eu.email, body.data);
+          return versao ? R(200, { versao }) : R(409, { erro: 'conflito' });
+        }
         const r = (await query(`update app_data set data = $1::jsonb, updated_at = clock_timestamp(), updated_by = $2
                                  where user_id = $3::uuid and updated_at = $4::timestamptz returning updated_at::text as versao`,
           [txt, eu.email, eu.id, String(body.versao || '')]))[0];
@@ -170,11 +182,13 @@ function criarApp({ query, transaction }) {
           return r.length ? R(200, { ok: true }) : R(404, { erro: 'Não encontrado.' });
         }
         if (method === 'DELETE') {
-          const a = (await query(`select a.is_admin from usuarios u left join acessos a on a.email = u.email where u.email = $1`, [alvo]))[0];
+          const a = (await query(`select u.id::text as id, a.is_admin from usuarios u left join acessos a on a.email = u.email where u.email = $1`, [alvo]))[0];
           if (!a) return R(404, { erro: 'Não encontrado.' });
           if (a.is_admin) return R(400, { erro: 'Tire a permissão de administrador antes de remover.' });
+          // cópia de segurança: os dados montados das tabelas (ou o JSON antigo, se a pessoa nunca abriu o app depois da mudança)
+          const copia = body.guardar_backup ? await dados.lerSemConverter(query, a.id) : null;
           await atomico([
-            ...(body.guardar_backup ? [[`insert into app_data_removidos(email,user_id,data,removed_by) select u.email,u.id,d.data,$2 from usuarios u left join app_data d on d.user_id=u.id where u.email=$1 returning 1`, [alvo, eu.email]]] : []),
+            ...(body.guardar_backup ? [[`insert into app_data_removidos(email,user_id,data,removed_by) values($1,$2::uuid,$3::jsonb,$4) returning 1`, [alvo, a.id, JSON.stringify(copia), eu.email]]] : []),
             [`delete from acessos where email = $1 returning 1`, [alvo]],
             [`delete from usuarios where email = $1 returning 1`, [alvo]],     // apaga sessões, dados e avisos junto (cascade)
           ]);

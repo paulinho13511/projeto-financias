@@ -9,7 +9,11 @@ const { hashSenha } = require('../../api/_lib/app.js');
 
 const orig = Module._load;
 Module._load = function (req, ...r) {
-  if (req === '@neondatabase/serverless') return { neon: () => ({ query: async (t, p) => dbt.querySync(t, p) }) };
+  // igual ao driver real: sql.query() só roda quando é aguardada (ou dentro de sql.transaction, tudo de uma vez)
+  if (req === '@neondatabase/serverless') return { neon: () => ({
+    query: (t, p) => ({ _q: [t, p], then: (ok, erro) => dbt.querySync(t, p).then(ok, erro) }),
+    transaction: lista => dbt.transaction(lista.map(x => x._q)),
+  }) };
   return orig.call(this, req, ...r);
 };
 process.env.DATABASE_URL = 'postgres://falso';

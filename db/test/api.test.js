@@ -251,7 +251,7 @@ test('migração: dados reais do backup entram idênticos e os convites funciona
 
 test('código: nenhuma consulta monta SQL concatenando valores', () => {
   let total = 0;
-  for (const f of ['app.js', 'db.js', 'lembretes-job.js']) {
+  for (const f of ['app.js', 'db.js', 'lembretes-job.js', 'dados.js']) {
     const fonte = fs.readFileSync(path.join(__dirname, '../../api/_lib', f), 'utf8');
     const sqls = [...fonte.matchAll(/`([^`]*)`/g)].map(m => m[1]).filter(x => /\b(select|insert|update|delete)\b/i.test(x));
     total += sqls.length;

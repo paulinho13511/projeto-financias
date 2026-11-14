@@ -4,7 +4,8 @@ const { criarApp } = require('./_lib/app.js');
 const db = require('./_lib/db.js');
 const { executar } = require('./_lib/lembretes-job.js');
 
-const app = criarApp(db);
+// DADOS_TABELAS=1 liga os dados em tabelas; sem ela, continua o JSON único (app_data). Ver db/README.md.
+const app = criarApp(db, { tabelas: process.env.DADOS_TABELAS === '1' });
 const SEM_CACHE = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
 
 function caminho(req) {
