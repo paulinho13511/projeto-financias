@@ -914,9 +914,12 @@ function renderTermometro(){
   const pct=T.tetoEf>0?Math.min(100,T.gasto/T.tetoEf*100):100, marca=T.passados/T.total*100;
   const aj=Number(c.ajuste)||0;
   const pend=T.salarioNovo&&T.pend.length?`<div class="tm-aviso">O salário já entrou. O ciclo vira quando estas contas forem pagas: ${T.pend.slice(0,4).map(p=>esc(p.nome)).join(", ")}${T.pend.length>4?"…":""}.</div>`:"";
-  const sobra=c.sobra>0?`<div class="tm-sobra"><b>Sobrou ${money(c.sobra)} no ciclo passado.</b> O que fazer com essa sobra?
-      <div class="tm-btns">${(db.goals||[]).length?`<select id="tmMeta" aria-label="Meta">${db.goals.map(g=>`<option value="${esc(g.id)}">${esc(g.name)}</option>`).join("")}</select><button type="button" class="ghost" id="tmSobraMeta">Guardar na meta</button>`:""}
-      <button type="button" class="ghost" id="tmSobraTeto">Somar ao teto</button><button type="button" class="ghost" id="tmSobraConta">Deixar na conta</button></div></div>`:"";
+  // sobra: fica no card até a pessoa guardar numa meta ou escolher não fazer nada
+  const temMeta=(db.goals||[]).length>0;
+  const sobra=c.sobra>0?`<div class="tm-sobra"><b>Sobrou ${money(c.sobra)} no ciclo passado.</b> ${temMeta?"Quer guardar numa meta?":"Crie uma meta para guardar essa sobra."}
+      <div class="tm-btns">${temMeta?`<select id="tmMeta" aria-label="Meta">${db.goals.map(g=>`<option value="${esc(g.id)}">${esc(g.name)}</option>`).join("")}</select><button type="button" class="ghost" id="tmSobraMeta">Guardar na meta</button>`
+        :`<button type="button" class="ghost" id="tmIrMetas">Ir para Metas</button>`}
+      <button type="button" class="ghost" id="tmSobraNada">Não fazer nada</button></div></div>`:"";
   const hist=(c.hist||[]).slice(-3).reverse().map(h=>{const r=r2(h.teto-h.gasto);return `<li>${fmtDate(h.inicio)} a ${fmtDate(h.fim)}: gastou ${money(h.gasto)} de ${money(h.teto)} · <span class="${r<0?"expense":"income"}">${r<0?"passou "+money(-r):"sobrou "+money(r)}</span></li>`}).join("");
   $("tmCorpo").innerHTML=`${sobra}
     <div class="tm-topo"><span class="tm-luz ${est}" aria-hidden="true"></span><div><b>${esc(titulo)}</b><span>${esc(frase)}</span></div></div>
@@ -932,8 +935,8 @@ function renderTermometro(){
   $("tmAbrir").onclick=()=>{$("tmValor").value=fmtValor(T.teto);$("tmErro").textContent="";$("tmForm").hidden=false;$("tmAbrir").hidden=true;$("tmValor").focus()};
   const fechaSobra=aj=>{c.ajuste=r2((Number(c.ajuste)||0)+aj);c.sobra=0;save();renderAll()};
   if(c.sobra>0){
-    $("tmSobraTeto").onclick=()=>{const v=c.sobra;fechaSobra(v);showToast(`${money(v)} somados ao teto`)};
-    $("tmSobraConta").onclick=()=>{fechaSobra(0);showToast("A sobra ficou na conta")};
+    $("tmSobraNada").onclick=()=>{fechaSobra(0);showToast("Ok, a sobra ficou na conta")};
+    if($("tmIrMetas"))$("tmIrMetas").onclick=()=>go("metas");
     if($("tmSobraMeta"))$("tmSobraMeta").onclick=()=>{const g=db.goals.find(x=>x.id===$("tmMeta").value);if(!g)return;const v=c.sobra;g.saved=r2((Number(g.saved)||0)+v);fechaSobra(0);showToast(`${money(v)} guardados em ${g.name}`)};
   }
 }
@@ -1607,9 +1610,16 @@ $("goalForm").onsubmit=e=>{
   if(!(target>0)){showToast(MSG_VALOR);return}
   if(!name||!deadline){showToast("Preencha nome, valor e prazo");return}
   db.goals=db.goals||[];
-  db.goals.push({id:uid(),name,target,deadline,saved:0});
+  const g={id:uid(),name,target,deadline,saved:0};
+  db.goals.push(g);
   save();e.target.reset();renderV13();
   showToast("Meta criada");
+  // sobra do ciclo esperando destino: pergunta se quer guardar nesta meta nova
+  const c=db.settings.ciclo;
+  if(c&&c.sobra>0)ask(`Sobrou ${money(c.sobra)} no ciclo passado. Guardar na meta "${name}"?`,"Guardar","Agora não").then(sim=>{
+    if(!sim)return;
+    const v=c.sobra;g.saved=r2((Number(g.saved)||0)+v);c.sobra=0;save();renderAll();showToast(`${money(v)} guardados em ${name}`);
+  });
 };
 $("goalList").onclick=async e=>{
   const add=e.target.closest("[data-gadd]"), del=e.target.closest("[data-gdel]");
