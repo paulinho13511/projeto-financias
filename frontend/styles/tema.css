@@ -1,19 +1,21 @@
-/* TravaDin — tema grafite, prata e vermelho (as cores da moeda do logo).
+/* TravaDin — tema "Carbono esportivo": preto puro com textura de fibra de carbono, cinza nos textos e vermelho forte.
    Camada de aparência por cima do app.css: não muda HTML nem scripts. A tela de entrada (#lock) tem estilo próprio (login.css).
-   Regra de cor: prata = ação e destaque; vermelho = trava (despesa, limite estourado, cuidado); verde = entrada de dinheiro.
+   Regra de cor: vermelho = ação e destaque (botões, aba ativa, filete dos cartões) e também despesa/limite;
+   para o alerta continuar chamando atenção, limite estourado e "Cuidado" usam vermelho com brilho; verde = entrada.
    Fontes: só as do sistema (a política de segurança da página não permite fontes externas). */
 
 body:not(.locked){
-  --tv-ink:#eef1f4;--tv-mut:#97a3af;--tv-prata:#d5dbe1;--tv-red:#e5484d;--tv-green:#3ecf8e;--tv-warn:#f5b33a;
-  --tv-metal:linear-gradient(180deg,#f4f6f8,#c9d0d6 55%,#aeb6be);
-  --tv-hair:rgba(213,219,225,.14);
-  --tv-panel:linear-gradient(165deg,rgba(43,52,62,.92),rgba(24,29,36,.94));
-  --bg:#12171d;--card:#1b2129;--card2:rgba(255,255,255,.045);--border:rgba(213,219,225,.14);
-  --accent:#d5dbe1;--ink:#151a20;--text:#eef1f4;--muted:#97a3af;--expense:#e5484d;--income:#3ecf8e;--warn:#f5b33a;
+  --tv-ink:#f2f2f2;--tv-mut:#9a9a9a;--tv-prata:#d6d6d6;--tv-red:#d81e1e;--tv-red2:#ff4d4d;--tv-green:#3ecf8e;--tv-warn:#f5b33a;
+  --tv-metal:linear-gradient(180deg,#e33a3a,#d81e1e 55%,#b51616);   /* "metal" agora é o vermelho dos botões */
+  --tv-hair:#232323;
+  --tv-panel:#121212;
+  --tv-carbono:repeating-linear-gradient(45deg,#141414 0 4px,#0b0b0b 4px 8px),repeating-linear-gradient(-45deg,transparent 0 4px,rgba(0,0,0,.55) 4px 8px);
+  --bg:#000;--card:#121212;--card2:rgba(255,255,255,.04);--border:#232323;
+  --accent:#d81e1e;--ink:#ffffff;--text:#f2f2f2;--muted:#9a9a9a;--expense:#ff4d4d;--income:#3ecf8e;--warn:#f5b33a;
   background:
-    radial-gradient(700px 520px at 50% -10%,rgba(84,100,116,.35),transparent 70%),
-    radial-gradient(520px 420px at 110% 60%,rgba(212,42,42,.07),transparent 70%),
-    #12171d;
+    linear-gradient(rgba(0,0,0,.72),rgba(0,0,0,.72)),
+    var(--tv-carbono),
+    #000;
   background-attachment:fixed;
   color:var(--tv-ink);
 }
@@ -24,133 +26,134 @@ body:not(.locked){
 .app h2{color:var(--tv-mut);letter-spacing:1.2px}
 
 /* topo: mês e botões de ícone */
-#month,.iconbtn{background:#1b2129;border:1px solid rgba(213,219,225,.18);color:var(--tv-ink)}
+#month,.iconbtn{background:#111;border:1px solid #2a2a2a;color:var(--tv-ink)}
 .iconbtn{color:var(--tv-prata)}
-.iconbtn[aria-pressed="true"]{background:var(--tv-prata);color:#151a20;border-color:transparent}
-#month option{background:#1b2129;color:#eef1f4}
+.iconbtn[aria-pressed="true"]{background:var(--tv-red);color:#fff;border-color:transparent}
+#month option{background:#111;color:#f2f2f2}
 
-/* cartões: painel grafite com fio de luz prateado no topo */
-.app .card{position:relative;background:var(--tv-panel);border:1px solid var(--tv-hair);
-  box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 14px 34px rgba(0,0,0,.35)}
+/* cartões: preto fosco com filete vermelho à esquerda */
+.app .card{position:relative;background:var(--tv-panel);border:1px solid var(--tv-hair);border-left:3px solid var(--tv-red);
+  box-shadow:0 14px 34px rgba(0,0,0,.5)}
 
 /* saldo do mês: o cartão "moeda" */
-.hero{background:linear-gradient(160deg,#3a4652,#222a33 62%,#1a2028);color:var(--tv-ink);border:1px solid rgba(213,219,225,.22);
-  box-shadow:0 1px 0 rgba(255,255,255,.12) inset,0 18px 40px rgba(0,0,0,.45)}
-.hero::after{background:radial-gradient(circle,rgba(255,255,255,.14),transparent 70%)}
+.hero{background:linear-gradient(160deg,#1c1c1c,#101010 60%,#0a0a0a);color:var(--tv-ink);border:1px solid #262626;border-left:3px solid var(--tv-red);
+  box-shadow:0 18px 40px rgba(0,0,0,.55)}
+.hero::after{background:radial-gradient(circle,rgba(216,30,30,.22),transparent 70%)}
 .hero .lbl{color:var(--tv-mut);font-weight:600}
-.hero .big{background:linear-gradient(180deg,#ffffff,#dfe4e9 55%,#aeb6be);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
-.hero .big.expense{background:linear-gradient(180deg,#ffd9da,#f08b8e 55%,#e5484d);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
-.pill{background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.07)}
+.hero .big{background:linear-gradient(180deg,#ffffff,#e6e6e6 55%,#b5b5b5);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.hero .big.expense{background:linear-gradient(180deg,#ffd9d9,#ff7a7a 55%,#ff4d4d);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.pill{background:#0a0a0a;border:1px solid #232323}
 .pill .lb{color:var(--tv-mut)}
 .pill .pic{background:rgba(62,207,142,.14);color:var(--tv-green)}
-.pill .pic.out{background:rgba(229,72,77,.14);color:var(--tv-red)}
+.pill .pic.out{background:rgba(255,77,77,.14);color:var(--tv-red2)}
 .hero .income,.hero .expense{color:var(--tv-ink)}
 
 /* gráfico */
 .axis{color:var(--tv-mut)}
 
 /* listas */
-.row,.card .row{background:rgba(255,255,255,.035);border:1px solid rgba(213,219,225,.09)}
+.row,.card .row{background:#0d0d0d;border:1px solid #1f1f1f}
 .row .s,.muted,.hcol span,.cmp .lb,.day{color:var(--tv-mut)}
-.ic{border-radius:14px;color:#151a20;background:var(--tv-metal);font-size:15px}
-.ic.out{background:rgba(229,72,77,.14);color:var(--tv-red);border:0}
+.ic{border-radius:14px;color:#d6d6d6;background:#1d1d1d;font-size:15px}
+.ic.out{background:rgba(255,77,77,.12);color:var(--tv-red2);border:0}
 .income,.row .amt.income{color:var(--tv-green)}
-.expense,.row .amt.expense{color:var(--tv-red)}
+.expense,.row .amt.expense{color:var(--tv-red2)}
 .warn{color:var(--tv-warn)}
-.tag{border:1px solid rgba(213,219,225,.25);background:rgba(213,219,225,.08);color:var(--tv-prata)}
+.tag{border:1px solid #333;background:#161616;color:#cfcfcf}
 .tag.ok{color:var(--tv-green);border-color:rgba(62,207,142,.4);background:rgba(62,207,142,.1)}
-.tag.late{color:#ff9a9d;border-color:rgba(229,72,77,.5);background:rgba(229,72,77,.12)}
+.tag.late{color:#fff;border-color:transparent;background:var(--tv-red);box-shadow:0 0 10px rgba(216,30,30,.6)}
 .tag.soon{color:var(--tv-warn);border-color:rgba(245,179,58,.45);background:rgba(245,179,58,.1)}
 .ico{color:var(--tv-mut)}
-.ico:hover{color:var(--tv-red)}
+.ico:hover{color:var(--tv-red2)}
 .empty{color:var(--tv-mut)}
-.notif{border:1px solid rgba(213,219,225,.12);background:rgba(255,255,255,.04)}
+.notif{border:1px solid #222;background:#0d0d0d}
 .notif .app-n{color:var(--tv-mut)}
 
-/* botões: prata metálico com texto grafite; o vermelho fica reservado para "parar" */
-.primary,.app button.primary,.modal button.primary{background:var(--tv-metal);color:#151a20;border:0;
-  box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 8px 22px rgba(0,0,0,.35)}
-.primary:hover{filter:brightness(1.05)}
-.ghost{background:rgba(213,219,225,.07);border:1px solid rgba(213,219,225,.28);color:var(--tv-prata);font-weight:600}
-.ghost:hover{border-color:rgba(213,219,225,.6);background:rgba(213,219,225,.12)}
+/* botões: vermelho forte com brilho; secundários em preto com borda cinza */
+.primary,.app button.primary,.modal button.primary{background:var(--tv-metal);color:#fff;border:0;
+  box-shadow:0 1px 0 rgba(255,255,255,.25) inset,0 8px 22px rgba(216,30,30,.4)}
+.primary:hover{filter:brightness(1.08)}
+.ghost{background:#111;border:1px solid #333;color:#e6e6e6;font-weight:600}
+.ghost:hover{border-color:var(--tv-red);background:#161616}
 
 /* formulários */
-.app input:not([type=checkbox]):not([type=radio]),.app select,.modal input,.modal select,.sheet input,.sheet select{background:#151a20;border:1px solid rgba(213,219,225,.16);color:var(--tv-ink)}
-.app input::placeholder,.sheet input::placeholder{color:#6f7b87}
-.app input:focus,.app select:focus,.sheet input:focus,.modal input:focus{border-color:var(--tv-prata);box-shadow:0 0 0 3px rgba(213,219,225,.16)}
-.app select option{background:#1b2129;color:#eef1f4}
-.seg{padding:4px;gap:4px;border-radius:16px;background:#151a20;border:1px solid rgba(213,219,225,.14)}
+.app input:not([type=checkbox]):not([type=radio]),.app select,.modal input,.modal select,.sheet input,.sheet select{background:#0d0d0d;border:1px solid #2a2a2a;color:var(--tv-ink)}
+.app input::placeholder,.sheet input::placeholder{color:#6b6b6b}
+.app input:focus,.app select:focus,.sheet input:focus,.modal input:focus{border-color:var(--tv-red);box-shadow:0 0 0 3px rgba(216,30,30,.22)}
+.app select option{background:#111;color:#f2f2f2}
+.seg{padding:4px;gap:4px;border-radius:16px;background:#0d0d0d;border:1px solid #262626}
 .seg label{background:transparent;color:var(--tv-mut);border-radius:12px}
-.seg label:has(input:checked){color:#151a20;background:var(--tv-metal);box-shadow:0 1px 0 rgba(255,255,255,.7) inset}
-.chip{background:rgba(213,219,225,.06);border:1px solid rgba(213,219,225,.2);color:var(--tv-prata)}
-.chip[aria-pressed="true"]{color:#151a20;border-color:transparent;background:var(--tv-metal)}
+.seg label:has(input:checked){color:#fff;background:var(--tv-metal);box-shadow:0 4px 14px rgba(216,30,30,.4)}
+.chip{background:#111;border:1px solid #2e2e2e;color:#e0e0e0}
+.chip[aria-pressed="true"]{color:#fff;border-color:transparent;background:var(--tv-metal)}
 .chk,.chk span{color:var(--tv-ink)}
-.chk input,.imp input{accent-color:#d5dbe1}
+.chk input,.imp input{accent-color:#d81e1e}
 
 /* linha de destaque (total do mês em Contas) */
-.row[style*="var(--accent)"]{background:var(--tv-metal)!important;color:#151a20!important;border:0}
+.row[style*="var(--accent)"]{background:var(--tv-metal)!important;color:#fff!important;border:0}
 
-/* barras de progresso: prata normal, âmbar perto do limite, vermelho estourado */
-.bar,.goal .bar{background:rgba(255,255,255,.08)}
-.bar i,.goal .bar i{background:linear-gradient(90deg,#9aa4ae,#e3e8ec)}
+/* barras de categoria: cinza claro normal, âmbar perto do limite, vermelho com brilho estourado (o alerta continua chamando atenção) */
+.bar,.goal .bar{background:#222}
+.bar i,.goal .bar i{background:linear-gradient(90deg,#8a8a8a,#e0e0e0)}
 .bar i.near{background:linear-gradient(90deg,#d9921f,#f5b33a)}
-.bar i.over{background:linear-gradient(90deg,#b8262b,#e5484d)}
-.goal,.sbox{background:rgba(255,255,255,.04);border:1px solid rgba(213,219,225,.1)}
+.bar i.over{background:linear-gradient(90deg,#ff2b2b,#ff4d4d);box-shadow:0 0 12px rgba(255,43,43,.85)}
+.goal .bar i{background:linear-gradient(90deg,#b51616,#ff4d4d)}
+.goal,.sbox{background:#0d0d0d;border:1px solid #1f1f1f}
 .sbox small,.goal .s,.gh .s{color:var(--tv-mut)}
 
 /* histórico e comparativos */
-.hbar{background:rgba(255,255,255,.08)}
-.hcol.cur .hbar{background:linear-gradient(180deg,#eef1f4,#9aa4ae)}
+.hbar{background:#222}
+.hcol.cur .hbar{background:linear-gradient(180deg,#ff4d4d,#b51616)}
 
 /* observações do mês */
-.tip{border-left:0;background:rgba(255,255,255,.04);border:1px solid rgba(213,219,225,.1)}
+.tip{border-left:0;background:#0d0d0d;border:1px solid #1f1f1f}
 .tip b{color:#fff}
-.tip p{color:#c9d1d8}
+.tip p{color:#cfcfcf}
 
 /* calendário */
 .cal .dow{color:var(--tv-mut)}
-.cal .d{background:rgba(255,255,255,.03);border:1px solid rgba(213,219,225,.08)}
-.cal .d.today{border-color:var(--tv-prata);background:rgba(213,219,225,.12)}
+.cal .d{background:#0d0d0d;border:1px solid #1c1c1c}
+.cal .d.today{border-color:var(--tv-red);background:rgba(216,30,30,.14)}
 .cal .d.blank{background:none;border:none}
 .cal .n{color:var(--tv-mut)}
 .cal .d.today .n{color:#fff}
-.cal .b{background:rgba(229,72,77,.13);color:#ff9a9d;border:1px solid rgba(229,72,77,.3)}
+.cal .b{background:rgba(255,77,77,.13);color:#ff8a8a;border:1px solid rgba(255,77,77,.3)}
 .cal .b.paid{background:rgba(62,207,142,.1);color:var(--tv-green);border-color:rgba(62,207,142,.3)}
 
 /* barra inferior flutuante */
-.bottom{background:rgba(22,27,34,.92)!important;border:1px solid rgba(213,219,225,.16)!important;
+.bottom{background:rgba(14,14,14,.94)!important;border:1px solid #262626!important;
   box-shadow:0 16px 40px rgba(0,0,0,.55)!important;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 .bottom button{color:var(--tv-mut)}
 .bottom button.on{color:#fff;position:relative}
 .bottom button.on:not(.fab)::after{content:"";position:absolute;bottom:2px;width:20px;height:3px;border-radius:3px;background:var(--tv-red)}
-.bottom .fab,.bottom .fab.on{color:#151a20;background:radial-gradient(circle at 35% 28%,#ffffff,#d5dbe1 45%,#8f99a3 100%);
-  box-shadow:0 0 0 3px #12171d,0 0 0 5px rgba(229,72,77,.85),0 12px 26px rgba(0,0,0,.5);animation:tvPulse 3s infinite}
+.bottom .fab,.bottom .fab.on{color:#fff;background:radial-gradient(circle at 35% 28%,#ff6b6b,#d81e1e 50%,#a01212 100%);
+  box-shadow:0 0 0 3px #000,0 8px 24px rgba(216,30,30,.6);animation:tvPulse 3s infinite}
 @keyframes tvPulse{
-  0%,100%{box-shadow:0 0 0 3px #12171d,0 0 0 5px rgba(229,72,77,.85),0 12px 26px rgba(0,0,0,.5)}
-  50%{box-shadow:0 0 0 3px #12171d,0 0 0 9px rgba(229,72,77,.25),0 12px 26px rgba(0,0,0,.5)}
+  0%,100%{box-shadow:0 0 0 3px #000,0 8px 24px rgba(216,30,30,.6)}
+  50%{box-shadow:0 0 0 3px #000,0 0 0 8px rgba(216,30,30,.18),0 8px 30px rgba(216,30,30,.8)}
 }
 @media(prefers-reduced-motion:reduce){.bottom .fab{animation:none}}
 
 /* lateral no computador */
-.side{background:rgba(18,23,29,.9);border-right:1px solid var(--tv-hair);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.side{background:rgba(8,8,8,.94);border-right:1px solid var(--tv-hair);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 .side .brand img{width:34px;height:34px;display:block}
 .side button{color:var(--tv-mut)}
-.side button:hover{background:rgba(213,219,225,.07);color:#fff}
-.side button.on{background:rgba(213,219,225,.1);color:#fff;box-shadow:inset 3px 0 0 var(--tv-red)}
-.side .sideNew,.side .sideNew:hover{background:var(--tv-metal);color:#151a20}
+.side button:hover{background:#151515;color:#fff}
+.side button.on{background:#171717;color:#fff;box-shadow:inset 3px 0 0 var(--tv-red)}
+.side .sideNew,.side .sideNew:hover{background:var(--tv-metal);color:#fff;box-shadow:0 8px 22px rgba(216,30,30,.4)}
 
 /* menu "Mais", diálogos e aviso */
-.modal,.sheet{background:rgba(5,7,10,.62);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
-.sheetbox{background:linear-gradient(180deg,#252d36,#171c22);border-top:1px solid rgba(213,219,225,.35);
+.modal,.sheet{background:rgba(0,0,0,.7);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.sheetbox{background:linear-gradient(180deg,#1a1a1a,#0d0d0d);border-top:2px solid var(--tv-red);
   box-shadow:0 -10px 40px rgba(0,0,0,.55);color:var(--tv-ink)}
-.sheetbox button{background:rgba(255,255,255,.045);border:1px solid rgba(213,219,225,.14);color:var(--tv-ink)}
-.sheetbox button:hover{border-color:rgba(213,219,225,.5)}
-.sheetbox button.close{background:rgba(213,219,225,.1);color:var(--tv-prata);text-align:center;font-weight:600}
-.sheetbox #lockNow{color:#ff9a9d;border-color:rgba(229,72,77,.45)}
+.sheetbox button{background:#141414;border:1px solid #262626;color:var(--tv-ink)}
+.sheetbox button:hover{border-color:var(--tv-red)}
+.sheetbox button.close{background:#1c1c1c;color:#e6e6e6;text-align:center;font-weight:600}
+.sheetbox #lockNow{color:#ff8a8a;border-color:rgba(255,77,77,.45)}
 .sheetbox h2{color:var(--tv-ink)}
-.box{background:linear-gradient(165deg,#2b343e,#181d24);border:1px solid rgba(213,219,225,.25);
+.box{background:linear-gradient(165deg,#1c1c1c,#0d0d0d);border:1px solid #2a2a2a;border-top:2px solid var(--tv-red);
   box-shadow:0 20px 50px rgba(0,0,0,.6);color:var(--tv-ink)}
-.toast{background:var(--tv-metal);color:#151a20;box-shadow:0 12px 32px rgba(0,0,0,.45)}
+.toast{background:var(--tv-metal);color:#fff;box-shadow:0 12px 32px rgba(0,0,0,.5)}
 
 /* celular: o mês cabe inteiro */
 @media(max-width:480px){.top{gap:6px}#month{max-width:126px;min-width:0;font-size:12px;padding:10px 4px 10px 8px}.top .ttl h1{font-size:21px}}
@@ -166,24 +169,25 @@ body:not(.locked){
 .goal .gr button{flex:0 0 auto}
 
 /* botão do seletor de arquivo (importar extrato) */
-.app input[type=file]::file-selector-button{margin-right:10px;padding:8px 12px;border-radius:10px;border:1px solid rgba(213,219,225,.3);background:rgba(213,219,225,.08);color:var(--tv-prata);font-weight:600}
+.app input[type=file]::file-selector-button{margin-right:10px;padding:8px 12px;border-radius:10px;border:1px solid #333;background:#161616;color:#e6e6e6;font-weight:600}
 
 /* saldo em contas (Início e Carteira) */
-.heroAcc{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;padding:11px 14px;border-radius:16px;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.07);font-size:13px;color:var(--tv-mut)}
+.heroAcc{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;padding:11px 14px;border-radius:16px;background:#0a0a0a;border:1px solid #232323;font-size:13px;color:var(--tv-mut)}
 .heroAcc b{font-size:15px;color:var(--tv-ink);white-space:nowrap}
 .amt.neutral{color:var(--tv-prata)}
-.ic.xfer{font-size:19px;background:rgba(213,219,225,.12);color:var(--tv-prata)}
+.ic.xfer{font-size:19px;background:#1d1d1d;color:#e0e0e0}
 
-/* Como estou: barra prata, sinal com as cores de sempre */
-.ceBarra>div{background:linear-gradient(90deg,#9aa4ae,#e3e8ec)}
-.luz.vermelho{background:var(--tv-red)}
+/* Como estou: barra vermelha (identidade), sinal com as cores de sempre */
+.ceBarra{background:#222!important}
+.ceBarra>div{background:linear-gradient(90deg,#b51616,#ff4d4d)}
+.luz.vermelho{background:#ff2b2b}
 
 /* ---------- Etapa 1: interações e telas ---------- */
 /* foco visível para quem usa teclado (acessibilidade) */
-.app :focus-visible,.sheet :focus-visible,.modal :focus-visible,.bottom :focus-visible,.side :focus-visible{outline:2px solid var(--tv-prata);outline-offset:2px}
+.app :focus-visible,.sheet :focus-visible,.modal :focus-visible,.bottom :focus-visible,.side :focus-visible{outline:2px solid #fff;outline-offset:2px}
 /* linhas: resposta ao passar o mouse e ao tocar */
 .row{transition:background .2s ease,border-color .2s ease,transform .15s ease}
-@media(hover:hover){.app .row:hover{background:rgba(255,255,255,.06);border-color:rgba(213,219,225,.16)}}
+@media(hover:hover){.app .row:hover{background:#141414;border-color:#333}}
 .ic svg{width:20px;height:20px;display:block}
 .ic.in{background:rgba(62,207,142,.14);color:var(--tv-green)}
 /* atalhos de lançamento: a fileira rola de lado e some suave na borda, mostrando que há mais */

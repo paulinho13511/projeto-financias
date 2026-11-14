@@ -604,11 +604,11 @@ function renderChart(){
   cum.forEach((v,i)=>{line+=(i?"L":"M")+xs(i).toFixed(1)+" "+ys(v).toFixed(1)});
   const area=line+` L${xs(n-1).toFixed(1)} ${H-P} L${xs(0).toFixed(1)} ${H-P} Z`;
   const idx=chartDay!==null?chartDay:(sel===mKey(today())?Math.min(parseInt(today().slice(8,10),10)-1,n-1):n-1);
-  const dot=`<line x1="${xs(idx).toFixed(1)}" y1="${P}" x2="${xs(idx).toFixed(1)}" y2="${H-P}" stroke="#ffffff40" stroke-dasharray="3 3"/><circle cx="${xs(idx).toFixed(1)}" cy="${ys(cum[idx]).toFixed(1)}" r="6" fill="#e5484d" stroke="#12171d" stroke-width="3"/>`;
+  const dot=`<line x1="${xs(idx).toFixed(1)}" y1="${P}" x2="${xs(idx).toFixed(1)}" y2="${H-P}" stroke="#ffffff40" stroke-dasharray="3 3"/><circle cx="${xs(idx).toFixed(1)}" cy="${ys(cum[idx]).toFixed(1)}" r="6" fill="#ffffff" stroke="#000" stroke-width="3"/>`;
   $("spendChart").innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gastos acumulados no mês">
-    <defs><linearGradient id="gArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d5dbe1" stop-opacity=".28"/><stop offset="1" stop-color="#d5dbe1" stop-opacity="0"/></linearGradient></defs>
+    <defs><linearGradient id="gArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff4d4d" stop-opacity=".3"/><stop offset="1" stop-color="#ff4d4d" stop-opacity="0"/></linearGradient></defs>
     <path d="${area}" fill="url(#gArea)"/>
-    <path d="${line}" fill="none" stroke="#e3e8ec" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="${line}" fill="none" stroke="#ff4d4d" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
     ${dot}</svg>`;
   $("chartTotal").textContent=money(cum[idx]||0);
   $("chartLabel").textContent=`Gastos acumulados até o dia ${idx+1}`;
@@ -1167,7 +1167,7 @@ document.querySelectorAll('input[name="type"]').forEach(r=>r.addEventListener("c
 $("txParcels").addEventListener("input",updateTxParc);
 $("txAmt").addEventListener("input",updateTxParc);
 /* ---------- v13: privacidade, atalhos, filtros, exportação/importação, metas, renda variável, assinaturas, gráficos ---------- */
-const PAL=["#d5dbe1","#e5484d","#f5b33a","#3ecf8e","#5aa9e6","#a98bd9","#f08b8e","#8f99a3"];
+const PAL=["#d6d6d6","#ff4d4d","#f5b33a","#3ecf8e","#5aa9e6","#a98bd9","#f08b8e","#8f99a3"];
 const fCards=new Set();
 function cardName(id){const c=(db.cards||[]).find(x=>x.id===id);return c?c.name:""}
 function brDate(s){const[y,m,d]=parts(s);return `${pad(d)}/${pad(m)}/${y}`}

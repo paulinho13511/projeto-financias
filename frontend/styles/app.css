@@ -1,10 +1,10 @@
 :root{
   --warn:#fbbf24;
   color-scheme:dark;
-  --bg:#12171d; --card:#1b2129; --card2:#232a33; --border:#2f3843;
-  --accent:#d5dbe1; --ink:#151a20;
-  --text:#f4f5f8; --muted:#8a8fa3;
-  --expense:#e5484d; --income:#3ecf8e; --warn:#f5b33a;
+  --bg:#000000; --card:#121212; --card2:#1a1a1a; --border:#262626;
+  --accent:#d81e1e; --ink:#ffffff;
+  --text:#f2f2f2; --muted:#9a9a9a;
+  --expense:#ff4d4d; --income:#3ecf8e; --warn:#f5b33a;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{min-height:100%}
@@ -129,7 +129,7 @@ form.f{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(min-width:721px){.bottom{width:min(560px,calc(100% - 24px))}}
 .bottom button{background:none;border:0;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;font-weight:600;min-width:56px;min-height:48px;padding:4px}
 .bottom button.on{color:var(--accent)}
-.bottom .fab{width:62px;height:62px;border-radius:50%;background:var(--accent);color:var(--ink);margin-top:-34px;box-shadow:0 10px 28px rgba(213,219,225,.38);justify-content:center;min-width:62px;min-height:62px}
+.bottom .fab{width:62px;height:62px;border-radius:50%;background:var(--accent);color:var(--ink);margin-top:-34px;box-shadow:0 10px 28px rgba(255,255,255,.38);justify-content:center;min-width:62px;min-height:62px}
 .bottom .fab span{display:none}
 .bottom .fab.on{color:var(--ink)}
 
@@ -236,7 +236,7 @@ body.locked .app,body.locked .bottom{display:none}
 /* v16: efeitos visuais */
 /* Barra inferior com vidro (glassmorphism) */
 .bottom {
-  background: rgba(26, 35, 57, 0.75) !important;
+  background: rgba(14, 14, 14, 0.9) !important;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -279,7 +279,7 @@ body.locked .app,body.locked .bottom{display:none}
 }
 /* v17: tela de entrada */
 .lock[hidden]{display:none!important}
-.lock{background:radial-gradient(circle at 20% 10%,rgba(213,219,225,.08),transparent 45%),var(--bg)}
+.lock{background:radial-gradient(circle at 20% 10%,rgba(255,255,255,.08),transparent 45%),var(--bg)}
 
 /* v18: login em tela cheia, logo no centro, fundo com movimento de câmera */
 .lock{overflow:hidden;background:var(--bg)}
@@ -292,7 +292,7 @@ body.locked .app,body.locked .bottom{display:none}
 .side{display:none}
 body.locked .side{display:none!important}
 @media(min-width:1000px){
-  .side{display:flex;flex-direction:column;gap:6px;position:fixed;left:0;top:0;bottom:0;width:232px;padding:26px 16px;background:#0f1628;border-right:1px solid var(--border);z-index:40}
+  .side{display:flex;flex-direction:column;gap:6px;position:fixed;left:0;top:0;bottom:0;width:232px;padding:26px 16px;background:#080808;border-right:1px solid var(--border);z-index:40}
   .side .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;margin:0 8px 22px}
   .side button{display:flex;align-items:center;gap:12px;background:none;border:0;color:var(--muted);padding:11px 12px;border-radius:14px;font-weight:600;font-size:14px;text-align:left;min-height:44px}
   .side button:hover{background:var(--card2);color:var(--text)}
@@ -311,29 +311,29 @@ body.locked .side{display:none!important}
 }
 
 /* v24: base escura (o tema.css por cima define as cores do TravaDin) */
-:root{--bg:#12171d;--card:#1b2129;--card2:#232a33;--border:#2f3843;--accent:#d5dbe1;--ink:#151a20;--text:#eef1f4;--muted:#97a3af;--expense:#e5484d;--income:#3ecf8e;--warn:#f5b33a}
+:root{--bg:#000000;--card:#121212;--card2:#1a1a1a;--border:#262626;--accent:#d81e1e;--ink:#ffffff;--text:#f2f2f2;--muted:#9a9a9a;--expense:#ff4d4d;--income:#3ecf8e;--warn:#f5b33a}
 body{background:var(--bg)}
 .card{border:1px solid var(--border)}
-.hero{background:linear-gradient(160deg,#3a4652,#222a33 62%,#1a2028);color:var(--text);border:1px solid rgba(213,219,225,.22)}
-.hero::after{background:radial-gradient(circle,rgba(213,219,225,.42),transparent 70%)}
+.hero{background:linear-gradient(160deg,#1c1c1c,#101010 60%,#0a0a0a);color:var(--text);border:1px solid #262626}
+.hero::after{background:radial-gradient(circle,rgba(255,255,255,.42),transparent 70%)}
 .hero .lbl{color:var(--muted)}
 .hero .income,.hero .expense{color:inherit}
 .hero .big.expense{color:var(--expense)}
 .pill{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.05)}
 .pill .lb{color:var(--muted)}
-.pill .pic{background:rgba(213,219,225,.2);color:#d5dbe1}
+.pill .pic{background:rgba(255,255,255,.2);color:#d5dbe1}
 .pill .pic.out{background:rgba(248,113,113,.14);color:var(--expense)}
-.ic{border-radius:14px;background:rgba(213,219,225,.18);color:#d5dbe1;font-size:15px}
+.ic{border-radius:14px;background:rgba(255,255,255,.18);color:#d5dbe1;font-size:15px}
 .ic.out{background:rgba(248,113,113,.12);color:var(--expense);border:0}
 .row{border:1px solid transparent}
 .card .row{background:var(--card2)}
 .row .amt.income,.income{color:var(--income)}
 .bottom{background:rgba(19,21,28,.88)!important;border-color:rgba(255,255,255,.07)!important;box-shadow:0 18px 44px rgba(0,0,0,.55)}
 .bottom button.on{color:#d5dbe1}
-.bottom .fab{box-shadow:0 10px 28px rgba(213,219,225,.45)}
+.bottom .fab{box-shadow:0 10px 28px rgba(255,255,255,.45)}
 .side{background:#0c0d13}
-.side button.on{background:rgba(213,219,225,.16);color:#d5dbe1}
-.side .sideNew{background:linear-gradient(180deg,#f4f6f8,#c9d0d6 55%,#aeb6be);color:#151a20}
+.side button.on{background:rgba(255,255,255,.16);color:#d5dbe1}
+.side .sideNew{background:linear-gradient(180deg,#e33a3a,#d81e1e 55%,#b51616);color:#fff}
 .tag.ok{background:rgba(52,211,153,.14);color:var(--income)}
 .bar{background:rgba(255,255,255,.07)}
 .sheetbox button:hover{border-color:var(--accent)}
@@ -354,7 +354,7 @@ body{background:var(--bg)}
 .ceGrande{display:block;font-size:30px;letter-spacing:-.6px;margin:2px 0}
 .ceGrande.neg{color:var(--expense)}
 .ceBarra{height:12px;border-radius:99px;background:var(--card2);margin-top:14px;overflow:hidden}
-.ceBarra>div{height:100%;background:linear-gradient(90deg,#9aa4ae,#e3e8ec);border-radius:99px}
+.ceBarra>div{height:100%;background:linear-gradient(90deg,#b51616,#ff4d4d);border-radius:99px}
 .ceNota{color:var(--muted);font-size:14px;line-height:1.45;margin-top:8px}
 .ceItem{display:flex;align-items:center;gap:12px;background:var(--card2);border-radius:16px;padding:13px 14px}
 .ceItem+.ceItem{margin-top:8px}
