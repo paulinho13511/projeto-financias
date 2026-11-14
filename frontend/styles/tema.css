@@ -203,3 +203,42 @@ body:not(.locked){
 }
 /* números de dinheiro sempre alinhados */
 .amt,.big,.v{font-variant-numeric:tabular-nums}
+
+/* ---------- Lançamento Relâmpago ---------- */
+#rlSheet .sheetbox.rl{gap:12px;max-height:94vh;max-height:94dvh;overflow-y:auto;border-top:2px solid var(--tv-red)}
+@media(min-width:1000px){#rlSheet{place-items:center}#rlSheet .sheetbox.rl{border-radius:24px;border:1px solid #2a2a2a;border-top:2px solid var(--tv-red)}}
+.rl-topo{display:flex;justify-content:space-between;align-items:center}
+.rl-topo h2{margin:0;font-size:18px;color:#fff;text-transform:none;letter-spacing:0}
+#rlSheet .rl-x{width:40px;min-height:40px;padding:0;border-radius:50%;text-align:center;font-size:22px;line-height:1;background:#161616}
+.rl-valor{display:flex;align-items:center;gap:8px;background:#0d0d0d;border:1px solid #2a2a2a;border-bottom:2px solid var(--tv-red);border-radius:16px;padding:4px 14px;cursor:text}
+.rl-valor span{font-size:22px;font-weight:700;color:var(--tv-mut)}
+#rlSheet .rl-valor input{flex:1;min-width:0;background:transparent!important;border:0!important;box-shadow:none!important;padding:10px 0;font-size:36px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums}
+.rl-lbl{font-size:12px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--tv-mut);margin:2px 0 6px}
+#rlSheet .chip{min-height:40px;padding:8px 14px;border-radius:999px;text-align:center;font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:6px;flex:0 0 auto}
+#rlSheet .chip[aria-pressed="true"]{background:var(--tv-metal);color:#fff;border-color:transparent;box-shadow:0 4px 14px rgba(216,30,30,.35)}
+.rl-chip small{font-size:11px;opacity:.65;font-weight:500}
+.rl-chip svg{width:16px;height:16px;flex:0 0 auto}
+.rl-meios,.rl-cats{flex-wrap:wrap;overflow:visible}
+.rl-usados{-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}
+.rl-linha{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.rl-linha input[type=date]{width:150px}
+.rl-parc{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:40px}
+.rl-parc input{width:150px}
+.rl-erro{color:#ff8a8a;font-size:13px;min-height:18px}
+#rlSheet .rl-ok{min-height:56px;font-size:17px;text-align:center;border-radius:16px}
+.rl-vazio{font-size:13px;color:var(--tv-mut);display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+#rlSheet .rl-vazio .ghost{min-height:36px;padding:6px 12px;text-align:center}
+.rl-atalho .primary{width:100%}
+.rl-atalho .muted{margin-top:10px}
+@media(max-width:380px){.rl-linha{grid-template-columns:1fr}.rl-linha input[type=date]{width:100%}}
+/* ajustes do Relâmpago: nada passa da largura da janela; 3 tipos lado a lado; botão Lançar vermelho */
+#rlSheet .sheetbox.rl{grid-template-columns:minmax(0,1fr)}
+#rlSheet .sheetbox.rl>*{min-width:0}
+#rlSheet .rl-valor input{width:100%}
+#rlSheet .rl-valor input:focus,#rlSheet .rl-valor input:focus-visible{outline:none}
+.rl-valor:focus-within{box-shadow:0 0 0 3px rgba(216,30,30,.22)}
+#rlSheet .rl-tipos{grid-template-columns:repeat(3,minmax(0,1fr))}
+#rlSheet .rl-tipos label{text-align:center}
+#rlSheet .rl-ok{background:var(--tv-metal);color:#fff;border:0;box-shadow:0 8px 22px rgba(216,30,30,.4)}
+.rl-parc .chk{display:inline-flex;align-items:center;gap:8px;width:auto}
+#rlSheet input[type=checkbox]{width:20px;height:20px;padding:0;margin:0;flex:0 0 auto;accent-color:#d81e1e}

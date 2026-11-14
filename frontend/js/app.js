@@ -99,6 +99,7 @@ function save(){
       const expected=dbUpdatedAt;   // lido aqui, dentro da fila, para refletir a gravação anterior
       const r=await API.put("/api/dados",{data:snapshot,versao:expected});
       dbUpdatedAt=r.versao;
+      filaConfirmar(snapshot);   // o que estava esperando no aparelho já está na nuvem
     })
     .catch(err=>{
       if(err&&err.status===409)dbConflict=true;
@@ -108,7 +109,9 @@ function save(){
         lastSaveErr=now;
         showToast(dbConflict
           ? "Dados alterados em outro aparelho. Recarregue a página; a última alteração não foi salva."
-          : "Não foi possível salvar na nuvem. Verifique a conexão.");
+          : (err&&err.rede)||!navigator.onLine
+            ? "Sem internet: ficou guardado neste aparelho e será enviado quando a conexão voltar."
+            : "Não foi possível salvar na nuvem. Verifique a conexão.");
       }
     });
 }
@@ -133,8 +136,10 @@ function showLock(){
 async function startSession(){
   const {me,data}=await fetchSession();
   db=data;sessionUser={email:me.email};isAdmin=!!me.is_admin;
+  const recuperados=filaMesclar();
   try{localStorage.setItem("mf_sessao","1")}catch(_){}   // só uma dica para mostrar o esqueleto ao reabrir; a sessão de verdade é o cookie
   enterApp();
+  if(recuperados){save();showToast(`${recuperados} lançamento(s) feito(s) sem internet foram enviados`)}
 }
 function enterApp(){
   $("lock").hidden=true;
@@ -148,7 +153,7 @@ function enterApp(){
 async function lockApp(reason){
   db=null;sessionUser=null;isAdmin=false;dbUpdatedAt=null;dbConflict=false;clearTimeout(idleTimer);
   $("menu").hidden=true;$("modal").hidden=true;$("aclSheet").hidden=true;$("pwSheet").hidden=true;
-  $("payModal").hidden=true;$("editSheet").hidden=true;   // nada de diálogo aberto por cima da tela de entrada
+  $("payModal").hidden=true;$("editSheet").hidden=true;$("rlSheet").hidden=true;   // nada de diálogo aberto por cima da tela de entrada
   $("payYes").onclick=null;$("payNo").onclick=null;$("mYes").onclick=null;$("mNo").onclick=null;
   document.body.classList.add("locked");
   try{localStorage.removeItem("mf_sessao")}catch(_){}
@@ -908,8 +913,6 @@ function renderCarteira(){
     const b=accBalance(a);
     return `<div class="row"><div class="ic">${esc(a.name.charAt(0).toUpperCase())}</div><div class="rmain"><div class="t">${esc(a.name)}</div><div class="s">${ACC_TYPES[a.type]||"Conta"} · saldo inicial ${money(a.initial||0)}</div></div><div class="actions"><span class="amt ${b<0?"expense":"income"}">${money(b)}</span><button class="ico" title="Excluir conta" data-act="delAcc" data-id="${esc(a.id)}">×</button></div></div>`;
   }).join(""):`<div class="empty">Cadastre suas contas para acompanhar o saldo de cada uma</div>`;
-  $("txAcc").innerHTML=`<option value="">Sem conta</option>`+accs.map(a=>`<option value="${esc(a.id)}">${esc(a.name)}</option>`).join("");
-  $("txAcc").hidden=!accs.length;
   renderTransfer(accs);
   renderStatement(accs);
 }
@@ -980,7 +983,6 @@ async function delAcc(id){
 }
 function populateCardSelects(){
   const opts=`<option value="">Sem cartão</option>`+(db.cards||[]).map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
-  $("txCard").innerHTML=opts;
   $("bCard").innerHTML=opts;
 }
 $("cardForm").onsubmit=e=>{
@@ -1022,43 +1024,6 @@ $("month").onchange=e=>{sel=e.target.value;replayAnim=true;renderAll()};
 $("search").oninput=renderFeed;
 $("filterType").onchange=renderFeed;
 
-function updateTxParc(){
-  const parc=$("txParc").value==="parc";
-  $("txParcBox").hidden=!parc;
-  $("txParcels").required=parc;
-  const n=parseInt($("txParcels").value,10)||0, a=parseValor($("txAmt").value)||0;
-  $("txParcInfo").textContent=parc&&n>0&&a>0?`${n}x de ${money(a/n)}`:"";
-}
-$("txForm").onsubmit=e=>{
-  e.preventDefault();
-  const type=document.querySelector('input[name="type"]:checked').value;
-  const date=$("txDate").value;
-  const desc=$("txDesc").value.trim(), amount=parseValor($("txAmt").value);
-  if(!(amount>0)){showToast(MSG_VALOR);return}
-  const category=$("txCat").value, card=type==="income"?null:($("txCard").value||null);   // receita não é compra no cartão
-  const account=card?null:($("txAcc").value||null);   // compra no cartão sai da conta só quando a fatura é paga
-  if($("txParc").value==="parc"){
-    if(type==="income"){showToast("Parcelamento só vale para despesas");return}
-    const n=Math.min(120,Math.max(2,parseInt($("txParcels").value,10)));
-    const {p,last}=splitParcel(amount,n);
-    const pb={id:uid(),kind:"parcelada",name:desc,amount:p,parcels:n,start:mKey(date),day:parseInt(date.slice(8,10),10),category,card,paid:[]};
-    if(last!==p)pb.last=last;
-    db.bills.push(pb);
-    showToast(`Compra parcelada em ${n}x cadastrada`);
-  }else{
-    const t={id:uid(),type,desc,amount,date,category,card,created:Date.now()};
-    if(account)t.account=account;
-    db.tx.push(t);
-    showToast("Lançamento adicionado");
-  }
-  save();
-  e.target.reset();
-  $("txDate").value=today();
-  syncTxType();   // o reset volta para Despesa: mostra de novo cartão e parcelamento
-  updateTxParc();
-  sel=mKey(date);
-  renderAll();
-};
 
 function syncBillForm(){
   const kind=document.querySelector('input[name="kind"]:checked').value;
@@ -1147,25 +1112,147 @@ $("notifBtn").onclick=async()=>{
   }
 };
 
+/* ---------- Lançamento Relâmpago ----------
+   Abre por cima de qualquer tela pelo "+". Valor primeiro, "Pagou com" obrigatório (conta ou cartão: nada de
+   lançamento sem origem, o "saldo fantasma"), categoria em um toque, descrição opcional.
+   Compra no cartão não tira dinheiro da conta (sai quando a fatura é paga). Sem internet: o lançamento fica numa
+   fila neste aparelho (só os lançamentos novos, ligados ao e-mail de quem lançou) e é enviado quando a conexão volta. */
+const FILA="tv_fila";
+function filaLer(){
+  try{const f=JSON.parse(localStorage.getItem(FILA)||"null");return f&&sessionUser&&f.email===sessionUser.email&&Array.isArray(f.itens)?f.itens:[]}catch(e){return []}
+}
+function filaGravar(itens){
+  try{itens.length?localStorage.setItem(FILA,JSON.stringify({email:sessionUser.email,itens})):localStorage.removeItem(FILA)}catch(e){}
+}
+function filaPor(item){filaGravar([...filaLer(),item])}
+// tira da fila o que a gravação levou para a nuvem
+function filaConfirmar(snap){
+  const fila=filaLer();if(!fila.length)return;
+  const ids=new Set([...(snap.tx||[]).map(t=>t.id),...(snap.bills||[]).map(b=>b.id)]);
+  filaGravar(fila.filter(i=>!ids.has(i.obj.id)));
+}
+// ao entrar: o que ficou só no aparelho volta para os dados (sem duplicar)
+function filaMesclar(){
+  let n=0;
+  filaLer().forEach(i=>{
+    const lista=i.kind==="bill"?db.bills:db.tx;
+    if(!lista.some(x=>x.id===i.obj.id)){lista.push(i.obj);n++}
+  });
+  return n;
+}
+window.addEventListener("online",()=>{if(db&&sessionUser&&!dbConflict&&filaLer().length)save()});
+
+const RL={tipo:"expense",meio:"",de:"",para:"",cat:""};
+function rlOpcoes(){
+  const accs=(db.accounts||[]).map(a=>({k:"a:"+a.id,nome:a.name,s:""}));
+  const cards=(db.cards||[]).map(c=>({k:"c:"+c.id,nome:c.name,s:"Cartão"}));
+  return RL.tipo==="expense"?[...accs,...cards]:accs;
+}
+const rlChip=(grupo,k,rot,sub,on,ico)=>`<button type="button" class="chip rl-chip" data-rl="${grupo}" data-v="${esc(k)}" aria-pressed="${on}">${ico||""}<span>${esc(rot)}</span>${sub?`<small>${esc(sub)}</small>`:""}</button>`;
+function rlRender(){
+  const t=RL.tipo;
+  document.querySelectorAll('#rlSheet input[name="rlTipo"]').forEach(r=>{r.checked=r.value===t});
+  $("rlMeioBox").hidden=t==="transfer";$("rlTrBox").hidden=t!=="transfer";$("rlCatBox").hidden=t==="transfer";$("rlParcBox").hidden=t!=="expense";
+  $("rlMeioLbl").textContent=t==="income"?"Recebeu em":"Pagou com";
+  const ops=rlOpcoes();
+  if(!ops.some(o=>o.k===RL.meio))RL.meio="";
+  $("rlMeios").innerHTML=ops.length?ops.map(o=>rlChip("meio",o.k,o.nome,o.s,RL.meio===o.k)).join("")
+    :`<div class="rl-vazio">${t==="income"?"Cadastre a conta onde o dinheiro entra.":"Cadastre uma conta ou um cartão para lançar."} <button type="button" class="ghost" data-act="rlIrCarteira">Ir para Carteira</button></div>`;
+  const accs=(db.accounts||[]);
+  const lista=(g,v)=>accs.length?accs.map(a=>rlChip(g,a.id,a.name,"",v===a.id)).join(""):`<div class="rl-vazio">Cadastre pelo menos duas contas em Carteira. <button type="button" class="ghost" data-act="rlIrCarteira">Ir para Carteira</button></div>`;
+  $("rlDe").innerHTML=lista("de",RL.de);$("rlPara").innerHTML=lista("para",RL.para);
+  const cats=t==="income"?ICATS:CATS;
+  if(!cats.includes(RL.cat))RL.cat=t==="income"?(db.settings.ultimaCatRec||ICATS[0]):(db.settings.ultimaCat||"");
+  $("rlCats").innerHTML=cats.map(c=>rlChip("cat",c,c,"",RL.cat===c,catIcon(c))).join("");
+  rlParcInfo();
+}
+function rlUsados(){
+  const freq={};
+  db.tx.filter(x=>x.type==="expense").forEach(x=>{const k=(x.desc||"").trim();if(!k)return;const f=freq[k]||{desc:k,n:0};f.n++;f.cat=x.category;f.amt=x.amount;f.meio=x.card?"c:"+x.card:(x.account?"a:"+x.account:"");freq[k]=f});
+  const top=Object.values(freq).sort((a,b)=>b.n-a.n).slice(0,6);
+  $("rlUsados").hidden=!top.length;
+  $("rlUsados").innerHTML=top.map((f,i)=>`<button type="button" class="chip" data-usado="${i}">${esc(f.desc)}</button>`).join("");
+  $("rlUsados").querySelectorAll("[data-usado]").forEach(b=>b.onclick=()=>{
+    const f=top[+b.dataset.usado];
+    RL.tipo="expense";RL.cat=f.cat;if(f.meio)RL.meio=f.meio;
+    $("rlDesc").value=f.desc;$("rlValor").value=fmtValor(f.amt);rlRender();$("rlValor").focus();
+  });
+}
+function rlParcInfo(){
+  const on=$("rlParc").checked;$("rlParcelas").hidden=!on;
+  const n=parseInt($("rlParcelas").value,10)||0,v=parseValor($("rlValor").value)||0;
+  $("rlParcInfo").textContent=on&&n>1&&v>0?`${n}x de ${money(v/n)}`:"";
+}
+function rlErro(msg,foco){$("rlErro").textContent=msg;if(foco)$(foco).focus()}
+function abrirRelampago(){
+  if(!db)return;
+  $("menu").hidden=true;
+  RL.tipo="expense";RL.de="";RL.para="";RL.cat="";
+  RL.meio=db.settings.ultimoMeio||"";
+  $("rlValor").value="";$("rlDesc").value="";$("rlData").value=today();$("rlParc").checked=false;$("rlParcelas").value="";$("rlErro").textContent="";
+  rlUsados();rlRender();
+  $("rlSheet").hidden=false;
+  $("rlValor").focus();   // dentro do toque: no celular o teclado numérico já abre
+}
+$("rlFechar").onclick=()=>{$("rlSheet").hidden=true};
+$("rlSheet").addEventListener("click",e=>{
+  if(e.target===$("rlSheet")){$("rlSheet").hidden=true;return}   // toque fora da janela fecha
+  const b=e.target.closest("[data-rl]");if(!b)return;
+  const g=b.dataset.rl,v=b.dataset.v;
+  if(g==="meio")RL.meio=v;else if(g==="de")RL.de=v;else if(g==="para")RL.para=v;else if(g==="cat")RL.cat=v;
+  $("rlErro").textContent="";rlRender();
+});
+document.querySelectorAll('#rlSheet input[name="rlTipo"]').forEach(r=>r.addEventListener("change",()=>{RL.tipo=r.value;$("rlErro").textContent="";rlRender()}));
+$("rlParc").onchange=()=>{rlParcInfo();if($("rlParc").checked)$("rlParcelas").focus()};
+$("rlParcelas").addEventListener("input",rlParcInfo);
+$("rlValor").addEventListener("input",rlParcInfo);
+$("rlValor").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("rlSalvar").click()}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("rlSheet").hidden)$("rlSheet").hidden=true});
+$("rlSalvar").onclick=()=>{
+  const t=RL.tipo,v=parseValor($("rlValor").value);
+  if(!(v>0))return rlErro(MSG_VALOR,"rlValor");
+  const valor=Math.round(v*100)/100,data=$("rlData").value||today(),desc=$("rlDesc").value.trim();
+  let item,resumo;
+  if(t==="transfer"){
+    if(!RL.de||!RL.para)return rlErro("Escolha de qual conta sai e para qual vai.");
+    if(RL.de===RL.para)return rlErro("Escolha duas contas diferentes.");
+    const obj={id:uid(),type:"transfer",desc:desc||"Transferência",amount:valor,date:data,category:"Transferência",from:RL.de,to:RL.para,created:Date.now()};
+    db.tx.push(obj);item={kind:"tx",obj};resumo=`Transferido: ${money(valor)}`;
+  }else{
+    if(!RL.meio)return rlErro(t==="income"?"Escolha em qual conta o dinheiro entrou.":"Escolha onde pagou: conta ou cartão.");
+    const [k,id]=RL.meio.split(":");
+    const card=k==="c"?id:null,account=k==="a"?id:null;
+    const category=RL.cat||(t==="income"?ICATS[0]:"Outros");
+    if(t==="expense"&&$("rlParc").checked){
+      const n=parseInt($("rlParcelas").value,10);
+      if(!(n>=2&&n<=120))return rlErro("Diga em quantas parcelas (de 2 a 120).","rlParcelas");
+      const {p,last}=splitParcel(valor,n);
+      const obj={id:uid(),kind:"parcelada",name:desc||category,amount:p,parcels:n,start:mKey(data),day:parseInt(data.slice(8,10),10),category,card,paid:[]};
+      if(last!==p)obj.last=last;
+      db.bills.push(obj);item={kind:"bill",obj};resumo=`Parcelado em ${n}x de ${money(p)}`;
+    }else{
+      const obj={id:uid(),type:t,desc:desc||category,amount:valor,date:data,category,card:t==="income"?null:card,created:Date.now()};
+      if(account)obj.account=account;
+      db.tx.push(obj);item={kind:"tx",obj};resumo=`${t==="income"?"Recebido":"Lançado"}: ${money(valor)} · ${category}`;
+    }
+    db.settings.ultimoMeio=RL.meio;
+    if(t==="income")db.settings.ultimaCatRec=category;else db.settings.ultimaCat=category;
+  }
+  filaPor(item);
+  save();
+  $("rlSheet").hidden=true;
+  sel=mKey(data);
+  renderAll();
+  showToast(resumo);
+};
+
 /* ---------- inicialização ---------- */
-$("txCat").innerHTML=[...new Set([...CATS,...ICATS])].map(c=>`<option>${c}</option>`).join("");
 $("bCat").innerHTML=CATS.map(c=>`<option>${c}</option>`).join("");
-$("txDate").value=today();
 $("trDate").value=today();
 document.querySelectorAll('input[name="kind"]').forEach(r=>r.onchange=syncBillForm);
 ["bAmt","bParcels","bStart"].forEach(id=>$(id).addEventListener("input",updateParcTotal));
 syncBillForm();
 $("bEndType").onchange=syncBillForm;
-$("txParc").onchange=updateTxParc;
-// Cartão e parcelamento só fazem sentido em despesa
-function syncTxType(){
-  const inc=document.querySelector('input[name="type"]:checked').value==="income";
-  $("txCard").hidden=inc;if(inc)$("txCard").value="";
-  $("txParc").hidden=inc;if(inc){$("txParc").value="avista";updateTxParc()}
-}
-document.querySelectorAll('input[name="type"]').forEach(r=>r.addEventListener("change",syncTxType));
-$("txParcels").addEventListener("input",updateTxParc);
-$("txAmt").addEventListener("input",updateTxParc);
 /* ---------- v13: privacidade, atalhos, filtros, exportação/importação, metas, renda variável, assinaturas, gráficos ---------- */
 const PAL=["#d6d6d6","#ff4d4d","#f5b33a","#3ecf8e","#5aa9e6","#a98bd9","#f08b8e","#8f99a3"];
 const fCards=new Set();
@@ -1182,27 +1269,6 @@ function setPrivacy(v){
 }
 $("privBtn").onclick=()=>setPrivacy(!privacy);
 $("privBtn").setAttribute("aria-pressed",String(privacy));
-
-/* atalhos: lançamentos mais usados */
-function renderQuick(){
-  const freq={};
-  db.tx.filter(t=>t.type==="expense").forEach(t=>{
-    const k=t.desc.trim();if(!k)return;
-    const f=freq[k]||{desc:k,cat:t.category,amt:t.amount,n:0};
-    f.n++;f.cat=t.category;f.amt=t.amount;freq[k]=f;
-  });
-  const top=Object.values(freq).sort((a,b)=>b.n-a.n).slice(0,6);
-  $("quick").innerHTML=top.length
-    ?top.map((f,i)=>`<button type="button" class="chip" data-q="${i}">${esc(f.desc)}</button>`).join("")
-    :`<span class="muted" style="font-size:13px">Seus lançamentos mais usados aparecem aqui</span>`;
-  $("quick").querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{
-    const f=top[+b.dataset.q];
-    $("txDesc").value=f.desc;
-    if([...$("txCat").options].some(o=>o.value===f.cat))$("txCat").value=f.cat;
-    $("txAmt").value=fmtValor(f.amt);
-    $("txAmt").focus();
-  });
-}
 
 /* histórico com filtros */
 function renderCardChips(){
@@ -1473,7 +1539,6 @@ function renderCmp(){
 
 function renderV13(){
   if(!db)return;
-  renderQuick();
   renderDonut();
   renderCmp();
   renderVar();
@@ -1573,6 +1638,8 @@ const ACTIONS={
   delCard:d=>delCard(d.id),
   delAcc:d=>delAcc(d.id),
   togglePaid:d=>togglePaid(d.id,d.ym),
+  abrirRelampago:()=>abrirRelampago(),
+  rlIrCarteira:()=>{$("rlSheet").hidden=true;go("carteira")},
   markFaturaPaid:d=>markFaturaPaid(d.id,d.ym),
 };
 document.addEventListener("focusout",e=>{            // ao sair do campo de valor, deixa no formato 1.626,76

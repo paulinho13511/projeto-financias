@@ -1,0 +1,43 @@
+<!-- Lançamento Relâmpago: abre por cima de qualquer tela pelo "+" -->
+<div class="sheet" id="rlSheet" hidden>
+  <div class="sheetbox rl" role="dialog" aria-modal="true" aria-labelledby="rlTitulo">
+    <div class="rl-topo">
+      <h2 id="rlTitulo">Lançar agora</h2>
+      <button type="button" class="rl-x" id="rlFechar" aria-label="Fechar">×</button>
+    </div>
+    <div class="seg rl-tipos" role="radiogroup" aria-label="Tipo">
+      <label><input type="radio" name="rlTipo" value="expense" checked><span>Despesa</span></label>
+      <label><input type="radio" name="rlTipo" value="income"><span>Receita</span></label>
+      <label><input type="radio" name="rlTipo" value="transfer"><span>Transferir</span></label>
+    </div>
+    <label class="rl-valor"><span>R$</span><input id="rlValor" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" aria-label="Valor"></label>
+    <div class="chips rl-usados" id="rlUsados" aria-label="Mais usados"></div>
+
+    <div id="rlMeioBox">
+      <div class="rl-lbl" id="rlMeioLbl">Pagou com</div>
+      <div class="chips rl-meios" id="rlMeios"></div>
+    </div>
+    <div id="rlTrBox" hidden>
+      <div class="rl-lbl">Sai de</div>
+      <div class="chips rl-meios" id="rlDe"></div>
+      <div class="rl-lbl">Vai para</div>
+      <div class="chips rl-meios" id="rlPara"></div>
+    </div>
+    <div id="rlCatBox">
+      <div class="rl-lbl">Categoria</div>
+      <div class="chips rl-cats" id="rlCats"></div>
+    </div>
+
+    <div class="rl-linha">
+      <input id="rlDesc" placeholder="Descrição (opcional)" maxlength="60" aria-label="Descrição">
+      <input id="rlData" type="date" aria-label="Data">
+    </div>
+    <div class="rl-parc" id="rlParcBox">
+      <label class="chk"><input type="checkbox" id="rlParc"><span>Parcelado</span></label>
+      <input id="rlParcelas" type="number" min="2" max="120" inputmode="numeric" placeholder="Nº de parcelas" hidden>
+      <span class="muted" id="rlParcInfo"></span>
+    </div>
+    <div class="rl-erro" id="rlErro" role="alert"></div>
+    <button type="button" class="primary rl-ok" id="rlSalvar">Lançar</button>
+  </div>
+</div>

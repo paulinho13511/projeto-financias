@@ -27,7 +27,7 @@ Navegador (index.html + frontend/)  ──/api/*──▶  api/index.js (funçã
 | `frontend/styles/` | `app.css` (visual do app), `tema.css` (cores do TravaDin: grafite, prata e vermelho), `login.css` (entrada), `definir-senha.css`. |
 | `frontend/screens/shell/` | Barra lateral, barra inferior e cabeçalho. |
 | `frontend/screens/views/` | Uma tela por arquivo: início (com o **como estou**), **metas**, lançamentos, carteira, contas, calendário, categorias e assinaturas. |
-| `frontend/screens/dialogs/` | Janelas por cima: menu, editar conta, acessos, trocar senha, confirmação, pagar. |
+| `frontend/screens/dialogs/` | Janelas por cima: menu, lançamento relâmpago, editar conta, acessos, trocar senha, confirmação, pagar. |
 | `frontend/screens/overlays/` | Tela de entrada (`lock.html`) e aviso rápido (`toast.html`). |
 | `api/index.js` | Porta de entrada da API (a Vercel manda tudo de `/api/*` para cá). |
 | `api/_lib/app.js` | Regras da API: login, dados, acessos, senha, push. |
@@ -42,6 +42,7 @@ Navegador (index.html + frontend/)  ──/api/*──▶  api/index.js (funçã
 - **Início**: saldo do mês, receitas e despesas no topo e, logo abaixo, três respostas em frases: *Estou bem?* (sinal verde, amarelo ou vermelho), *Posso gastar?* e *O que vem aí?* (as próximas contas, com botão "Paguei"). Esse bloco só aparece no mês de hoje. Depois vêm o gráfico de gastos, as notificações, os últimos lançamentos e o botão "Ver detalhes (gráficos)".
 - **Previsão de renda** (sem cadastro): o app olha o último mês (dos 3 anteriores) com receita na categoria "Salário" e repete os mesmos dias e valores; o que já entrou como Salário neste mês abate o previsto, e extras (Freelance, Investimentos) só contam quando lançados. Parcelas de dias que já passaram sem lançamento não são inventadas.
 - **Metas**: metas e caixinhas, numa tela própria.
+- **Lançamento Relâmpago** (botão "+" de qualquer tela, `dialogs/relampago.html`): valor primeiro, "Pagou com" obrigatório (conta ou cartão), categoria em um toque, descrição opcional; despesa, receita, transferência e parcelado. Sem internet, o lançamento novo fica numa fila no aparelho (`tv_fila`, ligada ao e-mail) e é enviado quando a conexão volta ou ao reabrir o app.
 
 ## Como editar
 

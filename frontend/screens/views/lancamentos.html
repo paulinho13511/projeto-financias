@@ -1,29 +1,9 @@
   <!-- LANÇAMENTOS -->
   <section class="view" id="v-lanc">
-    <div class="card">
+    <div class="card rl-atalho">
       <h2>Novo lançamento</h2>
-      <div class="chips" id="quick" style="margin-bottom:12px"></div>
-      <form class="f" id="txForm">
-        <div class="seg full">
-          <label><input type="radio" name="type" value="expense" checked><span>Despesa</span></label>
-          <label><input type="radio" name="type" value="income"><span>Receita</span></label>
-        </div>
-        <input class="full" id="txDesc" placeholder="Descrição" required>
-        <input id="txAmt" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="Valor (R$)" required>
-        <input id="txDate" type="date" required>
-        <select class="full" id="txCat"></select>
-        <select class="full" id="txCard"></select>
-        <select class="full" id="txAcc" aria-label="Conta" hidden></select>
-        <select class="full" id="txParc">
-          <option value="avista">À vista</option>
-          <option value="parc">Parcelado</option>
-        </select>
-        <div class="full" id="txParcBox" hidden style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <input id="txParcels" type="number" min="2" max="120" placeholder="Nº de parcelas">
-          <div class="muted" id="txParcInfo" style="align-self:center"></div>
-        </div>
-        <button class="primary full" type="submit">Adicionar lançamento</button>
-      </form>
+      <button class="primary full" type="button" data-act="abrirRelampago">+ Lançar agora</button>
+      <p class="muted">Valor, onde pagou e pronto. Também abre pelo botão "+" de qualquer tela.</p>
     </div>
     <div class="card">
       <h2>Histórico</h2>

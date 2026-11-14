@@ -19,6 +19,7 @@ const SCREENS = [
   "dialogs/trocar-senha.html",
   "dialogs/modal.html",
   "dialogs/pagar.html",
+  "dialogs/relampago.html",
   "overlays/toast.html",
   "overlays/lock.html"
 ];
