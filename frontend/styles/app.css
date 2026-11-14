@@ -291,13 +291,26 @@ body.locked .side{display:none!important}
   .side .sideNew:hover{background:var(--accent);filter:brightness(1.07);color:var(--ink)}
   .bottom{display:none!important}
   .app{max-width:1180px;margin:0 auto;padding-left:264px;padding-right:32px;padding-bottom:40px}
-  #v-inicio.on{grid-template-columns:repeat(12,minmax(0,1fr));gap:20px}
-  /* Início no computador: à esquerda o saldo e o gráfico; à direita o "Como estou"; embaixo avisos e lançamentos */
-  #v-inicio.on{align-items:start}
-  #v-inicio.on>:nth-child(1){grid-column:1/span 5;grid-row:1}
-  #v-inicio.on>:nth-child(2){grid-column:6/span 7;grid-row:1/span 2}
-  #v-inicio.on>:nth-child(3){grid-column:1/span 5;grid-row:2}
-  #v-inicio.on>:nth-child(n+4){grid-column:1/-1}
+  /* Início no computador: grade em linhas (larga à esquerda, estreita à direita). Os dois cards da mesma linha
+     têm a mesma altura, então não sobra buraco. O bloco "Como estou" se desfaz (display:contents) para os
+     cards dele entrarem direto na grade. */
+  #v-inicio.on{grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:20px;align-items:stretch;
+    grid-template-areas:"hero sinal" "tm pode" "graf vem" "baixo baixo" "mais mais" "det det"}
+  #v-inicio.on .ceBloco:not([hidden]){display:contents}
+  #v-inicio.on .ini-hero{grid-area:hero}
+  #v-inicio.on .ini-sinal{grid-area:sinal}
+  #v-inicio.on .ini-tm{grid-area:tm}
+  #v-inicio.on .ini-pode{grid-area:pode}
+  #v-inicio.on .ini-vem{grid-area:vem;align-self:stretch}
+  #v-inicio.on .ini-graf{grid-area:graf}
+  #v-inicio.on .ini-baixo{grid-area:baixo}
+  #v-inicio.on .ceMais{grid-area:mais}
+  #v-inicio.on .ceDet{grid-area:det}
+  #v-inicio.on .ini-sinal,#v-inicio.on .ini-pode{display:flex;flex-direction:column;justify-content:center}
+  #v-inicio.on .ini-sinal>h2,#v-inicio.on .ini-pode>h2{margin-bottom:auto}
+  #v-inicio.on .ini-sinal>.ceSinal,#v-inicio.on .ini-pode>#cePode{margin-bottom:auto;padding-top:12px}
+  /* mês passado (sem "Como estou"): saldo e gráfico lado a lado */
+  #v-inicio.on:has(.ceBloco[hidden]){grid-template-areas:"hero graf" "baixo baixo" "mais mais" "det det";grid-template-columns:minmax(0,5fr) minmax(0,7fr)}
 }
 
 /* v24: base escura (o tema.css por cima define as cores do TravaDin) */
