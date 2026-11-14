@@ -1603,39 +1603,48 @@ function renderSobraRegra(){
   if(g)$("sobraRegra").innerHTML=`<div class="row"><div class="rmain"><div class="t">Toda sobra do ciclo vai para ${esc(g.name)}</div><div class="s">Quando o ciclo vira, a sobra é guardada sozinha nessa meta.</div></div><div class="actions"><button class="ghost" type="button" data-act="sobraRegraParar">Parar</button></div></div>`;
 }
 
-/* ---------- Desafio de 52 semanas (com multiplicador), ligado a uma meta ---------- */
+/* ---------- Desafio de 52 semanas (com multiplicador) ----------
+   É separado das metas: a pessoa decide se quer fazer, dá um propósito ("Viagem de fim de ano")
+   e o valor da semana 1. Semana N = N × valor da semana 1. O dinheiro guardado fica no próprio desafio. */
+let dsCriando=false;
 function desafioEstado(){
   const d=db.settings.desafio52;if(!d)return null;
-  const g=(db.goals||[]).find(x=>x.id===d.meta);if(!g)return null;
+  if(!d.nome)d.nome="Meu desafio";                    // desafio antigo (era ligado a uma meta)
   const semanaHoje=Math.min(52,Math.floor(daysBetween(d.inicio,today())/7)+1);
   const feitas=d.feitas||[];
-  const proxima=[...Array(semanaHoje).keys()].map(i=>i+1).find(n=>!feitas.includes(n));
+  const pendentes=[...Array(semanaHoje).keys()].map(i=>i+1).filter(n=>!feitas.includes(n));
   const total=r2(d.base*52*53/2), guardado=r2(feitas.reduce((s,n)=>s+n*d.base,0));
-  return {d,g,semanaHoje,proxima,feitas,total,guardado,atrasadas:[...Array(semanaHoje).keys()].map(i=>i+1).filter(n=>!feitas.includes(n)).length};
+  return {d,semanaHoje,proxima:pendentes[0],feitas,total,guardado,atrasadas:pendentes.length};
 }
 function renderDesafio(){
   const E=desafioEstado();
   if(!E){
-    const metas=db.goals||[];
-    $("desafio").innerHTML=metas.length?`<p class="muted" style="margin-bottom:12px">Na semana 1 você guarda o valor escolhido; na semana 2, o dobro; e assim até a semana 52.</p>
-      <form class="f" id="dsForm">
-        <label class="fld full">Guardar na meta<select id="dsMeta">${metas.map(g=>`<option value="${esc(g.id)}">${esc(g.name)}</option>`).join("")}</select></label>
+    if(!dsCriando){
+      $("desafio").innerHTML=`<p class="muted" style="margin-bottom:12px">Guarde um pouco a cada semana: na semana 1 o valor que você escolher, na semana 2 o dobro, e assim até a semana 52.</p>
+        <button class="ghost" type="button" data-act="desafioCriar">Começar um desafio</button>`;
+      return;
+    }
+    $("desafio").innerHTML=`<form class="f" id="dsForm">
+        <label class="fld full">Para que é o desafio?<input id="dsNome" maxlength="40" placeholder="Ex.: Viagem de fim de ano"></label>
         <label class="fld full">Valor da semana 1 (R$)<input id="dsBase" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="Ex.: 5,00"></label>
         <div class="muted full" id="dsTotal"></div>
         <div class="rl-erro full" id="dsErro" role="alert"></div>
         <button class="primary full" type="submit">Começar o desafio</button>
-      </form>`:`<div class="empty">Crie uma meta acima para começar o desafio.</div>`;
-    if(metas.length){
-      $("dsBase").oninput=()=>{const v=parseValor($("dsBase").value);$("dsTotal").textContent=v>0?`Semana 52: ${money(r2(v*52))} · total no fim: ${money(r2(v*52*53/2))}`:""};
-      $("dsForm").onsubmit=e=>{e.preventDefault();const v=parseValor($("dsBase").value);
-        if(!(v>0)){$("dsErro").textContent=MSG_VALOR;return}
-        db.settings.desafio52={meta:$("dsMeta").value,base:r2(v),inicio:today(),feitas:[]};save();renderDesafio();showToast("Desafio começou: semana 1 de 52")};
-    }
+        <button class="ghost full" type="button" data-act="desafioCancelar">Cancelar</button>
+      </form>`;
+    $("dsBase").oninput=()=>{const v=parseValor($("dsBase").value);$("dsTotal").textContent=v>0?`Semana 52: ${money(r2(v*52))} · total no fim: ${money(r2(v*52*53/2))}`:""};
+    $("dsForm").onsubmit=e=>{e.preventDefault();
+      const nome=$("dsNome").value.trim(), v=parseValor($("dsBase").value);
+      if(!nome){$("dsErro").textContent="Escreva para que é o desafio.";$("dsNome").focus();return}
+      if(!(v>0)){$("dsErro").textContent=MSG_VALOR;$("dsBase").focus();return}
+      dsCriando=false;db.settings.desafio52={nome,base:r2(v),inicio:today(),feitas:[]};save();renderDesafio();showToast("Desafio começou: semana 1 de 52")};
+    $("dsNome").focus();
     return;
   }
-  const {d,g,semanaHoje,proxima,feitas,total,guardado,atrasadas}=E;
+  const {d,semanaHoje,proxima,feitas,total,guardado,atrasadas}=E;
   const pct=Math.min(100,guardado/total*100);
-  $("desafio").innerHTML=`<div class="tm-valor"><b>${money(guardado)}</b> de ${money(total)} em ${esc(g.name)}</div>
+  $("desafio").innerHTML=`<div class="t" style="font-size:17px;font-weight:800;margin-bottom:6px">${esc(d.nome)}</div>
+    <div class="tm-valor" style="margin-top:0"><b>${money(guardado)}</b> de ${money(total)}</div>
     <div class="tm-tubo verde" role="img" aria-label="${feitas.length} de 52 semanas"><div class="tm-fill" style="width:${pct.toFixed(1)}%"></div></div>
     <div class="tm-legenda">${feitas.length} de 52 semanas · estamos na semana ${semanaHoje}${atrasadas>1?` · ${atrasadas} semanas para guardar`:""}</div>
     ${proxima?`<div class="tm-btns tm-acoes"><button class="primary" type="button" data-act="desafioGuardar" data-n="${proxima}">Guardei ${money(r2(proxima*d.base))} (semana ${proxima})</button></div>`
@@ -1645,13 +1654,11 @@ function renderDesafio(){
 function desafioGuardar(n){
   const E=desafioEstado();if(!E)return;n=Number(n);
   if(E.feitas.includes(n))return;
-  const v=r2(n*E.d.base);
-  E.g.saved=r2((Number(E.g.saved)||0)+v);
-  E.d.feitas=[...E.feitas,n];save();renderAll();showToast(`${money(v)} guardados em ${E.g.name}`);
+  E.d.feitas=[...E.feitas,n];save();renderDesafio();showToast(`${money(r2(n*E.d.base))} guardados no desafio`);
 }
 async function desafioParar(){
-  if(!(await ask("Parar o desafio de 52 semanas? O que já foi guardado continua na meta.","Parar","Voltar")))return;
-  delete db.settings.desafio52;save();renderAll();
+  if(!(await ask("Parar o desafio de 52 semanas? O que foi marcado como guardado deixa de aparecer aqui.","Parar","Voltar")))return;
+  delete db.settings.desafio52;save();renderDesafio();
 }
 
 /* ---------- Bloqueio ao abrir: digital ou rosto do aparelho (WebAuthn) ----------
@@ -1838,7 +1845,8 @@ $("goalList").onclick=async e=>{
     if(!g)return;
     if(!(await ask(`Excluir a meta "${g.name}"?`)))return;
     db.goals=db.goals.filter(x=>x.id!==g.id);
-    save();renderV13();
+    if(db.settings.sobraMeta===g.id)delete db.settings.sobraMeta;   // a regra "toda sobra vai para esta meta" some junto
+    save();renderAll();
   }
 };
 
@@ -2005,6 +2013,8 @@ const ACTIONS={
   sobraRegraParar:()=>{delete db.settings.sobraMeta;save();renderAll();showToast("A sobra volta a ser perguntada a cada ciclo")},
   desafioGuardar:d=>desafioGuardar(d.n),
   desafioParar:()=>desafioParar(),
+  desafioCriar:()=>{dsCriando=true;renderDesafio()},
+  desafioCancelar:()=>{dsCriando=false;renderDesafio()},
   editAcc:d=>abrirEditar("acc",d.id),
   editCard:d=>abrirEditar("card",d.id),
   rlIrCarteira:()=>{$("rlSheet").hidden=true;go("carteira")},
