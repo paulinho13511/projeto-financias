@@ -16,9 +16,11 @@ body:not(.locked){
     linear-gradient(rgba(0,0,0,.72),rgba(0,0,0,.72)),
     var(--tv-carbono),
     #000;
-  background-attachment:fixed;
+  /* a trama se repete pela página toda (sem "fixed": no iPhone e em página longa o fixo deixava uma faixa preta) */
+  min-height:100vh;
   color:var(--tv-ink);
 }
+html:has(body:not(.locked)){background:#000 repeating-linear-gradient(45deg,#060606 0 4px,#030303 4px 8px)}
 
 /* títulos */
 .app h1{letter-spacing:-.5px}
