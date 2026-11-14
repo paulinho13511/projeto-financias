@@ -209,28 +209,18 @@ body.locked .app,body.locked .bottom{display:none}
 .cmp .lb{font-size:12px;color:var(--muted);height:16px}
 #spendChart{max-height:260px;display:flex;justify-content:center}
 #spendChart svg{max-height:260px;width:auto;max-width:100%}
-#printArea{display:none}
 @media(max-width:480px){
   .donutWrap{grid-template-columns:1fr;justify-items:center}
   .donutWrap .legend{width:100%}
   .sboxes{grid-template-columns:1fr}
 }
-@media print{
-  body{background:#fff!important;color:#000!important}
-  body *{visibility:hidden}
-  #printArea,#printArea *{visibility:visible}
-  #printArea{display:block!important;position:absolute;left:0;top:0;width:100%;padding:16px;color:#000;background:#fff}
-  #printArea table{width:100%;border-collapse:collapse;font-size:12px}
-  #printArea th,#printArea td{border-bottom:1px solid #ccc;padding:6px;text-align:left}
-  #printArea .n{text-align:right}
-}
-/* tablet e computador: lado a lado */
+/* tablet e computador: lado a lado (Lançamentos fica em uma coluna só, ver tema.css) */
 @media(min-width:721px){
-  #v-lanc.on,#v-contas.on{grid-template-columns:minmax(300px,380px) minmax(0,1fr);align-items:start}
+  #v-contas.on{grid-template-columns:minmax(300px,380px) minmax(0,1fr);align-items:start}
   #v-rev.on > .card:first-child{grid-column:1/-1}
 }
 @media(min-width:1100px){
-  #v-lanc.on,#v-contas.on{grid-template-columns:minmax(320px,400px) minmax(0,1fr)}
+  #v-contas.on{grid-template-columns:minmax(320px,400px) minmax(0,1fr)}
 }
 
 /* v16: efeitos visuais */

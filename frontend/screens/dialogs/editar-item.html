@@ -1,0 +1,21 @@
+<!-- Editar conta ou cartão: nome; no cartão, também os dias de fechamento e vencimento -->
+<div class="sheet" id="eiSheet" hidden>
+  <div class="sheetbox ei" role="dialog" aria-modal="true" aria-labelledby="eiTitulo">
+    <div class="rl-topo">
+      <h2 id="eiTitulo">Editar</h2>
+      <button type="button" class="rl-x" id="eiFechar" aria-label="Fechar">×</button>
+    </div>
+    <form id="eiForm" class="ei-form" novalidate>
+      <label class="ei-fld">Nome<input id="eiNome" maxlength="40" autocomplete="off" required></label>
+      <div id="eiDias" hidden>
+        <div class="ei-dias">
+          <label class="ei-fld">Fecha no dia<input id="eiFecha" type="number" min="1" max="31" inputmode="numeric"></label>
+          <label class="ei-fld">Vence no dia<input id="eiVence" type="number" min="1" max="31" inputmode="numeric"></label>
+        </div>
+        <p class="muted ei-aviso">Mudar o dia de fechamento muda em qual fatura cada compra cai, inclusive as já lançadas.</p>
+      </div>
+      <div class="rl-erro" id="eiErro" role="alert"></div>
+      <button type="submit" class="primary rl-ok" id="eiSalvar">Salvar</button>
+    </form>
+  </div>
+</div>

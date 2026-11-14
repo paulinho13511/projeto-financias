@@ -242,3 +242,44 @@ body:not(.locked){
 #rlSheet .rl-ok{background:var(--tv-metal);color:#fff;border:0;box-shadow:0 8px 22px rgba(216,30,30,.4)}
 .rl-parc .chk{display:inline-flex;align-items:center;gap:8px;width:auto}
 #rlSheet input[type=checkbox]{width:20px;height:20px;padding:0;margin:0;flex:0 0 auto;accent-color:#d81e1e}
+/* Relâmpago: só Despesa e Receita; "Pagou com" separado em conta (sai agora) e cartão (vai para a fatura) */
+#rlSheet .rl-tipos{grid-template-columns:repeat(2,minmax(0,1fr))}
+.rl-meios-box{display:grid;gap:10px}
+.rl-grupo{display:grid;gap:6px}
+.rl-sub{font-size:12.5px;color:#bdbdbd}
+.rl-grupo .chips{margin:0}
+
+/* "O que vem aí": fatura do cartão (fechada ou em aberto) */
+.ceItem .nota{font-size:12.5px;color:var(--tv-mut);margin-top:2px;line-height:1.3}
+.ceItem.cartao{border-left:3px solid var(--tv-red)}
+.ceItem.late{box-shadow:inset 0 0 0 1px rgba(255,77,77,.45)}
+
+/* editar conta ou cartão */
+#eiSheet .sheetbox.ei{gap:12px;border-top:2px solid var(--tv-red);grid-template-columns:minmax(0,1fr)}
+@media(min-width:1000px){#eiSheet{place-items:center}#eiSheet .sheetbox.ei{border-radius:24px;border:1px solid #2a2a2a;border-top:2px solid var(--tv-red);max-width:460px}}
+#eiSheet .rl-x{width:40px;min-height:40px;padding:0;border-radius:50%;text-align:center;font-size:22px;line-height:1;background:#161616}
+.ei-form{display:grid;gap:12px}
+.ei-fld{display:grid;gap:6px;font-size:13px;color:var(--tv-mut)}
+.ei-fld input{width:100%}
+.ei-dias{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ei-aviso{font-size:12.5px;margin:8px 0 0}
+#eiSheet .rl-ok{min-height:52px;font-size:16px;text-align:center;border-radius:14px;background:var(--tv-metal);color:#fff;border:0;box-shadow:0 8px 22px rgba(216,30,30,.4)}
+
+/* Lançamentos: uma coluna só, centralizada, larga no computador */
+#v-lanc.on{grid-template-columns:minmax(0,1fr);max-width:980px;width:100%;margin-inline:auto}
+.lc-cab{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.lc-cab h2{margin:0}
+.lc-novo{width:auto;min-height:44px;padding:0 18px;white-space:nowrap}
+.lc-filtros{display:grid;gap:8px;grid-template-columns:1fr 1fr}
+.lc-filtros .lc-busca{grid-column:1/-1}
+.lc-filtros input,.lc-filtros select{width:100%;min-width:0;font-size:14px}
+.lc-data{display:grid;gap:4px;font-size:12px;color:var(--tv-mut)}
+.lc-cartoes{margin-top:10px}
+.lc-cartoes:empty{display:none}
+.lc-hist h2{margin-bottom:6px}
+@media(min-width:721px){.lc-filtros{grid-template-columns:repeat(4,minmax(0,1fr));align-items:end}}
+@media(min-width:1100px){
+  .lc-filtros{grid-template-columns:minmax(0,2fr) repeat(4,minmax(0,1fr))}
+  .lc-filtros .lc-busca{grid-column:auto}
+}
+@media(max-width:380px){.lc-cab{flex-wrap:wrap}.lc-novo{width:100%}}

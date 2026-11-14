@@ -20,6 +20,7 @@ const SCREENS = [
   "dialogs/modal.html",
   "dialogs/pagar.html",
   "dialogs/relampago.html",
+  "dialogs/editar-item.html",
   "overlays/toast.html",
   "overlays/lock.html"
 ];

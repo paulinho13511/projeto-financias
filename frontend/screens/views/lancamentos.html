@@ -1,42 +1,30 @@
-  <!-- LANÇAMENTOS -->
+  <!-- LANÇAMENTOS: uma coluna só. Em cima: lançar, buscar e filtrar. Embaixo: o histórico na largura toda. -->
   <section class="view" id="v-lanc">
-    <div class="card rl-atalho">
-      <h2>Novo lançamento</h2>
-      <button class="primary full" type="button" data-act="abrirRelampago">+ Lançar agora</button>
-      <p class="muted">Valor, onde pagou e pronto. Também abre pelo botão "+" de qualquer tela.</p>
-    </div>
-    <div class="card">
-      <h2>Histórico</h2>
-      <div class="search">
-        <input id="search" placeholder="Buscar por descrição ou categoria">
-        <select id="filterType">
-          <option value="all">Todas</option>
+    <div class="card lc-topo">
+      <div class="lc-cab">
+        <h2>Buscar e filtrar</h2>
+        <button class="primary lc-novo" type="button" data-act="abrirRelampago">+ Lançar agora</button>
+      </div>
+      <div class="lc-filtros">
+        <input id="search" class="lc-busca" type="search" placeholder="Buscar por descrição ou categoria" aria-label="Buscar">
+        <select id="filterType" aria-label="Tipo">
+          <option value="all">Todos</option>
           <option value="expense">Despesas</option>
           <option value="income">Receitas</option>
           <option value="transfer">Transferências</option>
         </select>
-      </div>
-      <div class="filters">
-        <input type="date" id="fFrom" title="De">
-        <input type="date" id="fTo" title="Até">
         <select id="fSort" aria-label="Ordenar">
           <option value="recent">Mais recentes</option>
           <option value="high">Maior valor</option>
           <option value="low">Menor valor</option>
         </select>
+        <label class="lc-data"><span>De</span><input type="date" id="fFrom"></label>
+        <label class="lc-data"><span>Até</span><input type="date" id="fTo"></label>
       </div>
-      <div class="chips" id="fCards" style="margin-top:8px"></div>
+      <div class="chips lc-cartoes" id="fCards"></div>
+    </div>
+    <div class="card lc-hist">
+      <h2>Histórico</h2>
       <div id="feed"></div>
     </div>
-    <div class="card">
-      <h2>Exportar e importar</h2>
-      <div class="btnrow">
-        <button class="ghost" id="csvBtn" type="button">Baixar CSV do mês</button>
-        <button class="ghost" id="pdfBtn" type="button">Imprimir / salvar PDF</button>
-      </div>
-      <p class="muted" style="margin:16px 0 8px;font-size:13px">Importar extrato do banco (.ofx ou .csv). Você revisa antes de salvar.</p>
-      <input type="file" id="impFile" accept=".ofx,.csv,text/csv" style="width:100%">
-      <div id="impBox" hidden></div>
-    </div>
-    <div id="printArea"></div>
   </section>
