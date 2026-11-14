@@ -1,0 +1,55 @@
+<!-- Primeiro acesso: cadastro guiado do banco e dos cartões -->
+<div class="bv" id="bvSheet" hidden role="dialog" aria-modal="true" aria-labelledby="bvTitulo">
+  <div class="bv-box">
+    <div class="bv-passos" aria-hidden="true"><i data-p="1"></i><i data-p="2"></i><i data-p="3"></i><i data-p="4"></i></div>
+
+    <section class="bv-p" data-passo="1">
+      <img src="frontend/assets/logo-mark.svg" alt="" class="bv-logo">
+      <h2 id="bvTitulo">Bem-vindo ao TravaDin</h2>
+      <p>Em 2 passos o app fica pronto: diga qual banco você usa e se tem cartão de crédito. Assim ele sabe de onde sai e para onde vai o seu dinheiro.</p>
+      <button type="button" class="primary rl-ok" data-bv="ir2">Começar</button>
+    </section>
+
+    <section class="bv-p" data-passo="2" hidden>
+      <h2>Qual banco você usa?</h2>
+      <p class="muted">Toque no seu banco (ou escreva o nome) e diga quanto tem nele hoje.</p>
+      <div class="chips bv-bancos" id="bvBancos"></div>
+      <form id="bvContaForm" class="ei-form" novalidate>
+        <label class="fld">Nome do banco ou conta<input id="bvContaNome" maxlength="40" placeholder="Ex.: Nubank"></label>
+        <label class="fld">Quanto tem nele hoje (R$)<input id="bvContaSaldo" type="text" inputmode="text" autocomplete="off" data-money data-neg placeholder="0,00"></label>
+        <div class="rl-erro" id="bvContaErro" role="alert"></div>
+        <button type="submit" class="ghost">Adicionar este banco</button>
+      </form>
+      <div class="list" id="bvContas"></div>
+      <button type="button" class="primary rl-ok" data-bv="ir3" id="bvIr3">Continuar</button>
+    </section>
+
+    <section class="bv-p" data-passo="3" hidden>
+      <h2>Você tem cartão de crédito?</h2>
+      <p class="muted">Com o cartão cadastrado, o app separa o que vai para a fatura e avisa antes de vencer.</p>
+      <div class="chips bv-bancos" id="bvCartBancos"></div>
+      <form id="bvCartForm" class="ei-form" novalidate>
+        <label class="fld">Nome do cartão<input id="bvCartNome" maxlength="40" placeholder="Ex.: Nubank"></label>
+        <div class="ei-dias">
+          <label class="fld">Fecha no dia<input id="bvCartFecha" type="number" min="1" max="31" inputmode="numeric" placeholder="1 a 31"></label>
+          <label class="fld">Vence no dia<input id="bvCartVence" type="number" min="1" max="31" inputmode="numeric" placeholder="1 a 31"></label>
+        </div>
+        <label class="fld">Limite (opcional)<input id="bvCartLimite" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00"></label>
+        <div class="rl-erro" id="bvCartErro" role="alert"></div>
+        <button type="submit" class="ghost">Adicionar este cartão</button>
+      </form>
+      <div class="list" id="bvCartoes"></div>
+      <button type="button" class="primary rl-ok" data-bv="ir4" id="bvIr4">Não tenho cartão</button>
+    </section>
+
+    <section class="bv-p" data-passo="4" hidden>
+      <img src="frontend/assets/logo-mark.svg" alt="" class="bv-logo">
+      <h2>Pronto!</h2>
+      <p id="bvResumo"></p>
+      <p>Para lançar um gasto ou um ganho, toque no <b>+</b> no meio da barra de baixo.</p>
+      <button type="button" class="primary rl-ok" data-bv="fim">Ir para o app</button>
+    </section>
+
+    <button type="button" class="bv-depois" data-bv="depois">Fazer depois</button>
+  </div>
+</div>

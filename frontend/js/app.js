@@ -150,11 +150,12 @@ function enterApp(){
   go("inicio");
   bumpIdle();
   travar();   // bloqueio ao abrir (se ativado neste aparelho)
+  if(precisaBoasVindas())abrirBoasVindas();   // primeiro acesso: cadastrar banco e cartões
 }
 async function lockApp(reason){
   db=null;sessionUser=null;isAdmin=false;dbUpdatedAt=null;dbConflict=false;clearTimeout(idleTimer);
   $("menu").hidden=true;$("modal").hidden=true;$("aclSheet").hidden=true;$("pwSheet").hidden=true;
-  $("payModal").hidden=true;$("editSheet").hidden=true;$("rlSheet").hidden=true;$("eiSheet").hidden=true;$("scSheet").hidden=true;$("btSheet").hidden=true;$("trava").hidden=true;   // nada de diálogo aberto por cima da tela de entrada
+  $("payModal").hidden=true;$("editSheet").hidden=true;$("rlSheet").hidden=true;$("eiSheet").hidden=true;$("scSheet").hidden=true;$("btSheet").hidden=true;$("trava").hidden=true;$("bvSheet").hidden=true;   // nada de diálogo aberto por cima da tela de entrada
   $("payYes").onclick=null;$("payNo").onclick=null;$("mYes").onclick=null;$("mNo").onclick=null;
   document.body.classList.add("locked");
   try{localStorage.removeItem("mf_sessao")}catch(_){}
@@ -504,6 +505,10 @@ const CAT_SVG={
 };
 const catIcon=c=>CAT_SVG[c]?`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${CAT_SVG[c]}</svg>`:esc(String(c||"?").charAt(0));
 function txRow(t,semApagar){
+  if(t.type==="payment"){
+    const onde=t.account&&accName(t.account)?" · saiu de "+esc(accName(t.account)):"";
+    return `<div class="row pago"><div class="ic pago" aria-hidden="true">✓</div><div class="rmain"><div class="t">${esc(t.desc)}</div><div class="s">Pago · ${fmtDate(t.date)}${onde}</div></div><div class="actions"><span class="amt neutral">− ${money(t.amount)}</span>${semApagar?"":`<button class="ico" title="Desfazer pagamento" aria-label="Desfazer pagamento de ${esc(t.desc)}" data-act="desfazerPag" data-id="${esc(t.id)}">↺</button>`}</div></div>`;
+  }
   if(t.type==="transfer"){
     const de=accName(t.from)||"Conta removida", para=accName(t.to)||"Conta removida";
     return `<div class="row"><div class="ic xfer">⇄</div><div class="rmain"><div class="t">${esc(t.desc)}</div><div class="s">${esc(de)} → ${esc(para)} · ${fmtDate(t.date)}</div></div><div class="actions"><span class="amt neutral">${money(t.amount)}</span><button class="ico" title="Remover" data-act="delTx" data-id="${esc(t.id)}">×</button></div></div>`;
@@ -1323,6 +1328,24 @@ $("notifBtn").onclick=async()=>{
   }
 };
 
+/* ---------- desfazer um pagamento pelo histórico: a conta/fatura volta a ficar em aberto e o dinheiro volta ---------- */
+async function desfazerPagamento(id){
+  const t=db.tx.find(x=>x.id===id&&x.type==="payment");if(!t)return;
+  if(!(await ask(`Desfazer o pagamento "${t.desc}" (${money(t.amount)})? O dinheiro volta para a conta e a conta fica em aberto de novo.`,"Desfazer","Voltar")))return;
+  const r=t.ref||{};
+  if(r.kind==="bill"){
+    const b=db.bills.find(x=>x.id===r.id);
+    if(b&&(b.paid||[]).includes(r.ym)){await togglePaid(r.id,r.ym);showToast("Pagamento desfeito");return}
+  }
+  db.tx=db.tx.filter(x=>x.id!==id);
+  if(r.kind==="fatura"){
+    const c=(db.cards||[]).find(x=>x.id===r.card);
+    const resta=db.tx.some(x=>x.type==="payment"&&x.ref&&x.ref.kind==="fatura"&&x.ref.card===r.card&&x.ref.ym===r.ym);
+    if(c&&!resta)c.paid=(c.paid||[]).filter(y=>y!==r.ym);
+  }
+  save();renderAll();showToast("Pagamento desfeito");
+}
+
 /* ---------- lançamentos sem conta nem cartão (feitos antes da regra): o usuário escolhe a origem de cada um ---------- */
 const semConta=()=>db.tx.filter(t=>(t.type==="expense"||t.type==="income")&&!t.account&&!t.card);
 function renderSemConta(){
@@ -1796,6 +1819,66 @@ document.addEventListener("visibilitychange",()=>{
   if(db&&travaSaiu&&Date.now()-travaSaiu>5*60*1000)travar();
 });
 
+/* ---------- Primeiro acesso: cadastro guiado do banco e dos cartões ----------
+   Aparece para quem ainda não tem nenhuma conta cadastrada e não escolheu "Fazer depois". */
+const BANCOS=["Nubank","Itaú","Bradesco","Banco do Brasil","Caixa","Santander","Inter","C6 Bank","Mercado Pago","PicPay"];
+function bvPasso(n){
+  document.querySelectorAll("#bvSheet .bv-p").forEach(s=>s.hidden=s.dataset.passo!==String(n));
+  document.querySelectorAll("#bvSheet .bv-passos i").forEach(i=>i.classList.toggle("on",Number(i.dataset.p)<=n));
+  $("bvSheet").querySelector(".bv-depois").hidden=n===4;
+  if(n===2)bvRender();
+  if(n===3)bvRender();
+  if(n===4){
+    const na=(db.accounts||[]).length,nc=(db.cards||[]).length;
+    $("bvResumo").textContent=`Cadastrado: ${na} ${na===1?"banco":"bancos"}${nc?` e ${nc} ${nc===1?"cartão":"cartões"}`:""}. Você pode mudar isso depois em Carteira e em Contas.`;
+  }
+  const foco=$("bvSheet").querySelector(`.bv-p[data-passo="${n}"] h2`);if(foco){foco.tabIndex=-1;foco.focus()}
+}
+function bvRender(){
+  const chips=(lista,tipo)=>BANCOS.map(b=>`<button type="button" class="chip" data-bvbanco="${tipo}" data-v="${esc(b)}">${esc(b)}</button>`).join("");
+  $("bvBancos").innerHTML=chips(BANCOS,"conta");
+  $("bvCartBancos").innerHTML=chips(BANCOS,"cartao");
+  $("bvContas").innerHTML=(db.accounts||[]).map(a=>`<div class="row"><div class="rmain"><div class="t">${esc(a.name)}</div><div class="s">Tem hoje ${money(a.initial||0)}</div></div></div>`).join("");
+  $("bvCartoes").innerHTML=(db.cards||[]).map(c=>`<div class="row"><div class="rmain"><div class="t">${esc(c.name)}</div><div class="s">Fecha dia ${c.closeDay} · vence dia ${c.dueDay}${c.limit?` · limite ${money(c.limit)}`:""}</div></div></div>`).join("");
+  $("bvIr3").disabled=!(db.accounts||[]).length;
+  $("bvIr3").textContent=(db.accounts||[]).length?"Continuar":"Adicione pelo menos um banco";
+  $("bvIr4").textContent=(db.cards||[]).length?"Continuar":"Não tenho cartão";
+}
+function abrirBoasVindas(){$("bvSheet").hidden=false;bvPasso(1)}
+function precisaBoasVindas(){return db&&!(db.accounts||[]).length&&!db.settings.boasVindasOk}
+document.addEventListener("click",e=>{
+  const ch=e.target.closest("[data-bvbanco]");
+  if(ch){const alvo=ch.dataset.bvbanco==="conta"?"bvContaNome":"bvCartNome";$(alvo).value=ch.dataset.v;(ch.dataset.bvbanco==="conta"?$("bvContaSaldo"):$("bvCartFecha")).focus();return}
+  const b=e.target.closest("[data-bv]");if(!b)return;
+  const a=b.dataset.bv;
+  if(a==="ir2")bvPasso(2);
+  else if(a==="ir3"&&(db.accounts||[]).length)bvPasso(3);
+  else if(a==="ir4")bvPasso(4);
+  else if(a==="fim"||a==="depois"){db.settings.boasVindasOk=true;save();$("bvSheet").hidden=true;renderAll()}
+});
+$("bvContaForm").onsubmit=e=>{
+  e.preventDefault();
+  const nome=$("bvContaNome").value.trim();
+  if(!nome){$("bvContaErro").textContent="Escreva o nome do banco ou toque em um acima.";$("bvContaNome").focus();return}
+  const t=$("bvContaSaldo").value.trim(), v=t?parseValor(t):0;
+  if(t&&!Number.isFinite(v)){$("bvContaErro").textContent=MSG_VALOR;return}
+  db.accounts=db.accounts||[];db.accounts.push({id:uid(),name:nome,type:"corrente",initial:r2(v||0)});
+  $("bvContaErro").textContent="";$("bvContaNome").value="";$("bvContaSaldo").value="";
+  save();bvRender();showToast(`${nome} adicionado`);
+};
+$("bvCartForm").onsubmit=e=>{
+  e.preventDefault();
+  const nome=$("bvCartNome").value.trim(),f=parseInt($("bvCartFecha").value,10),v=parseInt($("bvCartVence").value,10);
+  const lt=$("bvCartLimite").value.trim(),lim=lt?parseValor(lt):0;
+  if(!nome){$("bvCartErro").textContent="Escreva o nome do cartão ou toque em um acima.";$("bvCartNome").focus();return}
+  if(!(f>=1&&f<=31&&v>=1&&v<=31)){$("bvCartErro").textContent="Os dias de fechar e vencer vão de 1 a 31. Estão na fatura ou no app do banco.";return}
+  if(lt&&!(lim>0)){$("bvCartErro").textContent=MSG_VALOR;return}
+  const c={id:uid(),name:nome,closeDay:f,dueDay:v,paid:[]};if(lim>0)c.limit=r2(lim);
+  db.cards=db.cards||[];db.cards.push(c);
+  $("bvCartErro").textContent="";["bvCartNome","bvCartFecha","bvCartVence","bvCartLimite"].forEach(id=>$(id).value="");
+  save();bvRender();showToast(`Cartão ${nome} adicionado`);
+};
+
 /* ---------- inicialização ---------- */
 $("bCat").innerHTML=CATS.map(c=>`<option>${c}</option>`).join("");
 $("trDate").value=today();
@@ -1834,7 +1917,9 @@ function renderFeed(){
   const q=$("search").value.trim().toLowerCase();
   const ft=$("filterType").value;
   const from=$("fFrom").value, to=$("fTo").value, sort=$("fSort").value;
-  let items=sortedTx().filter(t=>(ft==="all"||t.type===ft)&&(!q||t.desc.toLowerCase().includes(q)||t.category.toLowerCase().includes(q)));
+  // o histórico mostra também os pagamentos (contas e faturas pagas)
+  const comPag=db.tx.slice().sort((a,b)=>b.date.localeCompare(a.date)||(b.created||0)-(a.created||0));
+  let items=comPag.filter(t=>(ft==="all"||t.type===ft)&&(!q||t.desc.toLowerCase().includes(q)||t.category.toLowerCase().includes(q)));
   if(from)items=items.filter(t=>t.date>=from);
   if(to)items=items.filter(t=>t.date<=to);
   if(fCards.size)items=items.filter(t=>(t.card&&fCards.has(t.card))||(!t.card&&fCards.has("none")));
@@ -2079,6 +2164,7 @@ const ACTIONS={
   togglePaid:d=>togglePaid(d.id,d.ym),
   abrirRelampago:()=>abrirRelampago(),
   abrirSemConta:()=>abrirSemConta(),
+  desfazerPag:d=>desfazerPagamento(d.id),
   subUsa:d=>subUsa(d.id),
   subCancelei:d=>subCancelei(d.id),
   sobraRegraParar:()=>{delete db.settings.sobraMeta;save();renderAll();showToast("A sobra volta a ser perguntada a cada ciclo")},
