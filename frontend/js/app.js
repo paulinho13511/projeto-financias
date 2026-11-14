@@ -837,8 +837,8 @@ function rendaPrevista(cm){
 }
 /* ---------- Termômetro do ciclo ----------
    O termômetro segue o ciclo da pessoa, não o mês do calendário:
-   - o ciclo vira quando, depois de o salário entrar, TODAS as contas (contas fixas do mês e fatura fechada do cartão)
-     estão pagas;
+   - o ciclo vira quando TODAS as contas (contas fixas do mês e fatura fechada do cartão) ficam pagas,
+     mesmo antes do vencimento e sem esperar o salário;
    - o teto é sempre a pessoa que define (nada pré-definido);
    - o tubo enche com os gastos do dia a dia feitos no ciclo e com contas pagas ADIANTADAS (de vencimento depois
      do fim do ciclo). Fatura do cartão não entra: as compras dela já entraram uma a uma;
@@ -884,8 +884,15 @@ function estadoCiclo(){
   const gasto=r2(gastos+adiantadas);
   const total=Math.max(1,daysBetween(c.inicio,fim)), passados=Math.min(total,Math.max(1,daysBetween(c.inicio,today())+1));
   const ideal=tetoEf>0?r2(tetoEf*passados/total):0;
-  const salarioNovo=salarios().some(t=>noCiclo(t,c));
-  return {c,fim,teto,tetoEf,gasto,adiantadas:r2(adiantadas),ideal,passados,total,salarioNovo,pend:contasPendentes()};
+  // pagou alguma conta ou fatura neste ciclo (mesmo antes do vencimento)
+  // (conta deste período; conta de mais longe paga adiantada só entra no tubo, não vira o ciclo)
+  const pagouNoCiclo=db.tx.some(t=>{
+    if(t.type!=="payment"||!t.ref||!noCiclo(t,c))return false;
+    if(t.ref.kind==="fatura"){const cd=(db.cards||[]).find(x=>x.id===t.ref.card);return !!cd&&t.ref.ym<=currentCloseYm(cd)}
+    if(t.ref.kind==="bill"){const b=db.bills.find(x=>x.id===t.ref.id);return !!b&&dueOf(b,t.ref.ym)<=fim}
+    return false;
+  });
+  return {c,fim,teto,tetoEf,gasto,adiantadas:r2(adiantadas),ideal,passados,total,pagouNoCiclo,pend:contasPendentes()};
 }
 function virarCiclo(pendente){
   const E=estadoCiclo(), c=E.c;
@@ -901,10 +908,11 @@ function virarCiclo(pendente){
   if(gm&&db.settings.ciclo.sobra>0){const v=db.settings.ciclo.sobra;gm.saved=r2((Number(gm.saved)||0)+v);db.settings.ciclo.sobra=0;setTimeout(()=>showToast(`Sobra de ${money(v)} guardada em ${gm.name}`),1200)}
   save();
 }
-/* vira sozinho: salário novo no ciclo + nenhuma conta em aberto */
+/* vira sozinho: pagou contas no ciclo e não sobrou nenhuma em aberto */
 function checarCiclo(){
   const E=estadoCiclo();
-  if(E.salarioNovo&&!E.pend.length){virarCiclo(0);showToast("Contas pagas: começou um ciclo novo");return true}
+  // pagou tudo = o ciclo vira, mesmo antes do vencimento e sem esperar o salário
+  if(E.pagouNoCiclo&&!E.pend.length){virarCiclo(0);showToast("Contas pagas: começou um ciclo novo");return true}
   return false;
 }
 function vereditoCiclo(T){
@@ -934,7 +942,7 @@ function renderTermometro(){
   const {est}=vereditoCiclo(T);
   const pct=T.tetoEf>0?Math.min(100,T.gasto/T.tetoEf*100):100, marca=T.passados/T.total*100;
   const aj=Number(c.ajuste)||0;
-  const pend=T.salarioNovo&&T.pend.length?`<div class="tm-aviso">O salário já entrou. O ciclo vira quando estas contas forem pagas: ${T.pend.slice(0,4).map(p=>esc(p.nome)).join(", ")}${T.pend.length>4?"…":""}.</div>`:"";
+  const pend=T.pagouNoCiclo&&T.pend.length?`<div class="tm-aviso">O ciclo vira quando estas contas forem pagas: ${T.pend.slice(0,4).map(p=>esc(p.nome)).join(", ")}${T.pend.length>4?"…":""}.</div>`:"";
   // sobra: fica no card até a pessoa guardar numa meta ou escolher não fazer nada
   const temMeta=(db.goals||[]).length>0;
   const sobra=c.sobra>0?`<div class="tm-sobra"><b>Sobrou ${money(c.sobra)} no ciclo passado.</b> ${temMeta?"Quer guardar numa meta?":"Crie uma meta para guardar essa sobra."}
@@ -1515,6 +1523,7 @@ $("rlSalvar").onclick=()=>{
     if(L&&L.pct>=100)resumo+=` · Atenção: limite do ${c.name} estourado`;
     else if(L&&L.pct>=80)resumo+=` · ${c.name}: ${L.pct}% do limite usado`;}
   showToast(resumo);
+  if(t==="income"&&item.kind==="tx")desafioPerguntaGanho(item.obj.amount,item.obj.date);
 };
 
 /* ---------- Gastinhos: categorias que a pessoa marca como "gastinho" ---------- */
@@ -1605,62 +1614,122 @@ function renderSobraRegra(){
   if(g)$("sobraRegra").innerHTML=`<div class="row"><div class="rmain"><div class="t">Toda sobra do ciclo vai para ${esc(g.name)}</div><div class="s">Quando o ciclo vira, a sobra é guardada sozinha nessa meta.</div></div><div class="actions"><button class="ghost" type="button" data-act="sobraRegraParar">Parar</button></div></div>`;
 }
 
-/* ---------- Desafio de 52 semanas (com multiplicador) ----------
-   É separado das metas: a pessoa decide se quer fazer, dá um propósito ("Viagem de fim de ano")
-   e o valor da semana 1. Semana N = N × valor da semana 1. O dinheiro guardado fica no próprio desafio. */
-let dsCriando=false;
+/* ---------- Desafio ----------
+   Fica na tela de Metas, mas é separado das metas: a pessoa decide se quer fazer e dá um propósito.
+   Dois tipos:
+   - Por semana (quem recebe salário): escolhe quantas semanas e o valor da semana 1; semana N = N × valor.
+   - Por dia de trabalho (Uber, 99, entregador, quem recebe todo dia): escolhe a % e quantos dias;
+     ao lançar uma receita, o app pergunta se guarda a % no desafio. Cada dia com algo guardado conta.
+   O dinheiro guardado fica no próprio desafio. */
+let dsCriando=false, dsTipo="semana";
+function desafioAtual(){
+  const s=db.settings;
+  if(!s.desafio&&s.desafio52){   // desafio antigo de 52 semanas vira "por semana"
+    const o=s.desafio52;s.desafio={tipo:"semana",nome:o.nome||"Meu desafio",base:o.base,semanas:52,inicio:o.inicio,feitas:o.feitas||[]};
+    delete s.desafio52;
+  }
+  return s.desafio||null;
+}
 function desafioEstado(){
-  const d=db.settings.desafio52;if(!d)return null;
-  if(!d.nome)d.nome="Meu desafio";                    // desafio antigo (era ligado a uma meta)
-  const semanaHoje=Math.min(52,Math.floor(daysBetween(d.inicio,today())/7)+1);
+  const d=desafioAtual();if(!d)return null;
+  if(d.tipo==="dia"){
+    const deps=d.depositos||[];
+    const dias=[...new Set(deps.map(x=>x.data))].length;
+    const guardado=r2(deps.reduce((s,x)=>s+x.valor,0));
+    return {d,dias,guardado,completo:dias>=d.dias};
+  }
+  const semanaHoje=Math.min(d.semanas,Math.floor(daysBetween(d.inicio,today())/7)+1);
   const feitas=d.feitas||[];
   const pendentes=[...Array(semanaHoje).keys()].map(i=>i+1).filter(n=>!feitas.includes(n));
-  const total=r2(d.base*52*53/2), guardado=r2(feitas.reduce((s,n)=>s+n*d.base,0));
-  return {d,semanaHoje,proxima:pendentes[0],feitas,total,guardado,atrasadas:pendentes.length};
+  const total=r2(d.base*d.semanas*(d.semanas+1)/2), guardado=r2(feitas.reduce((s,n)=>s+n*d.base,0));
+  return {d,semanaHoje,proxima:pendentes[0],feitas,total,guardado,atrasadas:pendentes.length,completo:feitas.length>=d.semanas};
 }
 function renderDesafio(){
   const E=desafioEstado();
   if(!E){
     if(!dsCriando){
-      $("desafio").innerHTML=`<p class="muted" style="margin-bottom:12px">Guarde um pouco a cada semana: na semana 1 o valor que você escolher, na semana 2 o dobro, e assim até a semana 52.</p>
-        <button class="ghost" type="button" data-act="desafioCriar">Começar um desafio</button>`;
+      $("desafio").innerHTML=`<p class="muted" style="margin-bottom:12px">Um desafio para criar o hábito de guardar: por semana (para quem recebe salário) ou por dia de trabalho (para quem recebe todo dia, como Uber, 99 e entregas).</p>
+        <button class="primary" type="button" data-act="desafioCriar">Começar um desafio</button>`;
       return;
     }
+    const semana=dsTipo==="semana";
     $("desafio").innerHTML=`<form class="f" id="dsForm">
+        <div class="seg full" role="radiogroup" aria-label="Tipo de desafio">
+          <label><input type="radio" name="dsTipo" value="semana" ${semana?"checked":""}><span>Por semana</span></label>
+          <label><input type="radio" name="dsTipo" value="dia" ${semana?"":"checked"}><span>Por dia de trabalho</span></label>
+        </div>
         <label class="fld full">Para que é o desafio?<input id="dsNome" maxlength="40" placeholder="Ex.: Viagem de fim de ano"></label>
-        <label class="fld full">Valor da semana 1 (R$)<input id="dsBase" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="Ex.: 5,00"></label>
-        <div class="muted full" id="dsTotal"></div>
+        ${semana?`<label class="fld">Quantas semanas<input id="dsQtd" type="number" min="1" max="104" inputmode="numeric" placeholder="Ex.: 52"></label>
+          <label class="fld">Valor da semana 1 (R$)<input id="dsBase" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="Ex.: 5,00"></label>`
+        :`<label class="fld">Quanto guardar de cada ganho (%)<input id="dsPct" type="number" min="1" max="100" inputmode="numeric" placeholder="Ex.: 10"></label>
+          <label class="fld">Quantos dias de trabalho<input id="dsQtd" type="number" min="1" max="365" inputmode="numeric" placeholder="Ex.: 30"></label>`}
+        <div class="muted full" id="dsTotal">${semana?"":"Cada vez que você lançar um ganho, o app pergunta se guarda essa porcentagem no desafio."}</div>
         <div class="rl-erro full" id="dsErro" role="alert"></div>
         <button class="primary full" type="submit">Começar o desafio</button>
         <button class="ghost full" type="button" data-act="desafioCancelar">Cancelar</button>
       </form>`;
-    $("dsBase").oninput=()=>{const v=parseValor($("dsBase").value);$("dsTotal").textContent=v>0?`Semana 52: ${money(r2(v*52))} · total no fim: ${money(r2(v*52*53/2))}`:""};
+    document.querySelectorAll('input[name="dsTipo"]').forEach(r=>r.onchange=()=>{dsTipo=r.value;const n=$("dsNome").value;renderDesafio();$("dsNome").value=n});
+    if(semana){
+      const calc=()=>{const v=parseValor($("dsBase").value),n=parseInt($("dsQtd").value,10);
+        $("dsTotal").textContent=v>0&&n>0?`Última semana: ${money(r2(v*n))} · total no fim: ${money(r2(v*n*(n+1)/2))}`:""};
+      $("dsBase").oninput=calc;$("dsQtd").oninput=calc;
+    }
     $("dsForm").onsubmit=e=>{e.preventDefault();
-      const nome=$("dsNome").value.trim(), v=parseValor($("dsBase").value);
+      const nome=$("dsNome").value.trim(), n=parseInt($("dsQtd").value,10);
       if(!nome){$("dsErro").textContent="Escreva para que é o desafio.";$("dsNome").focus();return}
-      if(!(v>0)){$("dsErro").textContent=MSG_VALOR;$("dsBase").focus();return}
-      dsCriando=false;db.settings.desafio52={nome,base:r2(v),inicio:today(),feitas:[]};save();renderDesafio();showToast("Desafio começou: semana 1 de 52")};
+      if(semana){
+        const v=parseValor($("dsBase").value);
+        if(!(n>=1&&n<=104)){$("dsErro").textContent="Escolha de 1 a 104 semanas.";$("dsQtd").focus();return}
+        if(!(v>0)){$("dsErro").textContent=MSG_VALOR;$("dsBase").focus();return}
+        db.settings.desafio={tipo:"semana",nome,base:r2(v),semanas:n,inicio:today(),feitas:[]};
+      }else{
+        const pct=parseInt($("dsPct").value,10);
+        if(!(pct>=1&&pct<=100)){$("dsErro").textContent="A porcentagem vai de 1 a 100.";$("dsPct").focus();return}
+        if(!(n>=1&&n<=365)){$("dsErro").textContent="Escolha de 1 a 365 dias.";$("dsQtd").focus();return}
+        db.settings.desafio={tipo:"dia",nome,pct,dias:n,inicio:today(),depositos:[]};
+      }
+      dsCriando=false;save();renderDesafio();showToast("Desafio começou");
+    };
     $("dsNome").focus();
     return;
   }
-  const {d,semanaHoje,proxima,feitas,total,guardado,atrasadas}=E;
+  const {d}=E;
+  if(d.tipo==="dia"){
+    const pct=Math.min(100,E.dias/d.dias*100);
+    $("desafio").innerHTML=`<div class="t" style="font-size:17px;font-weight:800;margin-bottom:6px">${esc(d.nome)}</div>
+      <div class="tm-valor" style="margin-top:0"><b>${money(E.guardado)}</b> guardados</div>
+      <div class="tm-tubo verde" role="img" aria-label="${E.dias} de ${d.dias} dias"><div class="tm-fill" style="width:${pct.toFixed(1)}%"></div></div>
+      <div class="tm-legenda">${E.dias} de ${d.dias} dias de trabalho · guardando ${d.pct}% de cada ganho</div>
+      ${E.completo?`<div class="tm-aviso">Desafio completo! Você guardou ${money(E.guardado)}.</div>`:`<div class="muted" style="margin-top:12px">Ao lançar um ganho, o app pergunta se guarda ${d.pct}% aqui.</div>`}
+      <div class="tm-btns tm-acoes"><button class="ghost" type="button" data-act="desafioParar">Parar o desafio</button></div>`;
+    return;
+  }
+  const {semanaHoje,proxima,feitas,total,guardado,atrasadas}=E;
   const pct=Math.min(100,guardado/total*100);
   $("desafio").innerHTML=`<div class="t" style="font-size:17px;font-weight:800;margin-bottom:6px">${esc(d.nome)}</div>
     <div class="tm-valor" style="margin-top:0"><b>${money(guardado)}</b> de ${money(total)}</div>
-    <div class="tm-tubo verde" role="img" aria-label="${feitas.length} de 52 semanas"><div class="tm-fill" style="width:${pct.toFixed(1)}%"></div></div>
-    <div class="tm-legenda">${feitas.length} de 52 semanas · estamos na semana ${semanaHoje}${atrasadas>1?` · ${atrasadas} semanas para guardar`:""}</div>
+    <div class="tm-tubo verde" role="img" aria-label="${feitas.length} de ${d.semanas} semanas"><div class="tm-fill" style="width:${pct.toFixed(1)}%"></div></div>
+    <div class="tm-legenda">${feitas.length} de ${d.semanas} semanas · estamos na semana ${semanaHoje}${atrasadas>1?` · ${atrasadas} semanas para guardar`:""}</div>
     ${proxima?`<div class="tm-btns tm-acoes"><button class="primary" type="button" data-act="desafioGuardar" data-n="${proxima}">Guardei ${money(r2(proxima*d.base))} (semana ${proxima})</button></div>`
-      :feitas.length>=52?`<div class="tm-aviso">Desafio completo! Você guardou ${money(guardado)}.</div>`:`<div class="muted" style="margin-top:12px">Semana ${semanaHoje} já guardada. Próxima semana: ${money(r2((semanaHoje+1)*d.base))}.</div>`}
+      :E.completo?`<div class="tm-aviso">Desafio completo! Você guardou ${money(guardado)}.</div>`:`<div class="muted" style="margin-top:12px">Semana ${semanaHoje} já guardada. Próxima semana: ${money(r2((semanaHoje+1)*d.base))}.</div>`}
     <div class="tm-btns tm-acoes"><button class="ghost" type="button" data-act="desafioParar">Parar o desafio</button></div>`;
 }
 function desafioGuardar(n){
-  const E=desafioEstado();if(!E)return;n=Number(n);
+  const E=desafioEstado();if(!E||E.d.tipo!=="semana")return;n=Number(n);
   if(E.feitas.includes(n))return;
   E.d.feitas=[...E.feitas,n];save();renderDesafio();showToast(`${money(r2(n*E.d.base))} guardados no desafio`);
 }
 async function desafioParar(){
-  if(!(await ask("Parar o desafio de 52 semanas? O que foi marcado como guardado deixa de aparecer aqui.","Parar","Voltar")))return;
-  delete db.settings.desafio52;save();renderDesafio();
+  if(!(await ask("Parar o desafio? O que foi marcado como guardado deixa de aparecer aqui.","Parar","Voltar")))return;
+  delete db.settings.desafio;save();renderDesafio();
+}
+/* por dia de trabalho: ao lançar um ganho, pergunta se guarda a % no desafio */
+async function desafioPerguntaGanho(valor,data){
+  const E=desafioEstado();if(!E||E.d.tipo!=="dia"||E.completo)return;
+  const v=r2(valor*E.d.pct/100);if(!(v>0))return;
+  if(!(await ask(`Guardar ${E.d.pct}% (${money(v)}) no desafio "${E.d.nome}"?`,"Guardar","Hoje não")))return;
+  E.d.depositos=[...(E.d.depositos||[]),{data,valor:v}];
+  save();renderDesafio();showToast(`${money(v)} guardados no desafio`);
 }
 
 /* ---------- Bloqueio ao abrir: digital ou rosto do aparelho (WebAuthn) ----------
