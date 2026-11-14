@@ -16,6 +16,21 @@
         <h2>Estou bem?</h2>
         <div class="ceSinal" id="ceSinal"></div>
       </div>
+      <div class="card tm">
+        <h2>Termômetro do mês</h2>
+        <div id="tmCorpo"></div>
+        <form class="tm-ajuste" id="tmForm" hidden novalidate>
+          <label class="tm-fld">Quanto quero gastar no dia a dia neste mês
+            <input id="tmValor" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="Ex.: 1.500,00">
+          </label>
+          <div class="tm-erro" id="tmErro" role="alert"></div>
+          <div class="tm-btns">
+            <button type="submit" class="primary" id="tmSalvar">Salvar teto</button>
+            <button type="button" class="ghost" id="tmAuto">Deixar automático</button>
+            <button type="button" class="ghost" id="tmCancelar">Cancelar</button>
+          </div>
+        </form>
+      </div>
       <div class="card">
         <h2>Posso gastar?</h2>
         <div id="cePode"></div>

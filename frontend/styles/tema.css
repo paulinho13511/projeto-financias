@@ -283,3 +283,32 @@ body:not(.locked){
   .lc-filtros .lc-busca{grid-column:auto}
 }
 @media(max-width:380px){.lc-cab{flex-wrap:wrap}.lc-novo{width:100%}}
+
+/* Termômetro do mês: um tubo que enche com o gasto do dia a dia; a marca "hoje" mostra onde deveria estar */
+.tm-topo{display:flex;gap:14px;align-items:center}
+.tm-topo b{font-size:20px;line-height:1.2;display:block}
+.tm-topo span:not(.tm-luz){color:var(--tv-mut);font-size:15px;line-height:1.4;display:block;margin-top:3px}
+.tm-luz{width:18px;height:18px;border-radius:50%;flex:0 0 auto;background:#6b6b6b}
+.tm-luz.verde{background:#34d399;box-shadow:0 0 14px rgba(52,211,153,.6)}
+.tm-luz.amarelo{background:#fbbf24;box-shadow:0 0 14px rgba(251,191,36,.6)}
+.tm-luz.vermelho{background:#ff2b2b;box-shadow:0 0 14px rgba(255,43,43,.7)}
+.tm-valor{margin-top:16px;color:var(--tv-mut);font-size:15px}
+.tm-valor b{color:#fff;font-size:26px;letter-spacing:-.4px;margin-right:4px}
+.tm-tubo{position:relative;height:22px;margin:12px 0 26px;border-radius:99px;background:#1c1c1c;box-shadow:inset 0 2px 6px rgba(0,0,0,.7);border:1px solid #2a2a2a}
+.tm-fill{height:100%;border-radius:99px;min-width:22px;transition:width .6s cubic-bezier(.22,1,.36,1)}
+.tm-tubo.verde .tm-fill{background:linear-gradient(90deg,#1f9d6c,#34d399)}
+.tm-tubo.amarelo .tm-fill{background:linear-gradient(90deg,#c98a0a,#fbbf24)}
+.tm-tubo.vermelho .tm-fill{background:linear-gradient(90deg,#b51616,#ff4d4d)}
+.tm-tubo.cinza .tm-fill{background:#444}
+.tm-hoje{position:absolute;top:-5px;bottom:-5px;width:2px;margin-left:-1px;background:#fff;border-radius:2px;box-shadow:0 0 6px rgba(255,255,255,.6)}
+.tm-hoje span{position:absolute;top:calc(100% + 3px);left:50%;transform:translateX(-50%);font-size:11px;color:#cfcfcf;white-space:nowrap}
+.tm-legenda{font-size:12.5px;color:var(--tv-mut);line-height:1.4}
+.tm-btn{margin-top:12px;min-height:40px;padding:6px 14px}
+.tm-ajuste{display:grid;gap:10px;margin-top:14px}
+.tm-fld{display:grid;gap:6px;font-size:13px;color:var(--tv-mut)}
+.tm-fld input{width:100%}
+.tm-erro{color:#ff8a8a;font-size:13px;min-height:16px}
+.tm-btns{display:flex;flex-wrap:wrap;gap:8px}
+.tm-btns button{min-height:44px;padding:0 16px;width:auto}
+#tmSalvar{background:var(--tv-metal);color:#fff;border:0}
+@media(prefers-reduced-motion:reduce){.tm-fill{transition:none}}

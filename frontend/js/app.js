@@ -779,10 +779,66 @@ function rendaPrevista(cm){
   const faltam=modelo.filter(t=>`${cm}-${pad(Math.min(parseInt(t.date.slice(8),10),dim(cm)))}`>=today()).reduce((s,t)=>s+t.amount,0);
   return r2(Math.min(faltam,Math.max(0,esperado-jaEntrou)));
 }
+/* ---------- Termômetro do mês ----------
+   Mede só o gasto do dia a dia (lançamentos de despesa do mês, no cartão ou na conta). Contas fixas e parcelas
+   ficam de fora: elas já estão reservadas no teto.
+   Teto automático = renda do mês (o que entrou + o salário que ainda vai cair) − contas fixas e parcelas do mês.
+   Quem preferir define o próprio teto (vale para todos os meses até voltar ao automático).
+   Ritmo: até hoje o ideal é ter gasto teto × (dia de hoje ÷ dias do mês). */
+function termometro(cm){
+  const dia=parseInt(today().slice(8,10),10), dias=dim(cm);
+  const gasto=r2(txOf(cm).filter(t=>t.type==="expense").reduce((s,t)=>s+(Number(t.amount)||0),0));
+  const fixas=r2(occ(cm).reduce((s,o)=>s+o.amount,0));
+  const renda=r2(totals(cm).inc+rendaPrevista(cm));
+  const manual=Number(db.settings.teto)>0?r2(Number(db.settings.teto)):0;
+  const teto=manual||r2(renda-fixas);
+  const ideal=teto>0?r2(teto*dia/dias):0;
+  let est="cinza",titulo,frase;
+  if(teto<=0){
+    titulo=renda<=0?"Sem teto ainda":"Sem espaço no mês";
+    frase=renda<=0?"Cadastre a receita do mês ou defina um teto para eu medir seus gastos.":"As contas fixas já usam toda a renda do mês. Defina um teto para acompanhar o dia a dia.";
+  }else if(gasto>teto){
+    est="vermelho";titulo="Passou do teto";frase=`Você passou ${money(r2(gasto-teto))} do teto do mês.`;
+  }else if(gasto>ideal*1.1&&gasto>0){
+    const porDia=gasto/dia, diaFim=Math.ceil(teto/porDia);
+    est="amarelo";titulo="Gastando rápido";
+    frase=diaFim<=dias?`Neste ritmo, o dinheiro do mês acaba por volta do dia ${diaFim}.`:"Você está gastando mais rápido do que o mês anda.";
+  }else{
+    est="verde";titulo="No ritmo certo";frase=`Até hoje dava para gastar ${money(ideal)}. Continue assim.`;
+  }
+  return {dia,dias,gasto,fixas,renda,teto,manual:!!manual,ideal,est,titulo,frase};
+}
+function renderTermometro(){
+  const T=termometro(mKey(today()));
+  const pct=T.teto>0?Math.min(100,T.gasto/T.teto*100):0, marca=T.dia/T.dias*100;
+  $("tmCorpo").innerHTML=`
+    <div class="tm-topo"><span class="tm-luz ${T.est}" aria-hidden="true"></span><div><b>${esc(T.titulo)}</b><span>${esc(T.frase)}</span></div></div>
+    ${T.teto>0?`<div class="tm-valor"><b>${money(T.gasto)}</b> de ${money(T.teto)}</div>
+    <div class="tm-tubo ${T.est}" role="img" aria-label="Gastou ${Math.round(T.gasto/T.teto*100)}% do teto; o mês já passou ${Math.round(marca)}%">
+      <div class="tm-fill" style="width:${pct.toFixed(1)}%"></div>
+      <div class="tm-hoje" style="left:${marca.toFixed(1)}%"><span>hoje</span></div>
+    </div>
+    <div class="tm-legenda">${T.manual?"Teto definido por você":`Teto = renda ${money(T.renda)} − contas fixas ${money(T.fixas)}`} · dia ${T.dia} de ${T.dias}</div>`:""}
+    <button type="button" class="ghost tm-btn" id="tmAbrir">${T.manual?"Mudar meu teto":"Definir meu teto"}</button>`;
+  $("tmAbrir").onclick=()=>{
+    $("tmValor").value=T.manual?fmtValor(T.teto):"";$("tmErro").textContent="";
+    $("tmAuto").hidden=!T.manual;$("tmForm").hidden=false;$("tmAbrir").hidden=true;$("tmValor").focus();
+  };
+}
+$("tmForm").onsubmit=e=>{
+  e.preventDefault();
+  const v=parseValor($("tmValor").value);
+  if(!(v>0)){$("tmErro").textContent=MSG_VALOR;$("tmValor").focus();return}
+  db.settings.teto=r2(v);save();$("tmForm").hidden=true;renderAll();showToast("Teto salvo: "+money(r2(v)));
+};
+$("tmAuto").onclick=()=>{delete db.settings.teto;save();$("tmForm").hidden=true;renderAll();showToast("Teto automático")};
+$("tmCancelar").onclick=()=>{$("tmForm").hidden=true;renderTermometro()};
+
 function renderComoEstou(){
   const cm=mKey(today());
   $("ceBloco").hidden=sel!==cm;                      // o sinal vale para o mês de hoje; em outro mês, só o resumo e os gráficos
   if(sel!==cm)return;
+  renderTermometro();
   const t=totals(cm);
   const resta=dim(cm)-parseInt(today().slice(8,10),10)+1;          // dias que faltam, contando hoje
   // contas em aberto + faturas do cartão (a fechada que falta pagar e a aberta, com o que já gastou), da mais urgente para a mais distante
