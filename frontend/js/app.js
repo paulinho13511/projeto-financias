@@ -55,7 +55,7 @@ function occ(ym){
       return;
     }
     if((!b.start||ym>=b.start)&&(!b.end||ym<=b.end)){
-      out.push({b,amount:b.amount,label:b.end?`Até ${b.end.slice(5,7)}/${b.end.slice(0,4)}`:"Mensal"});
+      out.push({b,amount:(b.valores&&b.valores[ym])||b.amount,label:b.end?`Até ${b.end.slice(5,7)}/${b.end.slice(0,4)}`:"Mensal"});
     }
   });
   return out;
@@ -149,11 +149,12 @@ function enterApp(){
   renderAll();
   go("inicio");
   bumpIdle();
+  travar();   // bloqueio ao abrir (se ativado neste aparelho)
 }
 async function lockApp(reason){
   db=null;sessionUser=null;isAdmin=false;dbUpdatedAt=null;dbConflict=false;clearTimeout(idleTimer);
   $("menu").hidden=true;$("modal").hidden=true;$("aclSheet").hidden=true;$("pwSheet").hidden=true;
-  $("payModal").hidden=true;$("editSheet").hidden=true;$("rlSheet").hidden=true;$("eiSheet").hidden=true;$("scSheet").hidden=true;   // nada de diálogo aberto por cima da tela de entrada
+  $("payModal").hidden=true;$("editSheet").hidden=true;$("rlSheet").hidden=true;$("eiSheet").hidden=true;$("scSheet").hidden=true;$("btSheet").hidden=true;$("trava").hidden=true;   // nada de diálogo aberto por cima da tela de entrada
   $("payYes").onclick=null;$("payNo").onclick=null;$("mYes").onclick=null;$("mNo").onclick=null;
   document.body.classList.add("locked");
   try{localStorage.removeItem("mf_sessao")}catch(_){}
@@ -416,7 +417,10 @@ function limiteCartao(c){
 /* Ao pagar, o usuário escolhe de qual conta o dinheiro sai. O pagamento vira um movimento da conta
    (tipo "payment"), que não conta como despesa de novo: a despesa já está no mês. Sem contas cadastradas, nada pergunta. */
 let lastPayAcc="";
-function askPayAccount(msg,obrigatoria){
+let payValor=null;   // valor digitado em "Quanto veio este mês" (conta fixa mensal)
+function askPayAccount(msg,obrigatoria,valor){
+  $("payValFld").hidden=valor===undefined;
+  if(valor!==undefined)$("payVal").value=fmtValor(valor);
   const accs=db.accounts||[];
   if(!accs.length){
     if(obrigatoria){showToast("Cadastre uma conta em Carteira para registrar de onde sai o dinheiro");return Promise.resolve(null)}
@@ -429,7 +433,9 @@ function askPayAccount(msg,obrigatoria){
     $("payAcc").value=accs.some(a=>a.id===lastPayAcc)?lastPayAcc:accs[0].id;
     $("payModal").hidden=false;
     const done=v=>{$("payModal").hidden=true;$("payYes").onclick=null;$("payNo").onclick=null;resolve(v)};
-    $("payYes").onclick=()=>{lastPayAcc=$("payAcc").value||lastPayAcc;done($("payAcc").value)};
+    $("payYes").onclick=()=>{
+      if(valor!==undefined){const v=parseValor($("payVal").value);if(!(v>0)){showToast(MSG_VALOR);return}payValor=r2(v)}
+      lastPayAcc=$("payAcc").value||lastPayAcc;done($("payAcc").value)};
     $("payNo").onclick=()=>done(null);
   });
 }
@@ -577,13 +583,18 @@ async function togglePaid(id,ym){
     if(!b.card){
       const o=occ(ym).find(x=>x.b.id===id);
       const amount=o?o.amount:b.amount;
-      const acc=await askPayAccount(`Pagar ${b.name} (${money(amount)}). De qual conta sai o dinheiro?`,true);
+      const mensal=(b.kind||"mensal")==="mensal";
+      payValor=null;
+      const acc=await askPayAccount(`Pagar ${b.name}. De qual conta sai o dinheiro?`,true,mensal?amount:undefined);
       if(acc===null)return;
-      if(acc)db.tx.push({id:uid(),type:"payment",desc:`Pagamento: ${b.name}`,amount,date:today(),category:b.category||"Contas",account:acc,ref:{kind:"bill",id,ym},created:Date.now()});
+      let valor=amount;
+      if(mensal&&payValor&&payValor!==amount){valor=payValor;b.valores=b.valores||{};b.valores[ym]=valor}   // conta que muda todo mês (luz, água)
+      if(acc)db.tx.push({id:uid(),type:"payment",desc:`Pagamento: ${b.name}`,amount:valor,date:today(),category:b.category||"Contas",account:acc,ref:{kind:"bill",id,ym},created:Date.now()});
     }
     b.paid=[...b.paid,ym];
   }else{
     b.paid=b.paid.filter(x=>x!==ym);
+    if(b.valores&&b.valores[ym]!==undefined)delete b.valores[ym];
     dropPayment("bill",{id,ym});   // desmarcar devolve o dinheiro à conta
   }
   save();renderAll();
@@ -645,6 +656,8 @@ function renderInicio(){
   Object.entries(db.budgets).forEach(([c,lim])=>{
     if((bySel[c]||0)>=lim)msgs.push({title:"Limite atingido",body:`${c}: ${money(bySel[c]||0)} de ${money(lim)}`});
   });
+  alertasAntes().forEach(a=>msgs.unshift(a));
+  assinaturasParaConfirmar().forEach(b=>msgs.push({title:`Ainda usa ${b.name}?`,body:`${money(b.amount)} por mês. Confirme em Assinaturas.`}));
   $("notifs").innerHTML=msgs.length?msgs.map(m=>`
     <div class="notif"><div class="app-n">TravaDin · agora</div>
     <div class="msg"><b>${esc(m.title)}</b><br>${esc(m.body)}</div></div>`).join(""):`<div class="empty">Nenhuma notificação pendente</div>`;
@@ -880,6 +893,9 @@ function virarCiclo(pendente){
   const ts=Math.max(Date.now(),...salarios().filter(t=>t.date===today()).map(t=>(t.created||0)+1));
   db.settings.ciclo={inicio:today(),ts,ajuste:r2(-(pendente||0)),   // estourou mas pagou todas as contas: o ciclo novo começa zerado
    sobra:resultado>0?resultado:0,hist};
+  // regra fixa: a sobra vai sozinha para a meta escolhida
+  const gm=(db.goals||[]).find(x=>x.id===db.settings.sobraMeta);
+  if(gm&&db.settings.ciclo.sobra>0){const v=db.settings.ciclo.sobra;gm.saved=r2((Number(gm.saved)||0)+v);db.settings.ciclo.sobra=0;setTimeout(()=>showToast(`Sobra de ${money(v)} guardada em ${gm.name}`),1200)}
   save();
 }
 /* vira sozinho: salário novo no ciclo + nenhuma conta em aberto */
@@ -919,7 +935,7 @@ function renderTermometro(){
   // sobra: fica no card até a pessoa guardar numa meta ou escolher não fazer nada
   const temMeta=(db.goals||[]).length>0;
   const sobra=c.sobra>0?`<div class="tm-sobra"><b>Sobrou ${money(c.sobra)} no ciclo passado.</b> ${temMeta?"Quer guardar numa meta?":"Crie uma meta para guardar essa sobra."}
-      <div class="tm-btns">${temMeta?`<select id="tmMeta" aria-label="Meta">${db.goals.map(g=>`<option value="${esc(g.id)}">${esc(g.name)}</option>`).join("")}</select><button type="button" class="ghost" id="tmSobraMeta">Guardar na meta</button>`
+      <div class="tm-btns">${temMeta?`<select id="tmMeta" aria-label="Meta">${db.goals.map(g=>`<option value="${esc(g.id)}">${esc(g.name)}</option>`).join("")}</select><button type="button" class="ghost" id="tmSobraMeta">Guardar na meta</button><label class="chk full"><input type="checkbox" id="tmSobraSempre"><span>Sempre guardar a sobra nesta meta</span></label>`
         :`<button type="button" class="ghost" id="tmIrMetas">Ir para Metas</button>`}
       <button type="button" class="ghost" id="tmSobraNada">Não fazer nada</button></div></div>`:"";
   const hist=(c.hist||[]).slice(-3).reverse().map(h=>{const r=r2(h.teto-h.gasto);return `<li>${fmtDate(h.inicio)} a ${fmtDate(h.fim)}: gastou ${money(h.gasto)} de ${money(h.teto)} · <span class="${r<0?"expense":"income"}">${r<0?"passou "+money(-r):"sobrou "+money(r)}</span></li>`}).join("");
@@ -930,6 +946,8 @@ function renderTermometro(){
       <div class="tm-hoje" style="left:${marca.toFixed(1)}%"><span>hoje</span></div>
     </div>
     <div class="tm-legenda">Ciclo desde ${fmtDate(c.inicio)} · próximo salário ${fmtDate(T.fim)} · teto ${money(T.teto)}${aj<0?` − ${money(-aj)} do ciclo passado`:aj>0?` + ${money(aj)} de sobra`:""}${T.adiantadas?` · inclui ${money(T.adiantadas)} de conta paga adiantada`:""}</div>
+    ${(G=>G?`<div class="tm-linha">${money(G.total)} em gastinhos neste ciclo (${G.cats.map(esc).join(", ")}) · ${G.qtd} compra(s)</div>`:"")(gastinhosCiclo())}
+    ${(f=>f?`<div class="tm-linha">${esc(f)}</div>`:"")(comparaCiclo())}
     ${pend}
     <div class="tm-btns tm-acoes"><button type="button" class="ghost tm-btn" id="tmAbrir">Mudar meu teto</button></div>
     ${hist?`<details class="tm-hist"><summary>Ciclos anteriores</summary><ul>${hist}</ul></details>`:""}`;
@@ -938,7 +956,7 @@ function renderTermometro(){
   if(c.sobra>0){
     $("tmSobraNada").onclick=()=>{fechaSobra(0);showToast("Ok, a sobra ficou na conta")};
     if($("tmIrMetas"))$("tmIrMetas").onclick=()=>go("metas");
-    if($("tmSobraMeta"))$("tmSobraMeta").onclick=()=>{const g=db.goals.find(x=>x.id===$("tmMeta").value);if(!g)return;const v=c.sobra;g.saved=r2((Number(g.saved)||0)+v);fechaSobra(0);showToast(`${money(v)} guardados em ${g.name}`)};
+    if($("tmSobraMeta"))$("tmSobraMeta").onclick=()=>{const g=db.goals.find(x=>x.id===$("tmMeta").value);if(!g)return;const v=c.sobra;g.saved=r2((Number(g.saved)||0)+v);if($("tmSobraSempre").checked)db.settings.sobraMeta=g.id;fechaSobra(0);showToast(`${money(v)} guardados em ${g.name}`)};
   }
 }
 $("tmForm").onsubmit=e=>{
@@ -1051,6 +1069,7 @@ function renderAll(){
   populateCardSelects();
   renderCarteira();
   renderV13();
+  renderGastinhoCats();renderSobraRegra();renderDesafio();
   animNow=false;
   if(replayAnim){replayAnim=false;playEnter()}
 }
@@ -1495,6 +1514,215 @@ $("rlSalvar").onclick=()=>{
   showToast(resumo);
 };
 
+/* ---------- Gastinhos: categorias que a pessoa marca como "gastinho" ---------- */
+function gastinhosCiclo(){
+  const cats=(db.settings.gastinhos||[]);
+  if(!cats.length)return null;
+  const c=cicloAtual();
+  const lista=db.tx.filter(t=>t.type==="expense"&&noCiclo(t,c)&&cats.includes(t.category));
+  return {total:r2(lista.reduce((s,t)=>s+(Number(t.amount)||0),0)),qtd:lista.length,cats};
+}
+function renderGastinhoCats(){
+  const on=db.settings.gastinhos||[];
+  $("gastinhoCats").innerHTML=CATS.map(c=>`<button type="button" class="chip" data-gastinho="${esc(c)}" aria-pressed="${on.includes(c)}">${catIcon(c)}<span>${esc(c)}</span></button>`).join("");
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-gastinho]");if(!b||!db)return;
+  const c=b.dataset.gastinho, on=new Set(db.settings.gastinhos||[]);
+  on.has(c)?on.delete(c):on.add(c);
+  db.settings.gastinhos=[...on];save();renderAll();
+});
+
+/* ---------- Comparar com o ciclo passado, no mesmo ponto do ciclo ---------- */
+function comparaCiclo(){
+  const c=cicloAtual(), h=(c.hist||[])[(c.hist||[]).length-1];
+  if(!h)return null;
+  const dias=Math.max(1,daysBetween(c.inicio,today())+1);
+  const lim=(()=>{const d=new Date(h.inicio+"T12:00:00");d.setDate(d.getDate()+dias-1);const x=ymd(d);return x<h.fim?x:h.fim})();
+  const antes=db.tx.filter(t=>t.type==="expense"&&t.date>=h.inicio&&t.date<=lim).reduce((s,t)=>s+(Number(t.amount)||0),0);
+  const agora=db.tx.filter(t=>t.type==="expense"&&noCiclo(t,c)).reduce((s,t)=>s+(Number(t.amount)||0),0);
+  if(antes<=0)return null;
+  const pct=Math.round((agora-antes)/antes*100);
+  if(Math.abs(pct)<3)return "Até aqui, você está gastando igual ao ciclo passado.";
+  return pct<0?`Até aqui, você gastou ${-pct}% menos que no mesmo ponto do ciclo passado.`:`Até aqui, você gastou ${pct}% mais que no mesmo ponto do ciclo passado.`;
+}
+
+/* ---------- Alertas antes do problema ---------- */
+const DIAS_SEMANA=["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
+function alertasAntes(){
+  const out=[], cur=mKey(today());
+  // conta que veio 20% ou mais acima da média dos últimos 3 meses pagos
+  db.bills.filter(b=>(b.kind||"mensal")==="mensal"&&(b.paid||[]).includes(cur)).forEach(b=>{
+    const val=m=>(b.valores&&b.valores[m])||b.amount;
+    const ant=[1,2,3].map(k=>shiftMonth(cur,-k)).filter(m=>(b.paid||[]).includes(m)).map(val);
+    if(!ant.length)return;
+    const media=ant.reduce((s,v)=>s+v,0)/ant.length, agora=val(cur);
+    const pct=Math.round((agora-media)/media*100);
+    if(media>0&&pct>=20)out.push({title:`${b.name} veio ${pct}% maior`,body:`${money(agora)} este mês; a média era ${money(r2(media))}.`});
+  });
+  // o saldo das contas não cobre o que vence nos próximos 7 dias
+  const saldo=accTotal();
+  let soma=0;
+  for(const x of openBills().filter(x=>!x.b.card&&x.st.d>=0&&x.st.d<=7).sort((a,b)=>a.st.d-b.st.d)){
+    soma+=x.amount;
+    if(soma>saldo){
+      const venc=dueOf(x.b,x.ym), dia=new Date(venc+"T12:00:00").getDay();
+      out.push({title:"O saldo não cobre uma conta",body:`O saldo das contas (${money(saldo)}) não cobre ${x.b.name} (${money(x.amount)}), que vence ${x.st.d===0?"hoje":x.st.d===1?"amanhã":DIAS_SEMANA[dia]+" ("+fmtDate(venc)+")"}.`});
+      break;
+    }
+  }
+  return out;
+}
+
+/* ---------- Assinaturas esquecidas: a cada 3 meses, "ainda usa?" ---------- */
+function assinaturasParaConfirmar(){
+  const cur=mKey(today());
+  return db.bills.filter(b=>b.sub&&(b.kind||"mensal")==="mensal"&&(!b.end||b.end>=cur)&&b.start&&b.start<=cur)
+    .filter(b=>monthDiff(b.usoEm||b.start,cur)>=3);
+}
+function renderSubUso(){
+  const lista=assinaturasParaConfirmar();
+  $("subUsoCard").hidden=!lista.length;
+  $("subUso").innerHTML=lista.map(b=>`<div class="row"><div class="rmain"><div class="t">Ainda usa ${esc(b.name)}?</div><div class="s">${money(b.amount)} por mês · ${money(r2(b.amount*12))} por ano</div></div>
+    <div class="actions"><button class="ghost" type="button" data-act="subUsa" data-id="${esc(b.id)}">Sim, uso</button><button class="ghost" type="button" data-act="subCancelei" data-id="${esc(b.id)}">Cancelei</button></div></div>`).join("");
+}
+function subUsa(id){const b=db.bills.find(x=>x.id===id);if(!b)return;b.usoEm=mKey(today());save();renderAll();showToast("Ok, pergunto de novo daqui a 3 meses")}
+async function subCancelei(id){
+  const b=db.bills.find(x=>x.id===id);if(!b)return;
+  const cur=mKey(today());
+  if(!(await ask(`Encerrar ${b.name}? Ela some das contas a partir do próximo mês${(b.paid||[]).includes(cur)?"":" (a deste mês ainda aparece, se já veio)"}.`,"Encerrar","Voltar")))return;
+  b.end=cur;save();renderAll();showToast(`${b.name} encerrada`);
+}
+
+/* ---------- Regra fixa: toda sobra vai para uma meta ---------- */
+function renderSobraRegra(){
+  const g=(db.goals||[]).find(x=>x.id===db.settings.sobraMeta);
+  if(db.settings.sobraMeta&&!g)delete db.settings.sobraMeta;
+  $("sobraRegraCard").hidden=!g;
+  if(g)$("sobraRegra").innerHTML=`<div class="row"><div class="rmain"><div class="t">Toda sobra do ciclo vai para ${esc(g.name)}</div><div class="s">Quando o ciclo vira, a sobra é guardada sozinha nessa meta.</div></div><div class="actions"><button class="ghost" type="button" data-act="sobraRegraParar">Parar</button></div></div>`;
+}
+
+/* ---------- Desafio de 52 semanas (com multiplicador), ligado a uma meta ---------- */
+function desafioEstado(){
+  const d=db.settings.desafio52;if(!d)return null;
+  const g=(db.goals||[]).find(x=>x.id===d.meta);if(!g)return null;
+  const semanaHoje=Math.min(52,Math.floor(daysBetween(d.inicio,today())/7)+1);
+  const feitas=d.feitas||[];
+  const proxima=[...Array(semanaHoje).keys()].map(i=>i+1).find(n=>!feitas.includes(n));
+  const total=r2(d.base*52*53/2), guardado=r2(feitas.reduce((s,n)=>s+n*d.base,0));
+  return {d,g,semanaHoje,proxima,feitas,total,guardado,atrasadas:[...Array(semanaHoje).keys()].map(i=>i+1).filter(n=>!feitas.includes(n)).length};
+}
+function renderDesafio(){
+  const E=desafioEstado();
+  if(!E){
+    const metas=db.goals||[];
+    $("desafio").innerHTML=metas.length?`<p class="muted" style="margin-bottom:12px">Na semana 1 você guarda o valor escolhido; na semana 2, o dobro; e assim até a semana 52.</p>
+      <form class="f" id="dsForm">
+        <label class="fld full">Guardar na meta<select id="dsMeta">${metas.map(g=>`<option value="${esc(g.id)}">${esc(g.name)}</option>`).join("")}</select></label>
+        <label class="fld full">Valor da semana 1 (R$)<input id="dsBase" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="Ex.: 5,00"></label>
+        <div class="muted full" id="dsTotal"></div>
+        <div class="rl-erro full" id="dsErro" role="alert"></div>
+        <button class="primary full" type="submit">Começar o desafio</button>
+      </form>`:`<div class="empty">Crie uma meta acima para começar o desafio.</div>`;
+    if(metas.length){
+      $("dsBase").oninput=()=>{const v=parseValor($("dsBase").value);$("dsTotal").textContent=v>0?`Semana 52: ${money(r2(v*52))} · total no fim: ${money(r2(v*52*53/2))}`:""};
+      $("dsForm").onsubmit=e=>{e.preventDefault();const v=parseValor($("dsBase").value);
+        if(!(v>0)){$("dsErro").textContent=MSG_VALOR;return}
+        db.settings.desafio52={meta:$("dsMeta").value,base:r2(v),inicio:today(),feitas:[]};save();renderDesafio();showToast("Desafio começou: semana 1 de 52")};
+    }
+    return;
+  }
+  const {d,g,semanaHoje,proxima,feitas,total,guardado,atrasadas}=E;
+  const pct=Math.min(100,guardado/total*100);
+  $("desafio").innerHTML=`<div class="tm-valor"><b>${money(guardado)}</b> de ${money(total)} em ${esc(g.name)}</div>
+    <div class="tm-tubo verde" role="img" aria-label="${feitas.length} de 52 semanas"><div class="tm-fill" style="width:${pct.toFixed(1)}%"></div></div>
+    <div class="tm-legenda">${feitas.length} de 52 semanas · estamos na semana ${semanaHoje}${atrasadas>1?` · ${atrasadas} semanas para guardar`:""}</div>
+    ${proxima?`<div class="tm-btns tm-acoes"><button class="primary" type="button" data-act="desafioGuardar" data-n="${proxima}">Guardei ${money(r2(proxima*d.base))} (semana ${proxima})</button></div>`
+      :feitas.length>=52?`<div class="tm-aviso">Desafio completo! Você guardou ${money(guardado)}.</div>`:`<div class="muted" style="margin-top:12px">Semana ${semanaHoje} já guardada. Próxima semana: ${money(r2((semanaHoje+1)*d.base))}.</div>`}
+    <div class="tm-btns tm-acoes"><button class="ghost" type="button" data-act="desafioParar">Parar o desafio</button></div>`;
+}
+function desafioGuardar(n){
+  const E=desafioEstado();if(!E)return;n=Number(n);
+  if(E.feitas.includes(n))return;
+  const v=r2(n*E.d.base);
+  E.g.saved=r2((Number(E.g.saved)||0)+v);
+  E.d.feitas=[...E.feitas,n];save();renderAll();showToast(`${money(v)} guardados em ${E.g.name}`);
+}
+async function desafioParar(){
+  if(!(await ask("Parar o desafio de 52 semanas? O que já foi guardado continua na meta.","Parar","Voltar")))return;
+  delete db.settings.desafio52;save();renderAll();
+}
+
+/* ---------- Bloqueio ao abrir: digital/rosto (WebAuthn) com PIN de reserva ----------
+   Fica só neste aparelho (localStorage), por pessoa. É uma trava local de tela: os dados continuam
+   protegidos no servidor pela senha. Esqueceu o PIN: sai da conta e entra de novo com a senha. */
+const TRAVA_KEY=()=>"tv_trava:"+(sessionUser?sessionUser.email:"");
+function travaCfg(){try{return JSON.parse(localStorage.getItem(TRAVA_KEY())||"null")}catch(_){return null}}
+function travaSalva(c){try{c?localStorage.setItem(TRAVA_KEY(),JSON.stringify(c)):localStorage.removeItem(TRAVA_KEY())}catch(_){}}
+const b64=buf=>btoa(String.fromCharCode(...new Uint8Array(buf)));
+const deB64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function hashPin(pin,sal){const d=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(sal+":"+pin));return b64(d)}
+const temDigital=()=>!!(window.PublicKeyCredential&&navigator.credentials&&PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable);
+async function criaDigital(){
+  if(!temDigital()||!(await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()))return null;
+  const cred=await navigator.credentials.create({publicKey:{
+    challenge:crypto.getRandomValues(new Uint8Array(32)),rp:{name:"TravaDin"},
+    user:{id:crypto.getRandomValues(new Uint8Array(16)),name:sessionUser.email,displayName:sessionUser.email},
+    pubKeyCredParams:[{type:"public-key",alg:-7},{type:"public-key",alg:-257}],
+    authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required",residentKey:"discouraged"},timeout:60000}});
+  return cred?b64(cred.rawId):null;
+}
+async function usaDigital(id){
+  const r=await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),
+    allowCredentials:[{type:"public-key",id:deB64(id)}],userVerification:"required",timeout:60000}});
+  return !!r;
+}
+function abrirBloqueioCfg(){
+  const c=travaCfg();
+  $("btEstado").textContent=c?`Ativo neste aparelho${c.cred?" (digital + PIN)":" (PIN)"}. Para trocar o PIN, preencha de novo.`:"Ao abrir o TravaDin neste aparelho, ele pede sua digital (ou rosto). Se não der, pede o PIN.";
+  $("btDesligar").hidden=!c;$("btPin").value="";$("btPin2").value="";$("btErro").textContent="";
+  $("btSalvar").textContent=c?"Salvar":"Ativar bloqueio";
+  $("menu").hidden=true;$("btSheet").hidden=false;
+}
+$("travaBtn").onclick=abrirBloqueioCfg;
+$("btFechar").onclick=()=>{$("btSheet").hidden=true};
+$("btDesligar").onclick=()=>{travaSalva(null);$("btSheet").hidden=true;showToast("Bloqueio desligado neste aparelho")};
+$("btForm").onsubmit=async e=>{
+  e.preventDefault();
+  const p=$("btPin").value.trim(),p2=$("btPin2").value.trim();
+  if(!/^\d{4,6}$/.test(p)){$("btErro").textContent="O PIN precisa ter de 4 a 6 números.";return}
+  if(p!==p2){$("btErro").textContent="Os dois PINs não são iguais.";return}
+  const sal=b64(crypto.getRandomValues(new Uint8Array(16)));
+  const cfg={sal,pin:await hashPin(p,sal),cred:null};
+  if($("btDigital").checked){
+    try{cfg.cred=await criaDigital()}catch(_){cfg.cred=null}
+    if(!cfg.cred)showToast("Digital indisponível aqui: o bloqueio vai usar só o PIN");
+  }
+  travaSalva(cfg);$("btSheet").hidden=true;showToast(cfg.cred?"Bloqueio ativo: digital + PIN":"Bloqueio ativo com PIN");
+};
+let travaTentativas=0, travaSaiu=0;
+async function travar(){
+  const c=travaCfg();if(!c)return;
+  $("trava").hidden=false;$("tvPin").value="";$("tvErro").textContent="";
+  $("tvDigital").hidden=!c.cred;
+  if(c.cred)setTimeout(()=>$("tvDigital").click(),150); else $("tvPin").focus();
+}
+function destravar(){$("trava").hidden=true;travaTentativas=0}
+$("tvDigital").onclick=async()=>{const c=travaCfg();if(!c||!c.cred)return;try{if(await usaDigital(c.cred))destravar()}catch(_){$("tvErro").textContent="Não deu com a digital. Use o PIN.";$("tvPin").focus()}};
+$("tvForm").onsubmit=async e=>{
+  e.preventDefault();const c=travaCfg();if(!c){destravar();return}
+  if(await hashPin($("tvPin").value.trim(),c.sal)===c.pin){destravar();return}
+  travaTentativas++;$("tvPin").value="";
+  if(travaTentativas>=5){travaSalva(null);$("trava").hidden=true;lockApp("PIN errado 5 vezes. Entre de novo com sua senha.");return}
+  $("tvErro").textContent=`PIN errado. Restam ${5-travaTentativas} tentativa(s).`;
+};
+$("tvEsqueci").onclick=()=>{travaSalva(null);$("trava").hidden=true;lockApp("Entre com sua senha. Depois, ative o bloqueio de novo em Mais → Bloqueio ao abrir.")};
+// voltar ao app depois de 5 minutos fora também pede o desbloqueio
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden){travaSaiu=Date.now();return}
+  if(db&&travaSaiu&&Date.now()-travaSaiu>5*60*1000)travar();
+});
+
 /* ---------- inicialização ---------- */
 $("bCat").innerHTML=CATS.map(c=>`<option>${c}</option>`).join("");
 $("trDate").value=today();
@@ -1621,6 +1849,7 @@ $("goalList").onclick=async e=>{
 
 /* assinaturas */
 function renderSubs(){
+  renderSubUso();
   const subsAll=(db.bills||[]).filter(b=>b.sub);
   const monthSubs=occ(sel).filter(o=>o.b.sub);
   const monthTotal=monthSubs.reduce((s,o)=>s+o.amount,0);
@@ -1634,7 +1863,7 @@ function renderSubs(){
   $("subYear").textContent=money(annual);
   $("subAcc").textContent=money(acc);
   $("subList").innerHTML=monthSubs.length
-    ?monthSubs.map(o=>`<div class="row"><div class="rmain"><div class="t">${esc(o.b.name)}</div><div class="s">${esc(o.b.category)} · ${money(o.amount)} por mês</div></div></div>`).join("")
+    ?[...monthSubs].sort((a,b)=>b.amount-a.amount).map((o,i)=>`<div class="row${i===0&&monthSubs.length>1?" sub-cara":""}"><div class="rmain"><div class="t">${esc(o.b.name)}${i===0&&monthSubs.length>1?` <span class="tag late">a mais cara</span>`:""}</div><div class="s">${esc(o.b.category)} · ${money(o.amount)} por mês · ${money(r2(o.amount*12))} por ano</div></div></div>`).join("")
     :`<div class="empty">${subsAll.length?"Nenhuma assinatura ativa neste mês":"Em Contas, cadastre uma conta fixa e marque \"É assinatura\""}</div>`;
 }
 
@@ -1776,6 +2005,11 @@ const ACTIONS={
   togglePaid:d=>togglePaid(d.id,d.ym),
   abrirRelampago:()=>abrirRelampago(),
   abrirSemConta:()=>abrirSemConta(),
+  subUsa:d=>subUsa(d.id),
+  subCancelei:d=>subCancelei(d.id),
+  sobraRegraParar:()=>{delete db.settings.sobraMeta;save();renderAll();showToast("A sobra volta a ser perguntada a cada ciclo")},
+  desafioGuardar:d=>desafioGuardar(d.n),
+  desafioParar:()=>desafioParar(),
   editAcc:d=>abrirEditar("acc",d.id),
   editCard:d=>abrirEditar("card",d.id),
   rlIrCarteira:()=>{$("rlSheet").hidden=true;go("carteira")},

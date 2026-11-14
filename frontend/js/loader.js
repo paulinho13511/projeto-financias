@@ -22,6 +22,8 @@ const SCREENS = [
   "dialogs/relampago.html",
   "dialogs/editar-item.html",
   "dialogs/sem-conta.html",
+  "dialogs/bloqueio.html",
+  "overlays/trava.html",
   "overlays/toast.html",
   "overlays/lock.html"
 ];

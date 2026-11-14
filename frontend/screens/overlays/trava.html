@@ -1,0 +1,14 @@
+<!-- Tela de bloqueio ao abrir o app (por cima de tudo) -->
+<div class="trava" id="trava" hidden role="dialog" aria-modal="true" aria-labelledby="tvTitulo">
+  <div class="trava-box">
+    <img src="frontend/assets/logo-mark.svg" alt="" class="trava-logo">
+    <h2 id="tvTitulo">TravaDin bloqueado</h2>
+    <button type="button" class="primary rl-ok" id="tvDigital" hidden>Desbloquear com digital</button>
+    <form id="tvForm" class="ei-form" novalidate>
+      <label class="fld">PIN<input id="tvPin" type="password" inputmode="numeric" autocomplete="off" maxlength="6"></label>
+      <div class="rl-erro" id="tvErro" role="alert"></div>
+      <button type="submit" class="primary rl-ok">Desbloquear</button>
+    </form>
+    <button type="button" class="ghost" id="tvEsqueci">Esqueci o PIN (entrar com a senha)</button>
+  </div>
+</div>

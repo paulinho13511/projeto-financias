@@ -401,3 +401,22 @@ h3.sub{font-size:15px;font-weight:800;color:#e9e9e9;margin:4px 0 10px}
 .cal .b{font-size:12px}
 .rl-chip small{font-size:13px;opacity:.75}
 #rlSheet .rl-x,#eiSheet .rl-x,#scSheet .rl-x{width:44px;min-height:44px}
+
+/* termômetro: linhas de gastinhos e comparação */
+.tm-linha{margin-top:10px;font-size:15px;line-height:1.4;color:#e6e6e6}
+/* assinatura mais cara */
+.row.sub-cara{border:1px solid rgba(255,77,77,.4)}
+/* bloqueio ao abrir */
+.trava{position:fixed;inset:0;z-index:200;background:#000;display:grid;place-items:center;padding:24px}
+.trava[hidden]{display:none}
+.trava-box{width:100%;max-width:360px;display:grid;gap:14px;justify-items:center;text-align:center}
+.trava-box .ei-form,.trava-box .rl-ok,.trava-box .ghost{width:100%}
+.trava-logo{width:96px;height:96px}
+.trava h2{font-size:22px}
+#tmSobraSempre+span{font-size:14px}
+#btSheet .sheetbox.ei{gap:12px;border-top:2px solid var(--tv-red);grid-template-columns:minmax(0,1fr)}
+@media(min-width:1000px){#btSheet{place-items:center}#btSheet .sheetbox.ei{border-radius:24px;border:1px solid var(--tv-hair2);border-top:2px solid var(--tv-red);max-width:460px}}
+#btSheet .rl-x{width:44px;min-height:44px;padding:0;border-radius:50%;text-align:center;font-size:22px;line-height:1;background:var(--tv-panel2)}
+#btSheet .rl-ok,.trava .rl-ok,#desafio .primary{min-height:52px;font-size:16px;text-align:center;border-radius:14px;background:var(--tv-metal);color:#fff;border:0}
+#gastinhoCats{flex-wrap:wrap;overflow:visible}
+.trava h2,#btSheet h2{text-transform:none;letter-spacing:0;color:#fff;font-size:22px}
