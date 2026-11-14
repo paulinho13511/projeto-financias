@@ -826,51 +826,119 @@ function rendaPrevista(cm){
   const faltam=modelo.filter(t=>`${cm}-${pad(Math.min(parseInt(t.date.slice(8),10),dim(cm)))}`>=today()).reduce((s,t)=>s+t.amount,0);
   return r2(Math.min(faltam,Math.max(0,esperado-jaEntrou)));
 }
-/* ---------- Termômetro do mês ----------
-   Mede só o gasto do dia a dia (lançamentos de despesa do mês, no cartão ou na conta). Contas fixas e parcelas
-   ficam de fora: elas já estão reservadas no teto.
-   Teto automático = renda do mês (o que entrou + o salário que ainda vai cair) − contas fixas e parcelas do mês.
-   Quem preferir define o próprio teto (vale para todos os meses até voltar ao automático).
-   Ritmo: até hoje o ideal é ter gasto teto × (dia de hoje ÷ dias do mês). */
-function termometro(cm){
-  const dia=parseInt(today().slice(8,10),10), dias=dim(cm);
-  const gasto=r2(txOf(cm).filter(t=>t.type==="expense").reduce((s,t)=>s+(Number(t.amount)||0),0));
-  const fixas=r2(occ(cm).reduce((s,o)=>s+o.amount,0));
-  const renda=r2(totals(cm).inc+rendaPrevista(cm));
-  const manual=Number(db.settings.teto)>0?r2(Number(db.settings.teto)):0;
-  const teto=manual||r2(renda-fixas);
-  const ideal=teto>0?r2(teto*dia/dias):0;
-  let est="cinza",titulo,frase;
-  if(teto<=0){
-    titulo=renda<=0?"Sem teto ainda":"Sem espaço no mês";
-    frase=renda<=0?"Cadastre a receita do mês ou defina um teto para eu medir seus gastos.":"As contas fixas já usam toda a renda do mês. Defina um teto para acompanhar o dia a dia.";
-  }else if(gasto>teto){
-    est="vermelho";titulo="Passou do teto";frase=`Você passou ${money(r2(gasto-teto))} do teto do mês.`;
-  }else if(gasto>ideal*1.1&&gasto>0){
-    const porDia=gasto/dia, diaFim=Math.ceil(teto/porDia);
-    est="amarelo";titulo="Gastando rápido";
-    frase=diaFim<=dias?`Neste ritmo, o dinheiro do mês acaba por volta do dia ${diaFim}.`:"Você está gastando mais rápido do que o mês anda.";
-  }else{
-    est="verde";titulo="No ritmo certo";frase=`Até hoje dava para gastar ${money(ideal)}. Continue assim.`;
+/* ---------- Termômetro do ciclo ----------
+   O termômetro segue o ciclo da pessoa, não o mês do calendário:
+   - o ciclo vira quando, depois de o salário entrar, TODAS as contas (contas fixas do mês e fatura fechada do cartão)
+     estão pagas. Também dá para virar na mão ("Começar novo ciclo"); aí o que ficou sem pagar desconta do próximo teto;
+   - o teto é sempre a pessoa que define (nada pré-definido);
+   - o tubo enche com os gastos do dia a dia feitos no ciclo e com contas pagas ADIANTADAS (de vencimento depois
+     do fim do ciclo). Fatura do cartão não entra: as compras dela já entraram uma a uma;
+   - estourou: o que passou desconta do teto do ciclo seguinte; sobrou: a pessoa decide (meta, somar ao teto ou deixar). */
+const salarios=()=>db.tx.filter(t=>t.type==="income"&&t.category==="Salário").sort((a,b)=>a.date.localeCompare(b.date)||(a.created||0)-(b.created||0));
+const noCiclo=(t,c)=>t.date>c.inicio||(t.date===c.inicio&&(t.created||0)>=(c.ts||0));
+function fimDoCiclo(c){
+  // dia do próximo salário (pelo dia do último salário); sem salário, 30 dias depois do início
+  const ult=salarios().pop();
+  if(ult){
+    const dia=parseInt(ult.date.slice(8,10),10);
+    let ym=mKey(today());
+    for(let k=0;k<3;k++){const d=`${ym}-${pad(Math.min(dia,dim(ym)))}`;if(d>today()&&d>c.inicio)return d;ym=shiftMonth(ym,1)}
   }
-  return {dia,dias,gasto,fixas,renda,teto,manual:!!manual,ideal,est,titulo,frase};
+  const d=new Date(c.inicio+"T12:00:00");d.setDate(d.getDate()+30);return ymd(d);
+}
+function contasPendentes(){
+  const cur=mKey(today());
+  const lista=openBills().filter(x=>x.ym<=cur).map(x=>({nome:x.b.name,valor:x.amount}));
+  (db.cards||[]).forEach(c=>{const ym=shiftMonth(currentCloseYm(c),-1),v=devidoFatura(c,ym);if(v>0)lista.push({nome:"Fatura "+c.name,valor:v})});
+  return lista;
+}
+function cicloAtual(){
+  if(!db.settings.ciclo){
+    // primeira vez: começa no último salário dos últimos 40 dias (ou no dia 1º do mês)
+    const ult=salarios().filter(t=>daysBetween(t.date,today())<=40).pop();
+    db.settings.ciclo={inicio:ult?ult.date:mKey(today())+"-01",ts:0,ajuste:0,sobra:0,hist:[]};
+    save();
+  }
+  return db.settings.ciclo;
+}
+function estadoCiclo(){
+  const c=cicloAtual(), fim=fimDoCiclo(c);
+  const gastos=db.tx.filter(t=>t.type==="expense"&&noCiclo(t,c)).reduce((s,t)=>s+(Number(t.amount)||0),0);
+  const adiantadas=db.tx.filter(t=>{
+    if(t.type!=="payment"||!t.ref||t.ref.kind!=="bill"||!noCiclo(t,c))return false;
+    const b=db.bills.find(x=>x.id===t.ref.id);return b&&dueOf(b,t.ref.ym)>fim;
+  }).reduce((s,t)=>s+(Number(t.amount)||0),0);
+  const teto=Number(db.settings.teto)>0?r2(Number(db.settings.teto)):0;
+  const tetoEf=r2(teto+(Number(c.ajuste)||0));
+  const gasto=r2(gastos+adiantadas);
+  const total=Math.max(1,daysBetween(c.inicio,fim)), passados=Math.min(total,Math.max(1,daysBetween(c.inicio,today())+1));
+  const ideal=tetoEf>0?r2(tetoEf*passados/total):0;
+  const salarioNovo=salarios().some(t=>noCiclo(t,c));
+  return {c,fim,teto,tetoEf,gasto,adiantadas:r2(adiantadas),ideal,passados,total,salarioNovo,pend:contasPendentes()};
+}
+function virarCiclo(pendente){
+  const E=estadoCiclo(), c=E.c;
+  const resultado=E.teto?r2(E.tetoEf-E.gasto):0;
+  const hist=(c.hist||[]).slice(-5);
+  if(E.teto)hist.push({inicio:c.inicio,fim:today(),teto:E.tetoEf,gasto:E.gasto});
+  db.settings.ciclo={inicio:today(),ts:Date.now(),ajuste:r2(Math.min(0,resultado)-(pendente||0)),sobra:resultado>0?resultado:0,hist};
+  save();
+}
+/* vira sozinho: salário novo no ciclo + nenhuma conta em aberto */
+function checarCiclo(){
+  const E=estadoCiclo();
+  if(E.salarioNovo&&!E.pend.length){virarCiclo(0);showToast("Contas pagas: começou um ciclo novo");return true}
+  return false;
 }
 function renderTermometro(){
-  const T=termometro(mKey(today()));
-  const pct=T.teto>0?Math.min(100,T.gasto/T.teto*100):0, marca=T.dia/T.dias*100;
-  $("tmCorpo").innerHTML=`
-    <div class="tm-topo"><span class="tm-luz ${T.est}" aria-hidden="true"></span><div><b>${esc(T.titulo)}</b><span>${esc(T.frase)}</span></div></div>
-    ${T.teto>0?`<div class="tm-valor"><b>${money(T.gasto)}</b> de ${money(T.teto)}</div>
-    <div class="tm-tubo ${T.est}" role="img" aria-label="Gastou ${Math.round(T.gasto/T.teto*100)}% do teto; o mês já passou ${Math.round(marca)}%">
+  checarCiclo();
+  const T=estadoCiclo(), c=T.c;
+  if(!T.teto){
+    $("tmCorpo").innerHTML=`<div class="tm-topo"><span class="tm-luz cinza" aria-hidden="true"></span><div><b>Defina seu teto</b><span>Quanto você quer gastar no dia a dia até o próximo salário? Você escolhe o valor.</span></div></div>`;
+    $("tmErro").textContent="";$("tmCancelar").hidden=true;$("tmForm").hidden=false;
+    return;
+  }
+  $("tmCancelar").hidden=false;
+  let est,titulo,frase;
+  if(T.tetoEf<=0){est="vermelho";titulo="Teto já usado";frase=`O que ficou do ciclo passado (${money(-(Number(c.ajuste)||0))}) já usa todo o teto deste ciclo.`}
+  else if(T.gasto>T.tetoEf){est="vermelho";titulo="Passou do teto";frase=`Passou ${money(r2(T.gasto-T.tetoEf))}. Isso vai descontar do teto do próximo ciclo.`}
+  else if(T.gasto>T.ideal*1.1&&T.gasto>0){
+    const porDia=T.gasto/T.passados, dias=Math.floor(T.tetoEf/porDia);
+    const d=new Date(c.inicio+"T12:00:00");d.setDate(d.getDate()+dias);
+    est="amarelo";titulo="Gastando rápido";
+    frase=ymd(d)<T.fim?`Neste ritmo, o teto acaba por volta de ${fmtDate(ymd(d))}, antes do próximo salário.`:"Você está gastando mais rápido do que o ciclo anda.";
+  }else{est="verde";titulo="No ritmo certo";frase=`Até hoje dava para gastar ${money(T.ideal)}. Sobram ${money(r2(T.tetoEf-T.gasto))} até o próximo salário.`}
+  const pct=T.tetoEf>0?Math.min(100,T.gasto/T.tetoEf*100):100, marca=T.passados/T.total*100;
+  const aj=Number(c.ajuste)||0;
+  const pend=T.salarioNovo&&T.pend.length?`<div class="tm-aviso">O salário já entrou. O ciclo vira quando estas contas forem pagas: ${T.pend.slice(0,4).map(p=>esc(p.nome)).join(", ")}${T.pend.length>4?"…":""}.</div>`:"";
+  const sobra=c.sobra>0?`<div class="tm-sobra"><b>Sobrou ${money(c.sobra)} no ciclo passado.</b> O que fazer com essa sobra?
+      <div class="tm-btns">${(db.goals||[]).length?`<select id="tmMeta" aria-label="Meta">${db.goals.map(g=>`<option value="${esc(g.id)}">${esc(g.name)}</option>`).join("")}</select><button type="button" class="ghost" id="tmSobraMeta">Guardar na meta</button>`:""}
+      <button type="button" class="ghost" id="tmSobraTeto">Somar ao teto</button><button type="button" class="ghost" id="tmSobraConta">Deixar na conta</button></div></div>`:"";
+  const hist=(c.hist||[]).slice(-3).reverse().map(h=>{const r=r2(h.teto-h.gasto);return `<li>${fmtDate(h.inicio)} a ${fmtDate(h.fim)}: gastou ${money(h.gasto)} de ${money(h.teto)} · <span class="${r<0?"expense":"income"}">${r<0?"passou "+money(-r):"sobrou "+money(r)}</span></li>`}).join("");
+  $("tmCorpo").innerHTML=`${sobra}
+    <div class="tm-topo"><span class="tm-luz ${est}" aria-hidden="true"></span><div><b>${esc(titulo)}</b><span>${esc(frase)}</span></div></div>
+    <div class="tm-valor"><b>${money(T.gasto)}</b> de ${money(Math.max(0,T.tetoEf))}</div>
+    <div class="tm-tubo ${est}" role="img" aria-label="Gastou ${Math.round(pct)}% do teto; o ciclo já passou ${Math.round(marca)}%">
       <div class="tm-fill" style="width:${pct.toFixed(1)}%"></div>
       <div class="tm-hoje" style="left:${marca.toFixed(1)}%"><span>hoje</span></div>
     </div>
-    <div class="tm-legenda">${T.manual?"Teto definido por você":`Teto = renda ${money(T.renda)} − contas fixas ${money(T.fixas)}`} · dia ${T.dia} de ${T.dias}</div>`:""}
-    <button type="button" class="ghost tm-btn" id="tmAbrir">${T.manual?"Mudar meu teto":"Definir meu teto"}</button>`;
-  $("tmAbrir").onclick=()=>{
-    $("tmValor").value=T.manual?fmtValor(T.teto):"";$("tmErro").textContent="";
-    $("tmAuto").hidden=!T.manual;$("tmForm").hidden=false;$("tmAbrir").hidden=true;$("tmValor").focus();
+    <div class="tm-legenda">Ciclo desde ${fmtDate(c.inicio)} · próximo salário ${fmtDate(T.fim)} · teto ${money(T.teto)}${aj<0?` − ${money(-aj)} do ciclo passado`:aj>0?` + ${money(aj)} de sobra`:""}${T.adiantadas?` · inclui ${money(T.adiantadas)} de conta paga adiantada`:""}</div>
+    ${pend}
+    <div class="tm-btns tm-acoes"><button type="button" class="ghost tm-btn" id="tmAbrir">Mudar meu teto</button><button type="button" class="ghost tm-btn" id="tmVirar">Começar novo ciclo</button></div>
+    ${hist?`<details class="tm-hist"><summary>Ciclos anteriores</summary><ul>${hist}</ul></details>`:""}`;
+  $("tmAbrir").onclick=()=>{$("tmValor").value=fmtValor(T.teto);$("tmErro").textContent="";$("tmForm").hidden=false;$("tmAbrir").hidden=true;$("tmValor").focus()};
+  $("tmVirar").onclick=async()=>{
+    const E=estadoCiclo(), soma=r2(E.pend.reduce((s,p)=>s+p.valor,0));
+    const msg=E.pend.length?`Começar um ciclo novo agora? Ainda faltam pagar ${money(soma)} (${E.pend.slice(0,3).map(p=>p.nome).join(", ")}). Esse valor vai descontar do teto do novo ciclo.`:"Começar um ciclo novo agora? O tubo zera a partir de hoje.";
+    if(!(await ask(msg,"Começar","Cancelar")))return;
+    virarCiclo(soma);renderAll();showToast("Ciclo novo começou");
   };
+  const fechaSobra=aj=>{c.ajuste=r2((Number(c.ajuste)||0)+aj);c.sobra=0;save();renderAll()};
+  if(c.sobra>0){
+    $("tmSobraTeto").onclick=()=>{const v=c.sobra;fechaSobra(v);showToast(`${money(v)} somados ao teto`)};
+    $("tmSobraConta").onclick=()=>{fechaSobra(0);showToast("A sobra ficou na conta")};
+    if($("tmSobraMeta"))$("tmSobraMeta").onclick=()=>{const g=db.goals.find(x=>x.id===$("tmMeta").value);if(!g)return;const v=c.sobra;g.saved=r2((Number(g.saved)||0)+v);fechaSobra(0);showToast(`${money(v)} guardados em ${g.name}`)};
+  }
 }
 $("tmForm").onsubmit=e=>{
   e.preventDefault();
@@ -878,7 +946,6 @@ $("tmForm").onsubmit=e=>{
   if(!(v>0)){$("tmErro").textContent=MSG_VALOR;$("tmValor").focus();return}
   db.settings.teto=r2(v);save();$("tmForm").hidden=true;renderAll();showToast("Teto salvo: "+money(r2(v)));
 };
-$("tmAuto").onclick=()=>{delete db.settings.teto;save();$("tmForm").hidden=true;renderAll();showToast("Teto automático")};
 $("tmCancelar").onclick=()=>{$("tmForm").hidden=true;renderTermometro()};
 
 function renderComoEstou(){
