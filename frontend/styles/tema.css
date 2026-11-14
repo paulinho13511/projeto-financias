@@ -2,13 +2,13 @@
    Camada de aparência por cima do app.css: não muda HTML nem scripts. A tela de entrada (#lock) tem estilo próprio (login.css).
    Regra de cor: vermelho = ação e destaque (botões, aba ativa, filete dos cartões) e também despesa/limite;
    para o alerta continuar chamando atenção, limite estourado e "Cuidado" usam vermelho com brilho; verde = entrada.
-   Fontes: só as do sistema (a política de segurança da página não permite fontes externas). */
+   Fonte: Nunito, servida pelo próprio app (a política de segurança não permite fontes de fora). */
 
 body:not(.locked){
   --tv-ink:#f2f2f2;--tv-mut:#9a9a9a;--tv-prata:#d6d6d6;--tv-red:#d81e1e;--tv-red2:#ff4d4d;--tv-green:#3ecf8e;--tv-warn:#f5b33a;
   --tv-metal:linear-gradient(180deg,#e33a3a,#d81e1e 55%,#b51616);   /* "metal" agora é o vermelho dos botões */
   --tv-hair:#232323;
-  --tv-panel:#121212;
+  --tv-panel:#121212;--tv-panel2:#161616;--tv-hair2:#2a2a2a;--tv-fundo:#111;--tv-fundo2:#0d0d0d;
   --tv-carbono:repeating-linear-gradient(45deg,#141414 0 4px,#0b0b0b 4px 8px),repeating-linear-gradient(-45deg,transparent 0 4px,rgba(0,0,0,.55) 4px 8px);
   --bg:#000;--card:#121212;--card2:rgba(255,255,255,.04);--border:#232323;
   --accent:#d81e1e;--ink:#ffffff;--text:#f2f2f2;--muted:#9a9a9a;--expense:#ff4d4d;--income:#3ecf8e;--warn:#f5b33a;
@@ -28,10 +28,10 @@ html:has(body:not(.locked)){background:#000 repeating-linear-gradient(45deg,#060
 .app h2{color:var(--tv-mut);letter-spacing:1.2px}
 
 /* topo: mês e botões de ícone */
-#month,.iconbtn{background:#111;border:1px solid #2a2a2a;color:var(--tv-ink)}
+#month,.iconbtn{background:var(--tv-fundo);border:1px solid var(--tv-hair2);color:var(--tv-ink)}
 .iconbtn{color:var(--tv-prata)}
 .iconbtn[aria-pressed="true"]{background:var(--tv-red);color:#fff;border-color:transparent}
-#month option{background:#111;color:#f2f2f2}
+#month option{background:var(--tv-fundo);color:var(--tv-ink)}
 
 /* cartões: preto fosco com filete vermelho à esquerda */
 .app .card{position:relative;background:var(--tv-panel);border:1px solid var(--tv-hair);border-left:3px solid var(--tv-red);
@@ -43,8 +43,8 @@ html:has(body:not(.locked)){background:#000 repeating-linear-gradient(45deg,#060
 .hero::after{background:radial-gradient(circle,rgba(216,30,30,.22),transparent 70%)}
 .hero .lbl{color:var(--tv-mut);font-weight:600}
 .hero .big{background:linear-gradient(180deg,#ffffff,#e6e6e6 55%,#b5b5b5);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
-.hero .big.expense{background:linear-gradient(180deg,#ffd9d9,#ff7a7a 55%,#ff4d4d);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
-.pill{background:#0a0a0a;border:1px solid #232323}
+.hero .big.expense{background:linear-gradient(180deg,#ffd9d9,#ff7a7a 55%,var(--tv-red2));-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.pill{background:#0a0a0a;border:1px solid var(--tv-hair)}
 .pill .lb{color:var(--tv-mut)}
 .pill .pic{background:rgba(62,207,142,.14);color:var(--tv-green)}
 .pill .pic.out{background:rgba(255,77,77,.14);color:var(--tv-red2)}
@@ -54,42 +54,42 @@ html:has(body:not(.locked)){background:#000 repeating-linear-gradient(45deg,#060
 .axis{color:var(--tv-mut)}
 
 /* listas */
-.row,.card .row{background:#0d0d0d;border:1px solid #1f1f1f}
+.row,.card .row{background:var(--tv-fundo2);border:1px solid #1f1f1f}
 .row .s,.muted,.hcol span,.cmp .lb,.day{color:var(--tv-mut)}
 .ic{border-radius:14px;color:#d6d6d6;background:#1d1d1d;font-size:15px}
 .ic.out{background:rgba(255,77,77,.12);color:var(--tv-red2);border:0}
 .income,.row .amt.income{color:var(--tv-green)}
 .expense,.row .amt.expense{color:var(--tv-red2)}
 .warn{color:var(--tv-warn)}
-.tag{border:1px solid #333;background:#161616;color:#cfcfcf}
+.tag{border:1px solid #333;background:var(--tv-panel2);color:#cfcfcf}
 .tag.ok{color:var(--tv-green);border-color:rgba(62,207,142,.4);background:rgba(62,207,142,.1)}
 .tag.late{color:#fff;border-color:transparent;background:var(--tv-red);box-shadow:0 0 10px rgba(216,30,30,.6)}
 .tag.soon{color:var(--tv-warn);border-color:rgba(245,179,58,.45);background:rgba(245,179,58,.1)}
 .ico{color:var(--tv-mut)}
 .ico:hover{color:var(--tv-red2)}
 .empty{color:var(--tv-mut)}
-.notif{border:1px solid #222;background:#0d0d0d}
+.notif{border:1px solid #222;background:var(--tv-fundo2)}
 .notif .app-n{color:var(--tv-mut)}
 
 /* botões: vermelho forte com brilho; secundários em preto com borda cinza */
 .primary,.app button.primary,.modal button.primary{background:var(--tv-metal);color:#fff;border:0;
   box-shadow:0 1px 0 rgba(255,255,255,.25) inset,0 8px 22px rgba(216,30,30,.4)}
 .primary:hover{filter:brightness(1.08)}
-.ghost{background:#111;border:1px solid #333;color:#e6e6e6;font-weight:600}
-.ghost:hover{border-color:var(--tv-red);background:#161616}
+.ghost{background:var(--tv-fundo);border:1px solid #333;color:#e6e6e6;font-weight:600}
+.ghost:hover{border-color:var(--tv-red);background:var(--tv-panel2)}
 
 /* formulários */
-.app input:not([type=checkbox]):not([type=radio]),.app select,.modal input,.modal select,.sheet input,.sheet select{background:#0d0d0d;border:1px solid #2a2a2a;color:var(--tv-ink)}
+.app input:not([type=checkbox]):not([type=radio]),.app select,.modal input,.modal select,.sheet input,.sheet select{background:var(--tv-fundo2);border:1px solid var(--tv-hair2);color:var(--tv-ink)}
 .app input::placeholder,.sheet input::placeholder{color:#6b6b6b}
 .app input:focus,.app select:focus,.sheet input:focus,.modal input:focus{border-color:var(--tv-red);box-shadow:0 0 0 3px rgba(216,30,30,.22)}
-.app select option{background:#111;color:#f2f2f2}
-.seg{padding:4px;gap:4px;border-radius:16px;background:#0d0d0d;border:1px solid #262626}
+.app select option{background:var(--tv-fundo);color:var(--tv-ink)}
+.seg{padding:4px;gap:4px;border-radius:16px;background:var(--tv-fundo2);border:1px solid #262626}
 .seg label{background:transparent;color:var(--tv-mut);border-radius:12px}
 .seg label:has(input:checked){color:#fff;background:var(--tv-metal);box-shadow:0 4px 14px rgba(216,30,30,.4)}
-.chip{background:#111;border:1px solid #2e2e2e;color:#e0e0e0}
+.chip{background:var(--tv-fundo);border:1px solid #2e2e2e;color:#e0e0e0}
 .chip[aria-pressed="true"]{color:#fff;border-color:transparent;background:var(--tv-metal)}
 .chk,.chk span{color:var(--tv-ink)}
-.chk input,.imp input{accent-color:#d81e1e}
+.chk input,.imp input{accent-color:var(--tv-red)}
 
 /* linha de destaque (total do mês em Contas) */
 .row[style*="var(--accent)"]{background:var(--tv-metal)!important;color:#fff!important;border:0}
@@ -98,23 +98,23 @@ html:has(body:not(.locked)){background:#000 repeating-linear-gradient(45deg,#060
 .bar,.goal .bar{background:#222}
 .bar i,.goal .bar i{background:linear-gradient(90deg,#8a8a8a,#e0e0e0)}
 .bar i.near{background:linear-gradient(90deg,#d9921f,#f5b33a)}
-.bar i.over{background:linear-gradient(90deg,#ff2b2b,#ff4d4d);box-shadow:0 0 12px rgba(255,43,43,.85)}
-.goal .bar i{background:linear-gradient(90deg,#b51616,#ff4d4d)}
-.goal,.sbox{background:#0d0d0d;border:1px solid #1f1f1f}
+.bar i.over{background:linear-gradient(90deg,#ff2b2b,var(--tv-red2));box-shadow:0 0 12px rgba(255,43,43,.85)}
+.goal .bar i{background:linear-gradient(90deg,#b51616,var(--tv-red2))}
+.goal,.sbox{background:var(--tv-fundo2);border:1px solid #1f1f1f}
 .sbox small,.goal .s,.gh .s{color:var(--tv-mut)}
 
 /* histórico e comparativos */
 .hbar{background:#222}
-.hcol.cur .hbar{background:linear-gradient(180deg,#ff4d4d,#b51616)}
+.hcol.cur .hbar{background:linear-gradient(180deg,var(--tv-red2),#b51616)}
 
 /* observações do mês */
-.tip{border-left:0;background:#0d0d0d;border:1px solid #1f1f1f}
+.tip{border-left:0;background:var(--tv-fundo2);border:1px solid #1f1f1f}
 .tip b{color:#fff}
 .tip p{color:#cfcfcf}
 
 /* calendário */
 .cal .dow{color:var(--tv-mut)}
-.cal .d{background:#0d0d0d;border:1px solid #1c1c1c}
+.cal .d{background:var(--tv-fundo2);border:1px solid #1c1c1c}
 .cal .d.today{border-color:var(--tv-red);background:rgba(216,30,30,.14)}
 .cal .d.blank{background:none;border:none}
 .cal .n{color:var(--tv-mut)}
@@ -130,10 +130,10 @@ html:has(body:not(.locked)){background:#000 repeating-linear-gradient(45deg,#060
 .bottom button.on:not(.fab)::after{content:"";position:absolute;bottom:2px;width:20px;height:3px;border-radius:3px;background:var(--tv-red)}
 /* botão "+": branco, com o "+" preto e um anel vermelho fino pulsando */
 .bottom .fab,.bottom .fab.on{color:#0a0a0a;background:radial-gradient(circle at 35% 28%,#ffffff,#f1f1f1 55%,#cfcfcf 100%);
-  box-shadow:0 0 0 3px #000,0 0 0 5px #d81e1e,0 10px 26px rgba(0,0,0,.6);animation:tvPulse 3s infinite}
+  box-shadow:0 0 0 3px #000,0 0 0 5px var(--tv-red),0 10px 26px rgba(0,0,0,.6);animation:tvPulse 3s infinite}
 .bottom .fab svg{stroke-width:2.6}
 @keyframes tvPulse{
-  0%,100%{box-shadow:0 0 0 3px #000,0 0 0 5px #d81e1e,0 10px 26px rgba(0,0,0,.6)}
+  0%,100%{box-shadow:0 0 0 3px #000,0 0 0 5px var(--tv-red),0 10px 26px rgba(0,0,0,.6)}
   50%{box-shadow:0 0 0 3px #000,0 0 0 8px rgba(216,30,30,.35),0 10px 30px rgba(0,0,0,.6)}
 }
 @media(prefers-reduced-motion:reduce){.bottom .fab{animation:none}}
@@ -148,14 +148,14 @@ html:has(body:not(.locked)){background:#000 repeating-linear-gradient(45deg,#060
 
 /* menu "Mais", diálogos e aviso */
 .modal,.sheet{background:rgba(0,0,0,.7);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
-.sheetbox{background:linear-gradient(180deg,#1a1a1a,#0d0d0d);border-top:2px solid var(--tv-red);
+.sheetbox{background:linear-gradient(180deg,#1a1a1a,var(--tv-fundo2));border-top:2px solid var(--tv-red);
   box-shadow:0 -10px 40px rgba(0,0,0,.55);color:var(--tv-ink)}
 .sheetbox button{background:#141414;border:1px solid #262626;color:var(--tv-ink)}
 .sheetbox button:hover{border-color:var(--tv-red)}
 .sheetbox button.close{background:#1c1c1c;color:#e6e6e6;text-align:center;font-weight:600}
 .sheetbox #lockNow{color:#ff8a8a;border-color:rgba(255,77,77,.45)}
 .sheetbox h2{color:var(--tv-ink)}
-.box{background:linear-gradient(165deg,#1c1c1c,#0d0d0d);border:1px solid #2a2a2a;border-top:2px solid var(--tv-red);
+.box{background:linear-gradient(165deg,#1c1c1c,var(--tv-fundo2));border:1px solid var(--tv-hair2);border-top:2px solid var(--tv-red);
   box-shadow:0 20px 50px rgba(0,0,0,.6);color:var(--tv-ink)}
 .toast{background:var(--tv-metal);color:#fff;box-shadow:0 12px 32px rgba(0,0,0,.5)}
 
@@ -173,17 +173,17 @@ html:has(body:not(.locked)){background:#000 repeating-linear-gradient(45deg,#060
 .goal .gr button{flex:0 0 auto}
 
 /* botão do seletor de arquivo (importar extrato) */
-.app input[type=file]::file-selector-button{margin-right:10px;padding:8px 12px;border-radius:10px;border:1px solid #333;background:#161616;color:#e6e6e6;font-weight:600}
+.app input[type=file]::file-selector-button{margin-right:10px;padding:8px 12px;border-radius:10px;border:1px solid #333;background:var(--tv-panel2);color:#e6e6e6;font-weight:600}
 
 /* saldo em contas (Início e Carteira) */
-.heroAcc{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;padding:11px 14px;border-radius:16px;background:#0a0a0a;border:1px solid #232323;font-size:13px;color:var(--tv-mut)}
+.heroAcc{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;padding:11px 14px;border-radius:16px;background:#0a0a0a;border:1px solid var(--tv-hair);font-size:13px;color:var(--tv-mut)}
 .heroAcc b{font-size:15px;color:var(--tv-ink);white-space:nowrap}
 .amt.neutral{color:var(--tv-prata)}
 .ic.xfer{font-size:19px;background:#1d1d1d;color:#e0e0e0}
 
 /* Como estou: barra vermelha (identidade), sinal com as cores de sempre */
 .ceBarra{background:#222!important}
-.ceBarra>div{background:linear-gradient(90deg,#b51616,#ff4d4d)}
+.ceBarra>div{background:linear-gradient(90deg,#b51616,var(--tv-red2))}
 .luz.vermelho{background:#ff2b2b}
 
 /* ---------- Etapa 1: interações e telas ---------- */
@@ -208,11 +208,11 @@ html:has(body:not(.locked)){background:#000 repeating-linear-gradient(45deg,#060
 
 /* ---------- Lançamento Relâmpago ---------- */
 #rlSheet .sheetbox.rl{gap:12px;max-height:94vh;max-height:94dvh;overflow-y:auto;border-top:2px solid var(--tv-red)}
-@media(min-width:1000px){#rlSheet{place-items:center}#rlSheet .sheetbox.rl{border-radius:24px;border:1px solid #2a2a2a;border-top:2px solid var(--tv-red)}}
+@media(min-width:1000px){#rlSheet{place-items:center}#rlSheet .sheetbox.rl{border-radius:24px;border:1px solid var(--tv-hair2);border-top:2px solid var(--tv-red)}}
 .rl-topo{display:flex;justify-content:space-between;align-items:center}
 .rl-topo h2{margin:0;font-size:18px;color:#fff;text-transform:none;letter-spacing:0}
-#rlSheet .rl-x{width:40px;min-height:40px;padding:0;border-radius:50%;text-align:center;font-size:22px;line-height:1;background:#161616}
-.rl-valor{display:flex;align-items:center;gap:8px;background:#0d0d0d;border:1px solid #2a2a2a;border-bottom:2px solid var(--tv-red);border-radius:16px;padding:4px 14px;cursor:text}
+#rlSheet .rl-x{width:40px;min-height:40px;padding:0;border-radius:50%;text-align:center;font-size:22px;line-height:1;background:var(--tv-panel2)}
+.rl-valor{display:flex;align-items:center;gap:8px;background:var(--tv-fundo2);border:1px solid var(--tv-hair2);border-bottom:2px solid var(--tv-red);border-radius:16px;padding:4px 14px;cursor:text}
 .rl-valor span{font-size:22px;font-weight:700;color:var(--tv-mut)}
 #rlSheet .rl-valor input{flex:1;min-width:0;background:transparent!important;border:0!important;box-shadow:none!important;padding:10px 0;font-size:36px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums}
 .rl-lbl{font-size:12px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--tv-mut);margin:2px 0 6px}
@@ -243,7 +243,7 @@ html:has(body:not(.locked)){background:#000 repeating-linear-gradient(45deg,#060
 #rlSheet .rl-tipos label{text-align:center}
 #rlSheet .rl-ok{background:var(--tv-metal);color:#fff;border:0;box-shadow:0 8px 22px rgba(216,30,30,.4)}
 .rl-parc .chk{display:inline-flex;align-items:center;gap:8px;width:auto}
-#rlSheet input[type=checkbox]{width:20px;height:20px;padding:0;margin:0;flex:0 0 auto;accent-color:#d81e1e}
+#rlSheet input[type=checkbox]{width:20px;height:20px;padding:0;margin:0;flex:0 0 auto;accent-color:var(--tv-red)}
 /* Relâmpago: só Despesa e Receita; "Pagou com" separado em conta (sai agora) e cartão (vai para a fatura) */
 #rlSheet .rl-tipos{grid-template-columns:repeat(2,minmax(0,1fr))}
 .rl-meios-box{display:grid;gap:10px}
@@ -258,8 +258,8 @@ html:has(body:not(.locked)){background:#000 repeating-linear-gradient(45deg,#060
 
 /* editar conta ou cartão */
 #eiSheet .sheetbox.ei{gap:12px;border-top:2px solid var(--tv-red);grid-template-columns:minmax(0,1fr)}
-@media(min-width:1000px){#eiSheet{place-items:center}#eiSheet .sheetbox.ei{border-radius:24px;border:1px solid #2a2a2a;border-top:2px solid var(--tv-red);max-width:460px}}
-#eiSheet .rl-x{width:40px;min-height:40px;padding:0;border-radius:50%;text-align:center;font-size:22px;line-height:1;background:#161616}
+@media(min-width:1000px){#eiSheet{place-items:center}#eiSheet .sheetbox.ei{border-radius:24px;border:1px solid var(--tv-hair2);border-top:2px solid var(--tv-red);max-width:460px}}
+#eiSheet .rl-x{width:40px;min-height:40px;padding:0;border-radius:50%;text-align:center;font-size:22px;line-height:1;background:var(--tv-panel2)}
 .ei-form{display:grid;gap:12px}
 .ei-fld{display:grid;gap:6px;font-size:13px;color:var(--tv-mut)}
 .ei-fld input{width:100%}
@@ -296,11 +296,11 @@ html:has(body:not(.locked)){background:#000 repeating-linear-gradient(45deg,#060
 .tm-luz.vermelho{background:#ff2b2b;box-shadow:0 0 14px rgba(255,43,43,.7)}
 .tm-valor{margin-top:16px;color:var(--tv-mut);font-size:15px}
 .tm-valor b{color:#fff;font-size:26px;letter-spacing:-.4px;margin-right:4px}
-.tm-tubo{position:relative;height:22px;margin:12px 0 26px;border-radius:99px;background:#1c1c1c;box-shadow:inset 0 2px 6px rgba(0,0,0,.7);border:1px solid #2a2a2a}
+.tm-tubo{position:relative;height:22px;margin:12px 0 26px;border-radius:99px;background:#1c1c1c;box-shadow:inset 0 2px 6px rgba(0,0,0,.7);border:1px solid var(--tv-hair2)}
 .tm-fill{height:100%;border-radius:99px;transition:width .6s cubic-bezier(.22,1,.36,1)}
 .tm-tubo.verde .tm-fill{background:linear-gradient(90deg,#1f9d6c,#34d399)}
 .tm-tubo.amarelo .tm-fill{background:linear-gradient(90deg,#c98a0a,#fbbf24)}
-.tm-tubo.vermelho .tm-fill{background:linear-gradient(90deg,#b51616,#ff4d4d)}
+.tm-tubo.vermelho .tm-fill{background:linear-gradient(90deg,#b51616,var(--tv-red2))}
 .tm-tubo.cinza .tm-fill{background:#444}
 .tm-hoje{position:absolute;top:-5px;bottom:-5px;width:2px;margin-left:-1px;background:#fff;border-radius:2px;box-shadow:0 0 6px rgba(255,255,255,.6)}
 .tm-hoje span{position:absolute;top:calc(100% + 3px);left:50%;transform:translateX(-50%);font-size:11px;color:#cfcfcf;white-space:nowrap}
@@ -321,11 +321,11 @@ html:has(body:not(.locked)){background:#000 repeating-linear-gradient(45deg,#060
 .sc-aviso span{display:block;color:var(--tv-mut);font-size:13.5px;margin-top:3px}
 .sc-aviso .primary{width:auto;min-height:44px;padding:0 18px;background:var(--tv-metal);color:#fff;border:0}
 #scSheet .sheetbox.sc{gap:12px;max-height:92vh;max-height:92dvh;overflow-y:auto;border-top:2px solid var(--tv-red);grid-template-columns:minmax(0,1fr)}
-@media(min-width:1000px){#scSheet{place-items:center}#scSheet .sheetbox.sc{border-radius:24px;border:1px solid #2a2a2a;border-top:2px solid var(--tv-red);max-width:620px}}
-#scSheet .rl-x{width:40px;min-height:40px;padding:0;border-radius:50%;text-align:center;font-size:22px;line-height:1;background:#161616}
+@media(min-width:1000px){#scSheet{place-items:center}#scSheet .sheetbox.sc{border-radius:24px;border:1px solid var(--tv-hair2);border-top:2px solid var(--tv-red);max-width:620px}}
+#scSheet .rl-x{width:40px;min-height:40px;padding:0;border-radius:50%;text-align:center;font-size:22px;line-height:1;background:var(--tv-panel2)}
 .sc-dica{font-size:13.5px;margin:0}
 .sc-lista{display:grid;gap:8px}
-.sc-item{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,190px);gap:10px;align-items:center;background:#161616;border:1px solid #232323;border-radius:14px;padding:10px 12px}
+.sc-item{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,190px);gap:10px;align-items:center;background:var(--tv-panel2);border:1px solid var(--tv-hair);border-radius:14px;padding:10px 12px}
 .sc-info b{display:block;overflow-wrap:anywhere}
 .sc-info span{font-size:13px;color:var(--tv-mut)}
 .sc-info i{font-style:normal;font-weight:700}
@@ -343,3 +343,61 @@ html:has(body:not(.locked)){background:#000 repeating-linear-gradient(45deg,#060
 .tm-hist{margin-top:12px;font-size:13px;color:var(--tv-mut)}
 .tm-hist summary{cursor:pointer;min-height:32px;display:flex;align-items:center}
 .tm-hist ul{margin:6px 0 0;padding-left:18px;display:grid;gap:4px}
+
+/* ===================== Revisão da interface (auditoria) ===================== */
+/* Fonte própria: Nunito (arredondada, boa leitura), servida pelo próprio app */
+@font-face{font-family:"Nunito";src:url("../assets/fontes/nunito.woff") format("woff");font-weight:200 1000;font-style:normal;font-display:swap}
+body,button,input,select,textarea{font-family:"Nunito",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+
+/* Títulos das caixas: frase normal, maiores (sem MAIÚSCULAS espaçadas) */
+.app h2{font-size:16px;font-weight:800;text-transform:none;letter-spacing:0;color:#e9e9e9;margin-bottom:14px}
+.rl-lbl,.day,.notif .app-n{text-transform:none;letter-spacing:0}
+.rl-lbl{font-size:14px;color:#d6d6d6}
+.day{font-size:14px;font-weight:700}
+h3.sub{font-size:15px;font-weight:800;color:#e9e9e9;margin:4px 0 10px}
+
+/* Letras mínimas para o público (50–60 anos): nada abaixo de 13 px */
+.row .s,.goal .s,.gh .s,.sbox small{font-size:14px}
+.top .ttl small{font-size:13px}
+.bottom button{font-size:13px}
+.cal .dow{font-size:13px}
+.pill .lb,.cmp .lb{font-size:13px}
+.tm-legenda{font-size:14px}
+.tm-hoje span{font-size:13px}
+.ceItem .nota{font-size:14px}
+.rl-sub{font-size:14px}
+
+/* Alvos de toque: mínimo 44 × 44 px */
+.ico{min-width:44px;min-height:44px}
+.ghost,.ceItem .ghost,#rlSheet .rl-vazio .ghost{min-height:44px}
+.chip,#rlSheet .chip{min-height:44px}
+#month{min-height:44px}
+.chk{min-height:44px}
+.chk input{width:24px;height:24px}
+
+/* Campos com nome visível em cima (o exemplo dentro some ao digitar) */
+.fld{display:grid;gap:6px;font-size:14px;font-weight:600;color:#d6d6d6;min-width:0}
+.fld input,.fld select{width:100%;min-width:0}
+.fld[hidden]{display:none}
+
+/* Celular: linha com botões não espreme o texto — os botões descem para baixo dele */
+@media(max-width:600px){
+  #cardList .row,#accList .row,#billsList .row{flex-wrap:wrap}
+  #cardList .row .rmain,#accList .row .rmain,#billsList .row .rmain{flex:1 1 100%;min-width:0}
+  #cardList .row .actions,#accList .row .actions,#billsList .row .actions{flex:1 1 100%;justify-content:flex-start;flex-wrap:wrap;gap:8px}
+}
+
+/* Vermelho só para alerta: o total do mês é neutro */
+.row.total-mes{background:#1a1a1a;border:1px solid #333;color:var(--tv-ink)}
+.row.total-mes .amt{color:var(--tv-ink)}
+
+/* Faixa vermelha só nas caixas de destaque (saldo e "Estou bem?"), não em todas */
+.app .card{border-left:1px solid var(--tv-hair)}
+.app .card.ini-sinal{border-left:3px solid var(--tv-red)}
+
+/* Categorias no computador: cada caixa do tamanho do seu conteúdo */
+#v-rev.on{align-items:start}
+.ceDia,.chartHead small,.axis,.tag,.cal .n,.hcol span,.lc-data,.sbox small,.notif .app-n{font-size:13px}
+.cal .b{font-size:12px}
+.rl-chip small{font-size:13px;opacity:.75}
+#rlSheet .rl-x,#eiSheet .rl-x,#scSheet .rl-x{width:44px;min-height:44px}

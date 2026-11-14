@@ -15,9 +15,9 @@
       <form class="f" id="trForm">
         <select id="trFrom" aria-label="Sai de"></select>
         <select id="trTo" aria-label="Vai para"></select>
-        <input id="trAmt" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="Valor (R$)" required>
+        <label class="fld">Valor (R$)<input id="trAmt" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></label>
         <input id="trDate" type="date" aria-label="Data">
-        <input class="full" id="trDesc" placeholder="Descrição (opcional)" maxlength="60">
+        <label class="fld full">Descrição (opcional)<input id="trDesc" maxlength="60"></label>
         <button class="primary full" type="submit">Transferir</button>
       </form>
     </div>
@@ -29,13 +29,13 @@
     <div class="card">
       <h2>Nova conta</h2>
       <form class="f" id="accForm">
-        <input class="full" id="accName" placeholder="Nome (ex.: Nubank, Carteira)" maxlength="40" required>
-        <select id="accType" aria-label="Tipo de conta">
+        <label class="fld full">Nome da conta<input id="accName" placeholder="Ex.: Nubank, Carteira" maxlength="40" required></label>
+        <label class="fld">Tipo<select id="accType">
           <option value="corrente">Corrente</option>
           <option value="poupanca">Poupança</option>
           <option value="carteira">Dinheiro</option>
-        </select>
-        <input id="accInit" type="text" inputmode="text" autocomplete="off" data-money data-neg placeholder="Saldo inicial">
+        </select></label>
+        <label class="fld">Saldo inicial (R$)<input id="accInit" type="text" inputmode="text" autocomplete="off" data-money data-neg placeholder="0,00"></label>
         <button class="primary full" type="submit">Cadastrar conta</button>
       </form>
     </div>

@@ -1,6 +1,11 @@
   <!-- CONTAS -->
   <section class="view" id="v-contas">
     <div class="card">
+      <h2>Contas do mês · <span id="billMonthLabel"></span></h2>
+      <div class="list" id="billsList"></div>
+    </div>
+
+    <div class="card">
       <h2>Nova conta fixa</h2>
       <form class="f" id="billForm">
         <div class="seg seg3 full">
@@ -8,40 +13,36 @@
           <label><input type="radio" name="kind" value="parcelada"><span>Parcelada</span></label>
           <label><input type="radio" name="kind" value="unica"><span>Única</span></label>
         </div>
-        <input class="full" id="bName" placeholder="Nome (ex.: Aluguel, Internet)" required>
-        <input id="bAmt" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="Valor (R$)" required>
-        <input id="bDay" type="number" min="1" max="31" placeholder="Vence dia" required>
+        <label class="fld full">Nome da conta<input id="bName" placeholder="Ex.: Aluguel, Internet" required></label>
+        <label class="fld">Valor (R$)<input id="bAmt" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></label>
+        <label class="fld">Vence no dia<input id="bDay" type="number" min="1" max="31" placeholder="1 a 31" required></label>
         <input id="bDate" type="date" hidden>
         <div class="full" id="endBox" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <select id="bEndType"><option value="forever">Para sempre</option><option value="until">Até um mês</option></select>
-          <input id="bEnd" type="month" hidden title="Último mês em que a conta aparece">
+          <label class="fld">Até quando<select id="bEndType"><option value="forever">Para sempre</option><option value="until">Até um mês</option></select></label>
+          <label class="fld" id="bEndFld">Último mês<input id="bEnd" type="month" hidden title="Último mês em que a conta aparece"></label>
         </div>
         <div class="full" id="parcBox" hidden style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <input id="bParcels" type="number" min="2" max="120" placeholder="Nº de parcelas">
-          <input id="bStart" type="month" title="Mês da 1ª parcela">
+          <label class="fld">Nº de parcelas<input id="bParcels" type="number" min="2" max="120" placeholder="Ex.: 10"></label>
+          <label class="fld">Mês da 1ª parcela<input id="bStart" type="month" title="Mês da 1ª parcela"></label>
         </div>
         <div class="muted full" id="parcTotal" hidden></div>
-        <select class="full" id="bCard"></select>
-        <select class="full" id="bCat"></select>
+        <label class="fld full">Paga com<select id="bCard"></select></label>
+        <label class="fld full">Categoria<select id="bCat"></select></label>
         <label class="chk full"><input type="checkbox" id="bSub"> É assinatura (Netflix, Spotify, academia...)</label>
         <button class="primary full" type="submit">Cadastrar</button>
       </form>
     </div>
-    <div class="card">
-      <h2>Contas do mês · <span id="billMonthLabel"></span></h2>
-      <div class="list" id="billsList"></div>
-    </div>
-
   <!-- CARTÕES (dentro de Contas) -->
   <div class="card" style="margin-top:0" data-cards>
     <h2>Cartões de crédito</h2>
+    <div class="list" id="cardList" style="margin-bottom:16px"></div>
+    <h3 class="sub">Cadastrar cartão</h3>
     <form class="f" id="cardForm">
-      <input class="full" id="cName" placeholder="Nome do cartão (ex.: Nubank, Itaú)" required>
-      <input id="cClose" type="number" min="1" max="31" placeholder="Fecha dia" required>
-      <input id="cDue" type="number" min="1" max="31" placeholder="Vence dia" required>
-      <input class="full" id="cLimit" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="Limite do cartão (R$, opcional)">
+      <label class="fld full">Nome do cartão<input id="cName" placeholder="Ex.: Nubank, Itaú" required></label>
+      <label class="fld">Fecha no dia<input id="cClose" type="number" min="1" max="31" placeholder="1 a 31" required></label>
+      <label class="fld">Vence no dia<input id="cDue" type="number" min="1" max="31" placeholder="1 a 31" required></label>
+      <label class="fld full">Limite do cartão (opcional)<input id="cLimit" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00"></label>
       <button class="primary full" type="submit">Cadastrar cartão</button>
     </form>
-    <div class="list" id="cardList" style="margin-top:14px"></div>
   </div>
   </section>

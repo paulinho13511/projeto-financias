@@ -2,12 +2,13 @@
   <section class="view" id="v-metas">
     <div class="card" id="goalCard">
       <h2>Metas e caixinhas</h2>
+      <div class="list" id="goalList" style="margin-bottom:16px"></div>
+      <h3 class="sub">Criar meta</h3>
       <form class="f" id="goalForm">
-        <input class="full" id="gName" placeholder="Nome (ex.: Reserva, Viagem)" required>
-        <input id="gTarget" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="Valor final (R$)" required>
-        <input id="gDeadline" type="month" title="Prazo" required>
+        <label class="fld full">Nome da meta<input id="gName" placeholder="Ex.: Reserva, Viagem" required></label>
+        <label class="fld">Valor final (R$)<input id="gTarget" type="text" inputmode="decimal" autocomplete="off" data-money placeholder="0,00" required></label>
+        <label class="fld">Prazo<input id="gDeadline" type="month" required></label>
         <button class="primary full" type="submit">Criar meta</button>
       </form>
-      <div class="list" id="goalList" style="margin-top:14px"></div>
     </div>
   </section>

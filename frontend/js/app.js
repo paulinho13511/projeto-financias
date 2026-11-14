@@ -496,13 +496,13 @@ const CAT_SVG={
   "Investimentos":'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>'
 };
 const catIcon=c=>CAT_SVG[c]?`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${CAT_SVG[c]}</svg>`:esc(String(c||"?").charAt(0));
-function txRow(t){
+function txRow(t,semApagar){
   if(t.type==="transfer"){
     const de=accName(t.from)||"Conta removida", para=accName(t.to)||"Conta removida";
     return `<div class="row"><div class="ic xfer">⇄</div><div class="rmain"><div class="t">${esc(t.desc)}</div><div class="s">${esc(de)} → ${esc(para)} · ${fmtDate(t.date)}</div></div><div class="actions"><span class="amt neutral">${money(t.amount)}</span><button class="ico" title="Remover" data-act="delTx" data-id="${esc(t.id)}">×</button></div></div>`;
   }
   const inc=t.type==="income";
-  return `<div class="row"><div class="ic ${inc?"in":"out"}" title="${esc(t.category)}">${catIcon(t.category)}</div><div class="rmain"><div class="t">${esc(t.desc)}</div><div class="s">${esc(t.category)} · ${fmtDate(t.date)}${t.account&&accName(t.account)?" · "+esc(accName(t.account)):""}${t.card&&cardName(t.card)?" · cartão "+esc(cardName(t.card)):""}</div></div><div class="actions"><span class="amt ${inc?"income":"expense"}">${inc?"+":"−"} ${money(t.amount)}</span><button class="ico" title="Remover" data-act="delTx" data-id="${esc(t.id)}">×</button></div></div>`;
+  return `<div class="row"><div class="ic ${inc?"in":"out"}" title="${esc(t.category)}">${catIcon(t.category)}</div><div class="rmain"><div class="t">${esc(t.desc)}</div><div class="s">${esc(t.category)} · ${fmtDate(t.date)}${t.account&&accName(t.account)?" · "+esc(accName(t.account)):""}${t.card&&cardName(t.card)?" · cartão "+esc(cardName(t.card)):""}</div></div><div class="actions"><span class="amt ${inc?"income":"expense"}">${inc?"+":"−"} ${money(t.amount)}</span>${semApagar?"":`<button class="ico" title="Apagar lançamento" aria-label="Apagar ${esc(t.desc)}" data-act="delTx" data-id="${esc(t.id)}">×</button>`}</div></div>`;
 }
 
 /* ---------- confirmação própria (o visualizador bloqueia a caixa padrão) ---------- */
@@ -649,7 +649,7 @@ function renderInicio(){
     <div class="notif"><div class="app-n">TravaDin · agora</div>
     <div class="msg"><b>${esc(m.title)}</b><br>${esc(m.body)}</div></div>`).join(""):`<div class="empty">Nenhuma notificação pendente</div>`;
 
-  $("recent").innerHTML=sortedTx().slice(0,5).map(txRow).join("")||`<div class="empty">Nenhum lançamento ainda</div>`;
+  $("recent").innerHTML=sortedTx().slice(0,5).map(t=>txRow(t,true)).join("")||`<div class="empty">Nenhum lançamento ainda</div>`;
 }
 
 let chartDay=null, chartSel=null;
@@ -685,12 +685,7 @@ function renderChart(){
   const cur=mKey(today());
   let txt;
   if(sel<cur)txt="Mês encerrado";
-  else{
-    const days=sel===cur?n-parseInt(today().slice(8,10),10)+1:n;
-    txt=t.bal>=0
-      ?`Sobra ${money(t.bal)} · ${money(t.bal/days)} por dia até o fim do mês`
-      :`Faltam ${money(-t.bal)} para fechar o mês`;
-  }
+  else txt="";
   $("perDay").textContent=txt;
 }
 function chartPick(e){
@@ -737,7 +732,7 @@ function renderContas(){
   }).join("");
   const debt=db.bills.reduce((s,b)=>s+remainingValue(b,sel),0);
   $("billsList").innerHTML=db.bills.length
-    ?`<div class="row" style="background:var(--accent);color:var(--ink)"><div class="t">Total do mês</div><div class="amt">${money(paid)} pagos de ${money(total)}</div></div>${rows}
+    ?`<div class="row total-mes"><div class="t">Total do mês</div><div class="amt">${money(paid)} pagos de ${money(total)}</div></div>${rows}
       <div class="row"><div class="t">Parcelamentos a pagar depois deste mês</div><div class="amt">${money(debt)}</div></div>`
     :`<div class="empty">Cadastre contas fixas, parcelamentos ou contas únicas</div>`;
 }
@@ -748,7 +743,7 @@ function renderCal(){
   const first=new Date(y,m-1,1).getDay();
   const items=occ(sel);
   const total=items.reduce((s,o)=>s+o.amount,0);
-  $("calTitle").textContent=`${monthLabel(sel)} · ${money(total)} em contas`;
+  $("calTitle").textContent=`Contas do mês: ${money(total)}`;
   let h=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map(d=>`<div class="dow">${d}</div>`).join("");
   for(let i=0;i<first;i++)h+=`<div class="d blank"></div>`;
   for(let d=1;d<=n;d++){
@@ -792,7 +787,7 @@ function renderRev(){
 
   $("budgetList").innerHTML=CATS.map(c=>`
     <div class="row"><span class="t">${c}</span>
-    <input type="text" inputmode="decimal" autocomplete="off" data-money style="width:140px;text-align:right" value="${db.budgets[c]?fmtValor(db.budgets[c]):""}" placeholder="sem limite" data-act="setBudget" data-cat="${esc(c)}"></div>`).join("");
+    <input type="text" inputmode="decimal" autocomplete="off" data-money style="width:140px;text-align:right" value="${db.budgets[c]?fmtValor(db.budgets[c]):""}" placeholder="sem limite" aria-label="Limite mensal de ${esc(c)}" data-act="setBudget" data-cat="${esc(c)}"></div>`).join("");
 
   const topRows=[
     ...t.items.filter(x=>x.type==="expense").map(x=>({name:x.desc,cat:x.category,amount:x.amount})),
@@ -893,6 +888,20 @@ function checarCiclo(){
   if(E.salarioNovo&&!E.pend.length){virarCiclo(0);showToast("Contas pagas: começou um ciclo novo");return true}
   return false;
 }
+function vereditoCiclo(T){
+  T=T||estadoCiclo();
+  const c=T.c;
+  if(!T.teto)return {est:"cinza",titulo:"Defina seu teto",frase:"Diga no termômetro quanto quer gastar até o próximo salário."};
+  if(T.tetoEf<=0)return {est:"vermelho",titulo:"Teto já usado",frase:`O que ficou do ciclo passado (${money(-(Number(c.ajuste)||0))}) já usa todo o teto deste ciclo.`};
+  if(T.gasto>T.tetoEf)return {est:"vermelho",titulo:"Passou do teto",frase:`Passou ${money(r2(T.gasto-T.tetoEf))} do teto.`};
+  if(T.gasto>T.ideal*1.1&&T.gasto>0){
+    const porDia=T.gasto/T.passados, dias=Math.floor(T.tetoEf/porDia);
+    const d=new Date(c.inicio+"T12:00:00");d.setDate(d.getDate()+dias);
+    return {est:"amarelo",titulo:"Gastando rápido",frase:ymd(d)<T.fim?`Neste ritmo, o teto acaba por volta de ${fmtDate(ymd(d))}, antes do próximo salário.`:"Você está gastando mais rápido do que o ciclo anda."};
+  }
+  return {est:"verde",titulo:"No ritmo certo",frase:`Sobram ${money(r2(T.tetoEf-T.gasto))} até o próximo salário.`};
+}
+let tmEditando=false;
 function renderTermometro(){
   checarCiclo();
   const T=estadoCiclo(), c=T.c;
@@ -902,15 +911,8 @@ function renderTermometro(){
     return;
   }
   $("tmCancelar").hidden=false;
-  let est,titulo,frase;
-  if(T.tetoEf<=0){est="vermelho";titulo="Teto já usado";frase=`O que ficou do ciclo passado (${money(-(Number(c.ajuste)||0))}) já usa todo o teto deste ciclo.`}
-  else if(T.gasto>T.tetoEf){est="vermelho";titulo="Passou do teto";frase=`Passou ${money(r2(T.gasto-T.tetoEf))} do teto.`}
-  else if(T.gasto>T.ideal*1.1&&T.gasto>0){
-    const porDia=T.gasto/T.passados, dias=Math.floor(T.tetoEf/porDia);
-    const d=new Date(c.inicio+"T12:00:00");d.setDate(d.getDate()+dias);
-    est="amarelo";titulo="Gastando rápido";
-    frase=ymd(d)<T.fim?`Neste ritmo, o teto acaba por volta de ${fmtDate(ymd(d))}, antes do próximo salário.`:"Você está gastando mais rápido do que o ciclo anda.";
-  }else{est="verde";titulo="No ritmo certo";frase=`Até hoje dava para gastar ${money(T.ideal)}. Sobram ${money(r2(T.tetoEf-T.gasto))} até o próximo salário.`}
+  if(!tmEditando)$("tmForm").hidden=true;   // teto salvo: o campo só abre pelo "Mudar meu teto"
+  const {est}=vereditoCiclo(T);
   const pct=T.tetoEf>0?Math.min(100,T.gasto/T.tetoEf*100):100, marca=T.passados/T.total*100;
   const aj=Number(c.ajuste)||0;
   const pend=T.salarioNovo&&T.pend.length?`<div class="tm-aviso">O salário já entrou. O ciclo vira quando estas contas forem pagas: ${T.pend.slice(0,4).map(p=>esc(p.nome)).join(", ")}${T.pend.length>4?"…":""}.</div>`:"";
@@ -922,7 +924,6 @@ function renderTermometro(){
       <button type="button" class="ghost" id="tmSobraNada">Não fazer nada</button></div></div>`:"";
   const hist=(c.hist||[]).slice(-3).reverse().map(h=>{const r=r2(h.teto-h.gasto);return `<li>${fmtDate(h.inicio)} a ${fmtDate(h.fim)}: gastou ${money(h.gasto)} de ${money(h.teto)} · <span class="${r<0?"expense":"income"}">${r<0?"passou "+money(-r):"sobrou "+money(r)}</span></li>`}).join("");
   $("tmCorpo").innerHTML=`${sobra}
-    <div class="tm-topo"><span class="tm-luz ${est}" aria-hidden="true"></span><div><b>${esc(titulo)}</b><span>${esc(frase)}</span></div></div>
     <div class="tm-valor"><b>${money(T.gasto)}</b> de ${money(Math.max(0,T.tetoEf))}</div>
     <div class="tm-tubo ${est}" role="img" aria-label="Gastou ${Math.round(pct)}% do teto; o ciclo já passou ${Math.round(marca)}%">
       <div class="tm-fill" style="width:${pct.toFixed(1)}%"></div>
@@ -932,7 +933,7 @@ function renderTermometro(){
     ${pend}
     <div class="tm-btns tm-acoes"><button type="button" class="ghost tm-btn" id="tmAbrir">Mudar meu teto</button></div>
     ${hist?`<details class="tm-hist"><summary>Ciclos anteriores</summary><ul>${hist}</ul></details>`:""}`;
-  $("tmAbrir").onclick=()=>{$("tmValor").value=fmtValor(T.teto);$("tmErro").textContent="";$("tmForm").hidden=false;$("tmAbrir").hidden=true;$("tmValor").focus()};
+  $("tmAbrir").onclick=()=>{tmEditando=true;$("tmValor").value=fmtValor(T.teto);$("tmErro").textContent="";$("tmForm").hidden=false;$("tmAbrir").hidden=true;$("tmValor").focus()};
   const fechaSobra=aj=>{c.ajuste=r2((Number(c.ajuste)||0)+aj);c.sobra=0;save();renderAll()};
   if(c.sobra>0){
     $("tmSobraNada").onclick=()=>{fechaSobra(0);showToast("Ok, a sobra ficou na conta")};
@@ -944,17 +945,15 @@ $("tmForm").onsubmit=e=>{
   e.preventDefault();
   const v=parseValor($("tmValor").value);
   if(!(v>0)){$("tmErro").textContent=MSG_VALOR;$("tmValor").focus();return}
-  db.settings.teto=r2(v);save();$("tmForm").hidden=true;renderAll();showToast("Teto salvo: "+money(r2(v)));
+  tmEditando=false;db.settings.teto=r2(v);save();$("tmForm").hidden=true;renderAll();showToast("Teto salvo: "+money(r2(v)));
 };
-$("tmCancelar").onclick=()=>{$("tmForm").hidden=true;renderTermometro()};
+$("tmCancelar").onclick=()=>{tmEditando=false;$("tmForm").hidden=true;renderTermometro()};
 
 function renderComoEstou(){
   const cm=mKey(today());
   $("ceBloco").hidden=sel!==cm;                      // o sinal vale para o mês de hoje; em outro mês, só o resumo e os gráficos
   if(sel!==cm)return;
   renderTermometro();
-  const t=totals(cm);
-  const resta=dim(cm)-parseInt(today().slice(8,10),10)+1;          // dias que faltam, contando hoje
   // contas em aberto + faturas do cartão (a fechada que falta pagar e a aberta, com o que já gastou), da mais urgente para a mais distante
   const lista=openBills().map(x=>({nome:x.b.name,valor:x.amount,d:x.st.d,act:"togglePaid",id:x.b.id,ym:x.ym,botao:"Paguei"}));
   (db.cards||[]).forEach(c=>{
@@ -968,29 +967,9 @@ function renderComoEstou(){
   });
   lista.sort((a,b)=>a.d-b.d);
   const proximas=lista.filter(x=>x.d<=30||x.cartao);     // atrasadas, o que vence em 30 dias e sempre as faturas do cartão
-  const atrasadas=lista.filter(x=>x.d<0).length;
-  const prev=rendaPrevista(cm);
-  const renda=r2(t.inc+prev), sobra=r2(renda-t.exp);      // renda = o que já entrou + o que ainda vai cair
-  const usado=renda>0?Math.round(t.exp/renda*100):null;
-
-  let cor="cinza",titulo="Sem dados ainda",frase="Cadastre uma receita e seus gastos para eu poder avaliar o mês.";
-  if(renda>0||t.exp>0){
-    if(renda<=0){cor="vermelho";titulo="Cuidado";frase="Você tem gastos neste mês, mas nenhuma receita cadastrada."}
-    else if(sobra<0){cor="vermelho";titulo="Cuidado";frase="As contas e os gastos do mês já passam do que você ganha."}
-    else if(usado>=80){cor="amarelo";titulo="Atenção";frase=`Você já comprometeu ${usado}% do que ganha este mês.`}
-    else{cor="verde";titulo="Tudo certo";frase=`Você usou ${usado}% do que ganha este mês. Está dentro do planejado.`}
-    if(atrasadas&&cor!=="vermelho"){cor="amarelo";titulo="Atenção";frase=`Você tem ${atrasadas} ${atrasadas>1?"contas atrasadas":"conta atrasada"} para pagar.`}
-  }
-  $("ceSinal").innerHTML=`<div class="luz ${cor}"></div><div><b>${esc(titulo)}</b><span>${esc(frase)}</span></div>`;
-
-  let pode;
-  if(!(renda>0||t.exp>0))pode=`<div class="ceFrase">Cadastre a receita deste mês para eu calcular quanto você pode gastar.</div>`;
-  else if(sobra<0)pode=`<div class="ceFrase">Neste mês já faltam<b class="ceGrande neg">${money(-sobra)}</b>para cobrir tudo o que você tem a pagar.</div>`;
-  else if(sobra===0)pode=`<div class="ceFrase">Não sobra nada neste mês: tudo o que você ganhou já está comprometido.</div>`;
-  else pode=`<div class="ceFrase">Você ainda pode gastar<b class="ceGrande">${money(sobra)}</b>até o fim do mês</div>
-    <div class="ceBarra"><div style="width:${Math.min(100,usado||0)}%"></div></div>
-    <div class="ceNota">Dá cerca de ${money(sobra/resta)} por dia · ${resta===1?"falta 1 dia":"faltam "+resta+" dias"}. As contas que ainda vão vencer já foram descontadas.${prev>0?` Já contei ${money(prev)} que ainda vai cair este mês.`:""}</div>`;
-  $("cePode").innerHTML=pode;
+  // "Estou bem?" é o veredito do termômetro do ciclo (uma resposta só para "posso gastar?")
+  const V=vereditoCiclo();
+  $("ceSinal").innerHTML=`<div class="luz ${V.est}"></div><div><b>${esc(V.titulo)}</b><span>${esc(V.frase)}</span></div>`;
 
   $("ceVem").innerHTML=proximas.length?proximas.slice(0,5).map(x=>{
     const [peq,gra]=x.d<0?["atrasada há",`${-x.d} ${x.d===-1?"dia":"dias"}`]:x.d===0?["vence","hoje"]:x.d===1?["vence","amanhã"]:["vence em",`${x.d} dias`];
@@ -1233,7 +1212,7 @@ function syncBillForm(){
   $("bDate").hidden=kind!=="unica";$("bDate").required=kind==="unica";
   $("endBox").hidden=kind!=="mensal";
   const until=kind==="mensal"&&$("bEndType").value==="until";
-  $("bEnd").hidden=!until;$("bEnd").required=until;
+  $("bEnd").hidden=!until;$("bEndFld").hidden=!until;$("bEnd").required=until;
   if(!$("bEnd").value)$("bEnd").value=shiftMonth(mKey(today()),12);
   $("parcBox").hidden=kind!=="parcelada";
   $("bParcels").required=kind==="parcelada";$("bStart").required=kind==="parcelada";
@@ -1600,7 +1579,7 @@ function renderGoals(){
       <div class="gh"><div style="min-width:0"><div class="t">${esc(g.name)}</div><div class="s">${money(g.saved)} de ${money(g.target)}</div></div><button class="ico" title="Excluir meta" data-gdel="${esc(g.id)}">×</button></div>
       <div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>
       <div class="s">${info}</div>
-      ${done?"":`<div class="gr"><input type="text" inputmode="decimal" autocomplete="off" data-money placeholder="Guardar agora (R$)" data-gin="${esc(g.id)}"><button class="ghost" type="button" data-gadd="${esc(g.id)}">Guardar</button></div>`}
+      ${done?"":`<div class="gr"><input type="text" inputmode="decimal" autocomplete="off" data-money placeholder="Guardar agora (R$)" aria-label="Quanto guardar em ${esc(g.name)}" data-gin="${esc(g.id)}"><button class="ghost" type="button" data-gadd="${esc(g.id)}">Guardar</button></div>`}
     </div>`;
   }).join(""):`<div class="empty">Crie uma meta: reserva de emergência, viagem, troca de celular...</div>`;
 }
@@ -1678,7 +1657,7 @@ function renderDonut(){
   $("donut").innerHTML=`<div class="donutWrap">
     <svg viewBox="0 0 180 180" role="img" aria-label="Distribuição das despesas por categoria">
       <circle r="${R}" cx="90" cy="90" fill="none" stroke="var(--card2)" stroke-width="26"/>${segs}
-      <text x="90" y="86" text-anchor="middle" fill="var(--muted)" font-size="11">Total</text>
+      <text x="90" y="86" text-anchor="middle" fill="var(--muted)" font-size="13">Total</text>
       <text x="90" y="104" text-anchor="middle" fill="var(--text)" font-size="13" font-weight="700">${esc(money(total))}</text>
     </svg>
     <div class="legend">${entries.map(([c,v],i)=>`<div><i style="background:${PAL[i%PAL.length]}"></i><span>${esc(c)}</span><b class="pct">${Math.round(v/total*100)}%</b></div>`).join("")}</div>
