@@ -829,11 +829,11 @@ function rendaPrevista(cm){
 /* ---------- Termômetro do ciclo ----------
    O termômetro segue o ciclo da pessoa, não o mês do calendário:
    - o ciclo vira quando, depois de o salário entrar, TODAS as contas (contas fixas do mês e fatura fechada do cartão)
-     estão pagas. Também dá para virar na mão ("Começar novo ciclo"); aí o que ficou sem pagar desconta do próximo teto;
+     estão pagas;
    - o teto é sempre a pessoa que define (nada pré-definido);
    - o tubo enche com os gastos do dia a dia feitos no ciclo e com contas pagas ADIANTADAS (de vencimento depois
      do fim do ciclo). Fatura do cartão não entra: as compras dela já entraram uma a uma;
-   - estourou: o que passou desconta do teto do ciclo seguinte; sobrou: a pessoa decide (meta, somar ao teto ou deixar). */
+   - estourou mas pagou todas as contas: o ciclo novo começa zerado; sobrou: a pessoa decide (meta, somar ao teto ou deixar). */
 const salarios=()=>db.tx.filter(t=>t.type==="income"&&t.category==="Salário").sort((a,b)=>a.date.localeCompare(b.date)||(a.created||0)-(b.created||0));
 const noCiclo=(t,c)=>t.date>c.inicio||(t.date===c.inicio&&(t.created||0)>=(c.ts||0));
 function fimDoCiclo(c){
@@ -881,7 +881,10 @@ function virarCiclo(pendente){
   const resultado=E.teto?r2(E.tetoEf-E.gasto):0;
   const hist=(c.hist||[]).slice(-5);
   if(E.teto)hist.push({inicio:c.inicio,fim:today(),teto:E.tetoEf,gasto:E.gasto});
-  db.settings.ciclo={inicio:today(),ts:Date.now(),ajuste:r2(Math.min(0,resultado)-(pendente||0)),sobra:resultado>0?resultado:0,hist};
+  // o salário que virou o ciclo nunca conta no ciclo novo (mesmo com relógio do aparelho adiantado)
+  const ts=Math.max(Date.now(),...salarios().filter(t=>t.date===today()).map(t=>(t.created||0)+1));
+  db.settings.ciclo={inicio:today(),ts,ajuste:r2(-(pendente||0)),   // estourou mas pagou todas as contas: o ciclo novo começa zerado
+   sobra:resultado>0?resultado:0,hist};
   save();
 }
 /* vira sozinho: salário novo no ciclo + nenhuma conta em aberto */
@@ -901,7 +904,7 @@ function renderTermometro(){
   $("tmCancelar").hidden=false;
   let est,titulo,frase;
   if(T.tetoEf<=0){est="vermelho";titulo="Teto já usado";frase=`O que ficou do ciclo passado (${money(-(Number(c.ajuste)||0))}) já usa todo o teto deste ciclo.`}
-  else if(T.gasto>T.tetoEf){est="vermelho";titulo="Passou do teto";frase=`Passou ${money(r2(T.gasto-T.tetoEf))}. Isso vai descontar do teto do próximo ciclo.`}
+  else if(T.gasto>T.tetoEf){est="vermelho";titulo="Passou do teto";frase=`Passou ${money(r2(T.gasto-T.tetoEf))} do teto.`}
   else if(T.gasto>T.ideal*1.1&&T.gasto>0){
     const porDia=T.gasto/T.passados, dias=Math.floor(T.tetoEf/porDia);
     const d=new Date(c.inicio+"T12:00:00");d.setDate(d.getDate()+dias);
@@ -924,15 +927,9 @@ function renderTermometro(){
     </div>
     <div class="tm-legenda">Ciclo desde ${fmtDate(c.inicio)} · próximo salário ${fmtDate(T.fim)} · teto ${money(T.teto)}${aj<0?` − ${money(-aj)} do ciclo passado`:aj>0?` + ${money(aj)} de sobra`:""}${T.adiantadas?` · inclui ${money(T.adiantadas)} de conta paga adiantada`:""}</div>
     ${pend}
-    <div class="tm-btns tm-acoes"><button type="button" class="ghost tm-btn" id="tmAbrir">Mudar meu teto</button><button type="button" class="ghost tm-btn" id="tmVirar">Começar novo ciclo</button></div>
+    <div class="tm-btns tm-acoes"><button type="button" class="ghost tm-btn" id="tmAbrir">Mudar meu teto</button></div>
     ${hist?`<details class="tm-hist"><summary>Ciclos anteriores</summary><ul>${hist}</ul></details>`:""}`;
   $("tmAbrir").onclick=()=>{$("tmValor").value=fmtValor(T.teto);$("tmErro").textContent="";$("tmForm").hidden=false;$("tmAbrir").hidden=true;$("tmValor").focus()};
-  $("tmVirar").onclick=async()=>{
-    const E=estadoCiclo(), soma=r2(E.pend.reduce((s,p)=>s+p.valor,0));
-    const msg=E.pend.length?`Começar um ciclo novo agora? Ainda faltam pagar ${money(soma)} (${E.pend.slice(0,3).map(p=>p.nome).join(", ")}). Esse valor vai descontar do teto do novo ciclo.`:"Começar um ciclo novo agora? O tubo zera a partir de hoje.";
-    if(!(await ask(msg,"Começar","Cancelar")))return;
-    virarCiclo(soma);renderAll();showToast("Ciclo novo começou");
-  };
   const fechaSobra=aj=>{c.ajuste=r2((Number(c.ajuste)||0)+aj);c.sobra=0;save();renderAll()};
   if(c.sobra>0){
     $("tmSobraTeto").onclick=()=>{const v=c.sobra;fechaSobra(v);showToast(`${money(v)} somados ao teto`)};
